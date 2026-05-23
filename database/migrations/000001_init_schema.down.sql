@@ -1,0 +1,19 @@
+-- 按 FK 依赖逆序删除所有表
+DROP TABLE IF EXISTS `transfer_orders`;
+DROP TABLE IF EXISTS `exchange_orders`;
+DROP TABLE IF EXISTS `withdrawal_orders`;
+DROP TABLE IF EXISTS `deposit_orders`;
+DROP TABLE IF EXISTS `system_announcements`;
+DROP TABLE IF EXISTS `webhook_logs`;
+DROP TABLE IF EXISTS `system_configs`;
+DROP TABLE IF EXISTS `audit_logs`;
+DROP TABLE IF EXISTS `admin_users`;
+DROP TABLE IF EXISTS `transaction_records`;
+DROP TABLE IF EXISTS `bank_accounts`;
+DROP TABLE IF EXISTS `crypto_addresses`;
+DROP TABLE IF EXISTS `merchant_wallets`;
+DROP TABLE IF EXISTS `fee_template_fiat_withdrawal_items`;
+DROP TABLE IF EXISTS `fee_template_crypto_withdrawal_items`;
+DROP TABLE IF EXISTS `fee_template_exchange_items`;
+DROP TABLE IF EXISTS `merchants`;
+DROP TABLE IF EXISTS `fee_templates`;
