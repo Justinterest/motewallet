@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/model"
+	"motewallet/internal/model"
 )
 
 type CryptoAddressRepository interface {

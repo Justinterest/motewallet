@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/model"
+	"motewallet/internal/model"
 )
 
 type FeeTemplateRepository interface {
 	Create(ctx context.Context, template *model.FeeTemplate) error
 	FindByID(ctx context.Context, id uint64) (*model.FeeTemplate, error)
+	FindDefault(ctx context.Context) (*model.FeeTemplate, error)
 	FindAll(ctx context.Context) ([]*model.FeeTemplate, error)
 	Update(ctx context.Context, template *model.FeeTemplate) error
 	Delete(ctx context.Context, id uint64) error
@@ -32,6 +33,15 @@ func (r *feeTemplateRepository) Create(ctx context.Context, template *model.FeeT
 func (r *feeTemplateRepository) FindByID(ctx context.Context, id uint64) (*model.FeeTemplate, error) {
 	var template model.FeeTemplate
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&template).Error
+	if err != nil {
+		return nil, err
+	}
+	return &template, nil
+}
+
+func (r *feeTemplateRepository) FindDefault(ctx context.Context) (*model.FeeTemplate, error) {
+	var template model.FeeTemplate
+	err := r.db.WithContext(ctx).Where("is_default = ?", true).First(&template).Error
 	if err != nil {
 		return nil, err
 	}

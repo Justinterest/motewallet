@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"motewallet-withdrawal/backend/internal/config"
+	"motewallet/internal/config"
 )
 
 func CORS(cfg *config.Config) gin.HandlerFunc {

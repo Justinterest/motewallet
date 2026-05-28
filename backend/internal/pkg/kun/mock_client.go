@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 
-	"motewallet-withdrawal/backend/internal/config"
+	"motewallet/internal/config"
 )
 
 // MockClient implements KUNClient for development/testing.

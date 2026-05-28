@@ -6,8 +6,8 @@ import (
 	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/response"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/response"
 )
 
 func Recovery() gin.HandlerFunc {

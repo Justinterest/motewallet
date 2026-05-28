@@ -5,12 +5,12 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/config"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/jwt"
-	"motewallet-withdrawal/backend/internal/pkg/utils"
-	"motewallet-withdrawal/backend/internal/repository"
+	"motewallet/internal/config"
+	dtoresp "motewallet/internal/dto/response"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/jwt"
+	"motewallet/internal/pkg/utils"
+	"motewallet/internal/repository"
 )
 
 type AdminAuthService struct {

@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/service"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/service"
 )
 
 type WebhookHandler struct {

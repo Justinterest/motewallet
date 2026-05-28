@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"motewallet-withdrawal/backend/internal/config"
+	"motewallet/internal/config"
 )
 
 // KUNClient defines the interface for KUN API calls.

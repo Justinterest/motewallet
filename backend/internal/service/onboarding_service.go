@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/config"
-	dtoreq "motewallet-withdrawal/backend/internal/dto/request"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/repository"
+	"motewallet/internal/config"
+	dtoreq "motewallet/internal/dto/request"
+	dtoresp "motewallet/internal/dto/response"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/kun"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/repository"
 )
 
 type OnboardingService struct {

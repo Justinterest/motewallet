@@ -1,4 +1,4 @@
-module motewallet-withdrawal/backend
+module motewallet
 
 go 1.22
 

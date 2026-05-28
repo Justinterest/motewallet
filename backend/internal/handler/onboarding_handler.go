@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	dtoreq "motewallet-withdrawal/backend/internal/dto/request"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/response"
-	"motewallet-withdrawal/backend/internal/service"
+	dtoreq "motewallet/internal/dto/request"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/response"
+	"motewallet/internal/service"
 )
 
 type OnboardingHandler struct {

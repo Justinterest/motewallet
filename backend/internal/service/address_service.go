@@ -6,13 +6,13 @@ import (
 	"log/slog"
 
 	"gorm.io/gorm"
-	dtoreq "motewallet-withdrawal/backend/internal/dto/request"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/model"
-	"motewallet-withdrawal/backend/internal/repository"
+	dtoreq "motewallet/internal/dto/request"
+	dtoresp "motewallet/internal/dto/response"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/kun"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/model"
+	"motewallet/internal/repository"
 )
 
 type AddressService struct {

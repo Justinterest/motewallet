@@ -9,12 +9,12 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
-	"motewallet-withdrawal/backend/internal/config"
-	"motewallet-withdrawal/backend/internal/handler"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	"motewallet-withdrawal/backend/internal/repository"
-	"motewallet-withdrawal/backend/internal/router"
-	"motewallet-withdrawal/backend/internal/service"
+	"motewallet/internal/config"
+	"motewallet/internal/handler"
+	"motewallet/internal/pkg/kun"
+	"motewallet/internal/repository"
+	"motewallet/internal/router"
+	"motewallet/internal/service"
 )
 
 func main() {
@@ -75,7 +75,7 @@ func main() {
 	}
 
 	// Services
-	authService := service.NewAuthService(cfg, merchantRepo, kunClient)
+	authService := service.NewAuthService(cfg, merchantRepo, feeTemplateRepo, kunClient)
 	adminAuthService := service.NewAdminAuthService(cfg, adminUserRepo)
 	walletService := service.NewWalletService(merchantWalletRepo)
 	onboardingService := service.NewOnboardingService(cfg, merchantRepo, walletService, kunClient)

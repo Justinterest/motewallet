@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/model"
+	"motewallet/internal/model"
 )
 
 var ErrOptimisticLock = errors.New("optimistic lock: version mismatch")

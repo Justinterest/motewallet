@@ -2,9 +2,9 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"motewallet-withdrawal/backend/internal/config"
-	"motewallet-withdrawal/backend/internal/handler"
-	"motewallet-withdrawal/backend/internal/middleware"
+	"motewallet/internal/config"
+	"motewallet/internal/handler"
+	"motewallet/internal/middleware"
 )
 
 func Setup(

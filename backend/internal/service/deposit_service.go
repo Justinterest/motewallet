@@ -6,11 +6,11 @@ import (
 	"log/slog"
 
 	"gorm.io/gorm"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/repository"
+	dtoresp "motewallet/internal/dto/response"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/kun"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/repository"
 )
 
 type DepositService struct {

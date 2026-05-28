@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/response"
-	"motewallet-withdrawal/backend/internal/service"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/response"
+	"motewallet/internal/service"
 )
 
 type WalletHandler struct {

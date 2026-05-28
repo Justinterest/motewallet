@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"motewallet-withdrawal/backend/internal/config"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/pkg/response"
+	"motewallet/internal/config"
+	"motewallet/internal/pkg/kun"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/pkg/response"
 )
 
 func KUNWebhookAuth(kunCfg config.KUNConfig) gin.HandlerFunc {

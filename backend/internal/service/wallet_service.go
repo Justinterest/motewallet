@@ -6,10 +6,10 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	"motewallet-withdrawal/backend/internal/model"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/repository"
+	dtoresp "motewallet/internal/dto/response"
+	"motewallet/internal/model"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/repository"
 )
 
 var (

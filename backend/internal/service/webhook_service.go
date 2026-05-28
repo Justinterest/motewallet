@@ -9,10 +9,10 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/model"
-	"motewallet-withdrawal/backend/internal/pkg/utils"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/repository"
+	"motewallet/internal/model"
+	"motewallet/internal/pkg/utils"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/repository"
 )
 
 type WebhookService struct {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/model"
+	"motewallet/internal/model"
 )
 
 type AdminUserRepository interface {

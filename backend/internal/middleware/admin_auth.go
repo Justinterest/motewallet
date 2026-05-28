@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/jwt"
-	"motewallet-withdrawal/backend/internal/pkg/response"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/jwt"
+	"motewallet/internal/pkg/response"
 )
 
 // AdminAuth extracts the "admin_token" cookie, validates the JWT,

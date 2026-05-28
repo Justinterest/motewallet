@@ -6,28 +6,30 @@ import (
 	"log/slog"
 
 	"gorm.io/gorm"
-	"motewallet-withdrawal/backend/internal/config"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	"motewallet-withdrawal/backend/internal/model"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/jwt"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/pkg/utils"
-	"motewallet-withdrawal/backend/internal/repository"
+	"motewallet/internal/config"
+	dtoresp "motewallet/internal/dto/response"
+	"motewallet/internal/model"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/jwt"
+	"motewallet/internal/pkg/kun"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/pkg/utils"
+	"motewallet/internal/repository"
 )
 
 type AuthService struct {
-	cfg          *config.Config
-	merchantRepo repository.MerchantRepository
-	kunClient    kun.KUNClient
+	cfg             *config.Config
+	merchantRepo    repository.MerchantRepository
+	feeTemplateRepo repository.FeeTemplateRepository
+	kunClient       kun.KUNClient
 }
 
-func NewAuthService(cfg *config.Config, merchantRepo repository.MerchantRepository, kunClient kun.KUNClient) *AuthService {
+func NewAuthService(cfg *config.Config, merchantRepo repository.MerchantRepository, feeTemplateRepo repository.FeeTemplateRepository, kunClient kun.KUNClient) *AuthService {
 	return &AuthService{
-		cfg:          cfg,
-		merchantRepo: merchantRepo,
-		kunClient:    kunClient,
+		cfg:             cfg,
+		merchantRepo:    merchantRepo,
+		feeTemplateRepo: feeTemplateRepo,
+		kunClient:       kunClient,
 	}
 }
 
@@ -37,7 +39,6 @@ type RegisterResult struct {
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password string) (*RegisterResult, error) {
-	// Check if email already exists
 	existing, err := s.merchantRepo.FindByEmail(ctx, email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, bizerrors.ErrInternalError
@@ -46,38 +47,40 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (*Re
 		return nil, bizerrors.ErrEmailAlreadyExistsError
 	}
 
-	// Hash password
+	var registerResp kundto.RegisterResp
+	if err := s.kunClient.Post(ctx, "/rest/v2.0/customer/register", &kundto.RegisterReq{
+		Email:     email,
+		RequestNo: kun.GenerateRequestNo(),
+	}, &registerResp); err != nil {
+		slog.Error("KUN sub-merchant registration failed", slog.String("email", email), slog.Any("error", err))
+		return nil, bizerrors.ErrKUNAPIFailedE
+	}
+
 	hash, err := utils.HashPassword(password)
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
 
-	// Create merchant
 	merchant := &model.Merchant{
-		Email:        email,
-		PasswordHash: hash,
-		Status:       "PENDING_AGREEMENT",
-		KycStatus:    "NONE",
+		Email:             email,
+		PasswordHash:      hash,
+		KunSubCustomerNo:  &registerResp.SubCustomerNo,
+		Status:            "PENDING_AGREEMENT",
+		KycStatus:         "NONE",
 	}
+
+	defaultTemplate, err := s.feeTemplateRepo.FindDefault(ctx)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		slog.Error("failed to find default fee template", slog.Any("error", err))
+	}
+	if defaultTemplate != nil {
+		merchant.FeeTemplateID = &defaultTemplate.ID
+	}
+
 	if err := s.merchantRepo.Create(ctx, merchant); err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
 
-	var registerResp kundto.RegisterResp
-	kunErr := s.kunClient.Post(ctx, "/rest/v2.0/customer/register", &kundto.RegisterReq{
-		Email:     email,
-		RequestNo: kun.GenerateRequestNo(),
-	}, &registerResp)
-	if kunErr != nil {
-		slog.Error("KUN registration failed, merchant created locally", slog.String("email", email), slog.Any("error", kunErr))
-	} else {
-		_ = s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
-			"kun_sub_customer_no": registerResp.SubCustomerNo,
-		})
-		merchant.KunSubCustomerNo = &registerResp.SubCustomerNo
-	}
-
-	// Generate JWT
 	token, err := jwt.GenerateToken(merchant.ID, "MERCHANT", merchant.Email, s.cfg.JWT.Secret, s.cfg.JWT.Expiry)
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
@@ -86,11 +89,12 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (*Re
 	return &RegisterResult{
 		Token: token,
 		Merchant: &dtoresp.MerchantInfoResp{
-			ID:        merchant.ID,
-			Email:     merchant.Email,
-			Status:    merchant.Status,
-			KycStatus: merchant.KycStatus,
-			CreatedAt: merchant.CreatedAt,
+			ID:            merchant.ID,
+			Email:         merchant.Email,
+			Status:        merchant.Status,
+			KycStatus:     merchant.KycStatus,
+			FeeTemplateID: merchant.FeeTemplateID,
+			CreatedAt:     merchant.CreatedAt,
 		},
 	}, nil
 }
@@ -121,11 +125,12 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*Login
 	return &LoginResult{
 		Token: token,
 		Merchant: &dtoresp.MerchantInfoResp{
-			ID:        merchant.ID,
-			Email:     merchant.Email,
-			Status:    merchant.Status,
-			KycStatus: merchant.KycStatus,
-			CreatedAt: merchant.CreatedAt,
+			ID:            merchant.ID,
+			Email:         merchant.Email,
+			Status:        merchant.Status,
+			KycStatus:     merchant.KycStatus,
+			FeeTemplateID: merchant.FeeTemplateID,
+			CreatedAt:     merchant.CreatedAt,
 		},
 	}, nil
 }
@@ -140,10 +145,11 @@ func (s *AuthService) GetMerchantByID(ctx context.Context, id uint64) (*dtoresp.
 	}
 
 	return &dtoresp.MerchantInfoResp{
-		ID:        merchant.ID,
-		Email:     merchant.Email,
-		Status:    merchant.Status,
-		KycStatus: merchant.KycStatus,
-		CreatedAt: merchant.CreatedAt,
+		ID:            merchant.ID,
+		Email:         merchant.Email,
+		Status:        merchant.Status,
+		KycStatus:     merchant.KycStatus,
+		FeeTemplateID: merchant.FeeTemplateID,
+		CreatedAt:     merchant.CreatedAt,
 	}, nil
 }

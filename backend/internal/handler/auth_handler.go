@@ -4,12 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"motewallet-withdrawal/backend/internal/config"
-	dtoreq "motewallet-withdrawal/backend/internal/dto/request"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/jwt"
-	"motewallet-withdrawal/backend/internal/pkg/response"
-	"motewallet-withdrawal/backend/internal/service"
+	"motewallet/internal/config"
+	dtoreq "motewallet/internal/dto/request"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/jwt"
+	"motewallet/internal/pkg/response"
+	"motewallet/internal/service"
 )
 
 type AuthHandler struct {

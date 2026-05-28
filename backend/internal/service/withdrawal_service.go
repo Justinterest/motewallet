@@ -8,14 +8,14 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	dtoreq "motewallet-withdrawal/backend/internal/dto/request"
-	dtoresp "motewallet-withdrawal/backend/internal/dto/response"
-	"motewallet-withdrawal/backend/internal/model"
-	bizerrors "motewallet-withdrawal/backend/internal/pkg/errors"
-	"motewallet-withdrawal/backend/internal/pkg/kun"
-	kundto "motewallet-withdrawal/backend/internal/pkg/kun/dto"
-	"motewallet-withdrawal/backend/internal/pkg/utils"
-	"motewallet-withdrawal/backend/internal/repository"
+	dtoreq "motewallet/internal/dto/request"
+	dtoresp "motewallet/internal/dto/response"
+	"motewallet/internal/model"
+	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/kun"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/pkg/utils"
+	"motewallet/internal/repository"
 )
 
 type WithdrawalService struct {

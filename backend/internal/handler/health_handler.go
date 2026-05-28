@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"motewallet-withdrawal/backend/internal/pkg/response"
+	"motewallet/internal/pkg/response"
 )
 
 type HealthHandler struct{}
