@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,6 +54,12 @@ export default function OnboardingLayout({
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-blue-800">Motewallet</h1>
           <p className="mt-1 text-sm text-slate-500">商户入驻流程</p>
+          <Link
+            href="/dashboard"
+            className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+          >
+            返回控制台（可先浏览各功能模块）
+          </Link>
         </div>
 
         {/* Step indicator */}

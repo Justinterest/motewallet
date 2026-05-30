@@ -4,17 +4,8 @@ import { authApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import type { LoginRequest, RegisterRequest, User } from "@/types/auth";
 
-function getRedirectPath(user: User): string {
-  switch (user.status) {
-    case "PENDING_AGREEMENT":
-      return "/onboarding/agreement";
-    case "PENDING_KYC":
-      return "/onboarding/kyc";
-    case "ACTIVE":
-      return "/dashboard";
-    default:
-      return "/dashboard";
-  }
+function getRedirectPath(_user: User): string {
+  return "/dashboard";
 }
 
 export function useCurrentUser() {

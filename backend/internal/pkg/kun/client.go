@@ -16,6 +16,8 @@ import (
 // KUNClient defines the interface for KUN API calls.
 type KUNClient interface {
 	Post(ctx context.Context, path string, reqBody interface{}, respBody interface{}) error
+	// PostAsCustomer signs the request with the given Customer-No (e.g. sub-merchant no for onboarding auth).
+	PostAsCustomer(ctx context.Context, customerNo, path string, reqBody interface{}, respBody interface{}) error
 	GetRegionCode() string
 	GetCustomerNo() string
 }
@@ -60,6 +62,10 @@ func (c *Client) GetCustomerNo() string {
 }
 
 func (c *Client) Post(ctx context.Context, path string, reqBody interface{}, respBody interface{}) error {
+	return c.PostAsCustomer(ctx, c.customerNo, path, reqBody, respBody)
+}
+
+func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, reqBody interface{}, respBody interface{}) error {
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
 		return fmt.Errorf("marshal request body: %w", err)
@@ -77,7 +83,7 @@ func (c *Client) Post(ctx context.Context, path string, reqBody interface{}, res
 	}
 
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	_, sign, err := CanonicalizeAndSignRequest(params, c.customerNo, timestamp, c.privateKey)
+	_, sign, err := CanonicalizeAndSignRequest(params, customerNo, timestamp, c.privateKey)
 	if err != nil {
 		return fmt.Errorf("sign request: %w", err)
 	}
@@ -85,7 +91,7 @@ func (c *Client) Post(ctx context.Context, path string, reqBody interface{}, res
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("App-Key", c.appKey)
 	req.Header.Set("Api-Version", c.apiVersion)
-	req.Header.Set("Customer-No", c.customerNo)
+	req.Header.Set("Customer-No", customerNo)
 	req.Header.Set("Timestamp", timestamp)
 	req.Header.Set("Sign", sign)
 

@@ -3,6 +3,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TopNav } from "@/components/layout/top-nav";
+import { VerificationBanner } from "@/components/layout/verification-banner";
+import { VerificationGuard } from "@/components/layout/verification-guard";
+import { VerificationProvider } from "@/components/layout/verification-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/lib/hooks/use-auth";
 
@@ -19,18 +22,6 @@ export default function DashboardLayout({
       router.push("/login");
     }
   }, [isError, router]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    if (user.status === "PENDING_AGREEMENT") {
-      router.replace("/onboarding/agreement");
-    } else if (user.status === "PENDING_KYC") {
-      router.replace("/onboarding/kyc");
-    } else if (user.status === "PROCESSING") {
-      router.replace("/onboarding/status");
-    }
-  }, [user, router]);
 
   if (isLoading) {
     return (
@@ -58,19 +49,17 @@ export default function DashboardLayout({
     return null;
   }
 
-  // If user is not ACTIVE, the redirect useEffect will handle it
-  if (user.status !== "ACTIVE") {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TopNav />
-      <main className="pt-14">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <VerificationProvider user={user}>
+      <div className="min-h-screen bg-slate-50">
+        <TopNav />
+        <main className="pt-14">
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <VerificationBanner />
+            <VerificationGuard>{children}</VerificationGuard>
+          </div>
+        </main>
+      </div>
+    </VerificationProvider>
   );
 }

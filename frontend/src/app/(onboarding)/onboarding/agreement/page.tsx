@@ -25,7 +25,7 @@ export default function AgreementPage() {
           title: "签署成功",
           description: "协议已签署，请继续完成实名认证。",
         });
-        router.push("/onboarding/kyc");
+        router.push("/dashboard");
       },
       onError: (error) => {
         toast({

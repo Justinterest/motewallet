@@ -35,5 +35,9 @@ export function useKycStatus() {
   return useQuery({
     queryKey: ["onboarding", "kyc-status"],
     queryFn: () => onboardingApi.getKycStatus(),
+    refetchInterval: (query) => {
+      const status = query.state.data?.kyc_status;
+      return status === "AUTHING" ? 15000 : false;
+    },
   });
 }

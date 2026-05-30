@@ -49,6 +49,7 @@ func main() {
 
 	// Repositories
 	merchantRepo := repository.NewMerchantRepository(db)
+	merchantKycSubmissionRepo := repository.NewMerchantKycSubmissionRepository(db)
 	adminUserRepo := repository.NewAdminUserRepository(db)
 	merchantWalletRepo := repository.NewMerchantWalletRepository(db)
 	feeTemplateRepo := repository.NewFeeTemplateRepository(db)
@@ -78,7 +79,7 @@ func main() {
 	authService := service.NewAuthService(cfg, merchantRepo, feeTemplateRepo, kunClient)
 	adminAuthService := service.NewAdminAuthService(cfg, adminUserRepo)
 	walletService := service.NewWalletService(merchantWalletRepo)
-	onboardingService := service.NewOnboardingService(cfg, merchantRepo, walletService, kunClient)
+	onboardingService := service.NewOnboardingService(cfg, merchantRepo, merchantKycSubmissionRepo, walletService, kunClient)
 	feeTemplateService := service.NewFeeTemplateService(db, feeTemplateRepo, exchangeItemRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, auditLogRepo)
 	merchantMgmtService := service.NewMerchantManagementService(merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo)
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)

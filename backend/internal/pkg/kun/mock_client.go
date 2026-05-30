@@ -33,8 +33,12 @@ func (m *MockClient) GetCustomerNo() string {
 }
 
 func (m *MockClient) Post(ctx context.Context, path string, reqBody interface{}, respBody interface{}) error {
+	return m.PostAsCustomer(ctx, m.customerNo, path, reqBody, respBody)
+}
+
+func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string, reqBody interface{}, respBody interface{}) error {
 	reqJSON, _ := json.Marshal(reqBody)
-	log.Printf("[KUN Mock] POST %s body=%s", path, string(reqJSON))
+	log.Printf("[KUN Mock] POST %s Customer-No=%s body=%s", path, customerNo, string(reqJSON))
 
 	var mockData []byte
 
@@ -46,7 +50,7 @@ func (m *MockClient) Post(ctx context.Context, path string, reqBody interface{},
 	case "/rest/v2.0/customer/agreeList":
 		mockData = []byte(`{"list":[]}`)
 	case "/rest/v2.0/customer/subMerchant/register":
-		mockData = []byte(`{}`)
+		mockData = []byte(`{"authId":"MOCK_AUTH_001"}`)
 	case "/rest/v2.0/customer/merchant/register/query":
 		mockData = []byte(`{"authStatus":"AUTH_SUC"}`)
 	default:

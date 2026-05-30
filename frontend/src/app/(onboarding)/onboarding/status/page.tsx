@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, Loader2, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,21 +16,10 @@ export default function KycStatusPage() {
   const { data, isLoading, isError } = useKycStatus();
 
   useEffect(() => {
-    if (data && data.kyc_status === "NONE") {
+    if (data && data.kyc_status === "NONE" && data.status === "PENDING_KYC") {
       router.replace("/onboarding/kyc");
     }
   }, [data, router]);
-
-  // Auto-poll when KYC is PROCESSING
-  useEffect(() => {
-    if (data?.kyc_status !== "PROCESSING" && data?.kyc_status !== "PENDING") return;
-
-    const interval = setInterval(() => {
-      window.location.reload();
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [data?.kyc_status]);
 
   if (isLoading) {
     return (
@@ -83,7 +72,7 @@ export default function KycStatusPage() {
     );
   }
 
-  if (kycStatus === "PENDING" || kycStatus === "PROCESSING") {
+  if (kycStatus === "AUTHING") {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16">
@@ -95,21 +84,18 @@ export default function KycStatusPage() {
             您的认证资料已提交至审核机构，请耐心等待审核结果。
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            页面将每 15 秒自动刷新
+            状态将每 15 秒自动更新
           </p>
           {data?.kyc_submitted_at && (
             <p className="mt-1 text-xs text-slate-400">
               提交时间：{data.kyc_submitted_at}
             </p>
           )}
-          <Button
-            variant="outline"
-            onClick={() => window.location.reload()}
-            className="mt-6"
-          >
-            <Loader2 className="mr-2 h-4 w-4" />
-            立即刷新
-          </Button>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => router.push("/dashboard")}>
+              返回控制台
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
