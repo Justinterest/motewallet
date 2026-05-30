@@ -5,12 +5,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"encoding/pem"
 	"sort"
 	"strconv"
 	"strings"
@@ -93,28 +91,6 @@ func buildCanonicalKVString(
 		pairs = append(pairs, k+"="+params[k])
 	}
 	return strings.Join(pairs, "&")
-}
-
-func ParseRSAPrivateKey(pemStr string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(pemStr))
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
-	}
-
-	// PKCS#1
-	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
-		return key, nil
-	}
-	// PKCS#8
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("parse private key: %w", err)
-	}
-	key, ok := parsed.(*rsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("not an RSA private key")
-	}
-	return key, nil
 }
 
 func valueToString(v interface{}) string {

@@ -4,9 +4,7 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"fmt"
 )
 
@@ -41,22 +39,3 @@ func VerifyResponseSignature(pubKeyPEM string, data map[string]interface{}, time
 	return VerifyWebhookSignature(pubKeyPEM, data, timestamp, signature)
 }
 
-// ParseRSAPublicKey parses a PEM-encoded RSA public key.
-func ParseRSAPublicKey(pemStr string) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode([]byte(pemStr))
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
-	}
-
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("parse public key: %w", err)
-	}
-
-	rsaPub, ok := pub.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("not an RSA public key")
-	}
-
-	return rsaPub, nil
-}
