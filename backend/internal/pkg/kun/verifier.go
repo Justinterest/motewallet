@@ -8,8 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"sort"
-	"strings"
 )
 
 // VerifyWebhookSignature verifies incoming webhook using SHA256withRSA.
@@ -19,23 +17,9 @@ func VerifyWebhookSignature(pubKeyPEM string, data map[string]interface{}, times
 		return fmt.Errorf("parse public key: %w", err)
 	}
 
-	merged := make(map[string]interface{}, len(data)+1)
-	for k, v := range data {
-		merged[strings.ToLower(k)] = v
-	}
-	merged["timestamp"] = timestamp
-
-	keys := make([]string, 0, len(merged))
-	for k := range merged {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	pairs := make([]string, 0, len(keys))
-	for _, k := range keys {
-		pairs = append(pairs, fmt.Sprintf("%s=%v", k, merged[k]))
-	}
-	payload := strings.Join(pairs, "&")
+	payload := buildCanonicalKVString(data, map[string]string{
+		"timestamp": timestamp,
+	})
 
 	hash := sha256.Sum256([]byte(payload))
 
@@ -49,6 +33,12 @@ func VerifyWebhookSignature(pubKeyPEM string, data map[string]interface{}, times
 	}
 
 	return nil
+}
+
+// VerifyResponseSignature verifies the KUN response signature using SHA256withRSA.
+// Per doc, signature is computed from response "data" only (plus timestamp).
+func VerifyResponseSignature(pubKeyPEM string, data map[string]interface{}, timestamp string, signature string) error {
+	return VerifyWebhookSignature(pubKeyPEM, data, timestamp, signature)
 }
 
 // ParseRSAPublicKey parses a PEM-encoded RSA public key.

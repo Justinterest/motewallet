@@ -29,8 +29,10 @@ type kunResponse struct {
 // Client implements KUNClient with real HTTP calls.
 type Client struct {
 	baseURL    string
-	apiKey     string
-	apiSecret  string
+	appKey     string
+	apiVersion string
+	privateKey string
+	publicKey  string
 	customerNo string
 	regionCode string
 	httpClient *http.Client
@@ -39,8 +41,10 @@ type Client struct {
 func NewClient(cfg config.KUNConfig) *Client {
 	return &Client{
 		baseURL:    cfg.BaseURL,
-		apiKey:     cfg.APIKey,
-		apiSecret:  cfg.APISecret,
+		appKey:     cfg.AppKey,
+		apiVersion: cfg.ApiVersion,
+		privateKey: cfg.PrivateKey,
+		publicKey:  cfg.PublicKey,
 		customerNo: cfg.CustomerNo,
 		regionCode: cfg.RegionCode,
 		httpClient: &http.Client{Timeout: cfg.Timeout},
@@ -73,12 +77,17 @@ func (c *Client) Post(ctx context.Context, path string, reqBody interface{}, res
 	}
 
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	sign := SignRequest(params, timestamp, c.apiSecret)
+	_, sign, err := CanonicalizeAndSignRequest(params, c.customerNo, timestamp, c.privateKey)
+	if err != nil {
+		return fmt.Errorf("sign request: %w", err)
+	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apiKey", c.apiKey)
-	req.Header.Set("sign", sign)
-	req.Header.Set("timestamp", timestamp)
+	req.Header.Set("App-Key", c.appKey)
+	req.Header.Set("Api-Version", c.apiVersion)
+	req.Header.Set("Customer-No", c.customerNo)
+	req.Header.Set("Timestamp", timestamp)
+	req.Header.Set("Sign", sign)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -94,6 +103,34 @@ func (c *Client) Post(ctx context.Context, path string, reqBody interface{}, res
 	var kunResp kunResponse
 	if err := json.Unmarshal(respBytes, &kunResp); err != nil {
 		return fmt.Errorf("unmarshal KUN response: %w", err)
+	}
+
+	// Verify response signature when provided.
+	// Doc: server may return sign+timestamp in headers (or body); we validate when headers exist.
+	if c.publicKey != "" {
+		respSign := resp.Header.Get("Sign")
+		if respSign == "" {
+			respSign = resp.Header.Get("sign")
+		}
+		respTimestamp := resp.Header.Get("Timestamp")
+		if respTimestamp == "" {
+			respTimestamp = resp.Header.Get("timestamp")
+		}
+		if respSign != "" && respTimestamp != "" && len(kunResp.Data) > 0 {
+			var dataAny interface{}
+			_ = json.Unmarshal(kunResp.Data, &dataAny)
+			dataMap := map[string]interface{}{}
+			switch t := dataAny.(type) {
+			case map[string]interface{}:
+				dataMap = t
+			default:
+				// If data is not an object, verify under a stable key.
+				dataMap["data"] = t
+			}
+			if err := VerifyResponseSignature(c.publicKey, dataMap, respTimestamp, respSign); err != nil {
+				return fmt.Errorf("verify KUN response signature: %w", err)
+			}
+		}
 	}
 
 	if kunResp.Code != "200" {

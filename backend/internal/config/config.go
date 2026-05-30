@@ -31,12 +31,18 @@ type FrontendConfig struct {
 }
 
 type KUNConfig struct {
-	APIKey          string
-	APISecret       string
+	// AppKey is the "App-Key" request header required by KUN.
+	AppKey string
+	// ApiVersion is the "Api-Version" request header required by KUN (e.g. "2").
+	ApiVersion string
+	// CustomerNo is the "Customer-No" request header required by KUN.
+	CustomerNo string
+	// PrivateKey is the RSA private key PEM used for SHA256withRSA request signing.
+	PrivateKey string
+	// PublicKey is the RSA public key PEM used for verifying KUN signatures (webhook/response).
 	PublicKey       string
 	BaseURL         string
 	RegionCode      string
-	CustomerNo      string
 	Timeout         time.Duration
 	WebhookTimeDiff time.Duration
 	MockEnabled     bool
@@ -77,6 +83,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("KUN_API_TIMEOUT", "30s")
 	viper.SetDefault("KUN_WEBHOOK_TIME_DIFF", "5m")
 	viper.SetDefault("KUN_MOCK_ENABLED", false)
+	viper.SetDefault("KUN_API_VERSION", "2")
 
 	// Ignore error if .env file doesn't exist — env vars still work
 	_ = viper.ReadInConfig()
@@ -123,8 +130,9 @@ func Load() (*Config, error) {
 			AdminURL: viper.GetString("ADMIN_URL"),
 		},
 		KUN: KUNConfig{
-			APIKey:          viper.GetString("KUN_API_KEY"),
-			APISecret:       viper.GetString("KUN_API_SECRET"),
+			AppKey:          viper.GetString("KUN_APP_KEY"),
+			ApiVersion:      viper.GetString("KUN_API_VERSION"),
+			PrivateKey:      viper.GetString("KUN_PRIVATE_KEY"),
 			PublicKey:        viper.GetString("KUN_PUBLIC_KEY"),
 			BaseURL:         viper.GetString("KUN_API_BASE_URL"),
 			RegionCode:      viper.GetString("KUN_REGION_CODE"),
