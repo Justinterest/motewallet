@@ -9,7 +9,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { FormSelect } from "@/components/ui/form-select";
 import { FilePathList } from "@/components/kyc/file-path-list";
 import { GENDERS, REGISTER_REGIONS, VERIFICATION_TYPES } from "@/lib/kyc/constants";
 import type { KycFormValues } from "@/lib/validations/onboarding";
@@ -73,13 +73,7 @@ export function PersonFields({
           <FormItem>
             <FormLabel>性别 *</FormLabel>
             <FormControl>
-              <NativeSelect {...field}>
-                {GENDERS.map((g) => (
-                  <option key={g.value} value={g.value}>
-                    {g.label}
-                  </option>
-                ))}
-              </NativeSelect>
+              <FormSelect {...field} options={GENDERS} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -105,16 +99,7 @@ export function PersonFields({
           <FormItem>
             <FormLabel>国籍 *</FormLabel>
             <FormControl>
-              <NativeSelect {...field}>
-                <option value="" disabled>
-                  请选择
-                </option>
-                {REGISTER_REGIONS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </NativeSelect>
+              <FormSelect {...field} options={REGISTER_REGIONS} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -179,16 +164,7 @@ export function PersonFields({
           <FormItem>
             <FormLabel>居住国家 *</FormLabel>
             <FormControl>
-              <NativeSelect {...field}>
-                <option value="" disabled>
-                  请选择
-                </option>
-                {REGISTER_REGIONS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </NativeSelect>
+              <FormSelect {...field} options={REGISTER_REGIONS} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -229,13 +205,7 @@ export function PersonFields({
           <FormItem>
             <FormLabel>验证方式</FormLabel>
             <FormControl>
-              <NativeSelect {...field}>
-                {VERIFICATION_TYPES.map((v) => (
-                  <option key={v.value} value={v.value}>
-                    {v.label}
-                  </option>
-                ))}
-              </NativeSelect>
+              <FormSelect {...field} options={VERIFICATION_TYPES} />
             </FormControl>
             <FormMessage />
           </FormItem>

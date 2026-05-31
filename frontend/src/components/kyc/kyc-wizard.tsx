@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { FormSelect } from "@/components/ui/form-select";
 import { FilePathList } from "@/components/kyc/file-path-list";
 import { PersonFields } from "@/components/kyc/person-fields";
 import { cn } from "@/lib/utils";
@@ -133,7 +133,7 @@ export function KycWizard() {
           title: "提交成功",
           description: "实名认证资料已提交，请等待审核。",
         });
-        router.push("/onboarding/status");
+        router.push("/kyc/status");
       },
       onError: (error) => {
         toast({
@@ -224,16 +224,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>注册地区 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        <option value="" disabled>
-                          请选择
-                        </option>
-                        {REGISTER_REGIONS.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={REGISTER_REGIONS} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -285,13 +276,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>公司类型 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        {ENTERPRISE_TYPES.map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={ENTERPRISE_TYPES} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -343,13 +328,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>初始资金来源 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        {FUNDING_SOURCES.map((f) => (
-                          <option key={f.value} value={f.value}>
-                            {f.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={FUNDING_SOURCES} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -362,13 +341,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>开户目的 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        {OPEN_ACCOUNT_PURPOSES.map((p) => (
-                          <option key={p.value} value={p.value}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={OPEN_ACCOUNT_PURPOSES} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -469,16 +442,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>国籍 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        <option value="" disabled>
-                          请选择
-                        </option>
-                        {REGISTER_REGIONS.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={REGISTER_REGIONS} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -530,13 +494,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>性别 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        {GENDERS.map((g) => (
-                          <option key={g.value} value={g.value}>
-                            {g.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={GENDERS} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -549,13 +507,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>验证方式 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        {VERIFICATION_TYPES.map((v) => (
-                          <option key={v.value} value={v.value}>
-                            {v.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={VERIFICATION_TYPES} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -568,16 +520,7 @@ export function KycWizard() {
                   <FormItem>
                     <FormLabel>居住国家 *</FormLabel>
                     <FormControl>
-                      <NativeSelect {...field}>
-                        <option value="" disabled>
-                          请选择
-                        </option>
-                        {REGISTER_REGIONS.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                      <FormSelect {...field} options={REGISTER_REGIONS} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

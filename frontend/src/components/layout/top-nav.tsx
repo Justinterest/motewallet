@@ -21,11 +21,11 @@ export function TopNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b bg-white">
+    <header className="fixed top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/dashboard" className="shrink-0">
-          <span className="text-xl font-bold text-blue-800">Motewallet</span>
+          <span className="text-xl font-bold text-primary">Motewallet</span>
         </Link>
 
         {/* Desktop Nav */}
@@ -39,14 +39,14 @@ export function TopNav() {
                 className={cn(
                   "relative px-3 py-4 text-sm font-medium transition-colors",
                   isActive
-                    ? "text-blue-700"
-                    : "text-slate-600 hover:text-slate-900",
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
                   !item.href && "cursor-default opacity-60"
                 )}
               >
                 {item.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-700" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                 )}
               </Link>
             );
@@ -57,7 +57,7 @@ export function TopNav() {
         <div className="flex items-center gap-3">
           <UserMenu />
           <button
-            className="md:hidden p-1 text-slate-600 hover:text-slate-900"
+            className="p-1 text-muted-foreground hover:text-foreground md:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -71,7 +71,7 @@ export function TopNav() {
 
       {/* Mobile Nav */}
       {mobileMenuOpen && (
-        <nav className="border-t bg-white md:hidden">
+        <nav className="border-t bg-background md:hidden">
           <div className="space-y-1 px-4 py-3">
             {navItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -83,8 +83,8 @@ export function TopNav() {
                   className={cn(
                     "block rounded-md px-3 py-2 text-sm font-medium",
                     isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                      ? "bg-accent text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     !item.href && "cursor-default opacity-60"
                   )}
                 >

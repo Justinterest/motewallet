@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { NativeSelect } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSubmitCryptoWithdrawal, useWithdrawalOrders } from "@/lib/hooks/use-trading";
 import { formatAmount } from "@/lib/utils/format";
@@ -89,20 +89,23 @@ export default function WithdrawPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">币种</label>
-                <NativeSelect value={currency} onChange={(e) => { setCurrency(e.target.value); setChain(chains[e.target.value]?.[0]?.value || ""); }}>
-                  {currencies.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </NativeSelect>
+                <SimpleSelect
+                  value={currency}
+                  onValueChange={(value) => {
+                    setCurrency(value);
+                    setChain(chains[value]?.[0]?.value || "");
+                  }}
+                  options={currencies}
+                />
               </div>
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">链/网络</label>
-                <NativeSelect value={chain} onChange={(e) => setChain(e.target.value)}>
-                  {(chains[currency] || []).map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </NativeSelect>
+                <SimpleSelect
+                  value={chain}
+                  onValueChange={setChain}
+                  options={chains[currency] || []}
+                />
               </div>
 
               <div>

@@ -54,7 +54,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="shadow-sm">
+    <Card>
       <CardHeader className="pb-4">
         <CardTitle className="text-center text-xl">创建账号</CardTitle>
       </CardHeader>
@@ -172,7 +172,7 @@ export default function RegisterPage() {
             />
             <Button
               type="submit"
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white"
+              className="w-full"
               disabled={registerMutation.isPending}
             >
               {registerMutation.isPending && (
@@ -186,7 +186,7 @@ export default function RegisterPage() {
       <CardFooter className="justify-center">
         <p className="text-sm text-slate-500">
           已有账号？
-          <Link href="/login" className="text-blue-700 hover:text-blue-800 font-medium">
+          <Link href="/login" className="font-medium text-primary hover:underline">
             立即登录
           </Link>
         </p>

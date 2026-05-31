@@ -45,7 +45,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="shadow-sm">
+    <Card>
       <CardHeader className="pb-4">
         <CardTitle className="text-center text-xl">登录</CardTitle>
       </CardHeader>
@@ -118,7 +118,7 @@ export default function LoginPage() {
             </div>
             <Button
               type="submit"
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white"
+              className="w-full"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending && (
@@ -132,7 +132,7 @@ export default function LoginPage() {
       <CardFooter className="justify-center">
         <p className="text-sm text-slate-500">
           还没有账号？
-          <Link href="/register" className="text-blue-700 hover:text-blue-800 font-medium">
+          <Link href="/register" className="font-medium text-primary hover:underline">
             立即注册
           </Link>
         </p>

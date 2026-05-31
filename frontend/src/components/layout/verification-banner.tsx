@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AlertCircle, ArrowRight, Info, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getVerificationBanner } from "@/lib/verification";
@@ -25,10 +26,18 @@ const variantStyles = {
 };
 
 export function VerificationBanner() {
+  const pathname = usePathname();
   const ctx = useVerificationOptional();
   const banner = getVerificationBanner(ctx?.user);
 
   if (!banner) {
+    return null;
+  }
+
+  if (
+    pathname === banner.ctaHref ||
+    pathname.startsWith("/kyc")
+  ) {
     return null;
   }
 

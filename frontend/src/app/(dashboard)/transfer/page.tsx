@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { NativeSelect } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTransfer, useTransferOrders } from "@/lib/hooks/use-trading";
 import { formatAmount } from "@/lib/utils/format";
@@ -93,11 +93,11 @@ export default function TransferPage() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">币种</label>
-                <NativeSelect value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                  {currencies.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </NativeSelect>
+                <SimpleSelect
+                  value={currency}
+                  onValueChange={setCurrency}
+                  options={currencies}
+                />
               </div>
 
               <div>

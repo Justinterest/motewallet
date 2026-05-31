@@ -31,21 +31,21 @@ export function getVerificationBanner(
       return {
         message: "请完成企业实名认证。认证通过前可浏览各功能页面，但无法发起资金操作。",
         ctaLabel: "去实名认证",
-        ctaHref: "/onboarding/kyc",
+        ctaHref: "/kyc",
         variant: "warning",
       };
     case "KYC_REVIEWING":
       return {
         message: "企业实名认证审核中，请耐心等待。审核期间仅可查看，无法操作资金。",
         ctaLabel: "查看认证进度",
-        ctaHref: "/onboarding/status",
+        ctaHref: "/kyc/status",
         variant: "info",
       };
     case "KYC_FAILED":
       return {
         message: "企业实名认证未通过，请修改资料后重新提交。",
         ctaLabel: "重新认证",
-        ctaHref: "/onboarding/kyc",
+        ctaHref: "/kyc",
         variant: "error",
       };
     default:
@@ -53,14 +53,14 @@ export function getVerificationBanner(
         return {
           message: "企业实名认证审核中，请耐心等待。",
           ctaLabel: "查看认证进度",
-          ctaHref: "/onboarding/status",
+          ctaHref: "/kyc/status",
           variant: "info",
         };
       }
       return {
         message: "账户尚未完成认证，部分功能暂不可用。",
         ctaLabel: "完成认证",
-        ctaHref: "/onboarding/kyc",
+        ctaHref: "/kyc",
         variant: "warning",
       };
   }

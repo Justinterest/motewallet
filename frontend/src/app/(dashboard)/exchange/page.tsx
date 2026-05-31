@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { NativeSelect } from "@/components/ui/select";
+import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExchangeQuote, useCreateExchangeOrder, useExchangeOrders } from "@/lib/hooks/use-trading";
 import { formatAmount } from "@/lib/utils/format";
@@ -79,20 +79,26 @@ export default function ExchangePage() {
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">卖出</label>
-                <NativeSelect value={fromCurrency} onChange={(e) => { setFromCurrency(e.target.value); setQuote(null); }}>
-                  {allCurrencies.filter((c) => c !== toCurrency).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </NativeSelect>
+                <SimpleSelect
+                  value={fromCurrency}
+                  onValueChange={(value) => {
+                    setFromCurrency(value);
+                    setQuote(null);
+                  }}
+                  options={allCurrencies.filter((c) => c !== toCurrency)}
+                />
               </div>
               <ArrowRightLeft className="mb-2 h-5 w-5 text-slate-400" />
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">买入</label>
-                <NativeSelect value={toCurrency} onChange={(e) => { setToCurrency(e.target.value); setQuote(null); }}>
-                  {allCurrencies.filter((c) => c !== fromCurrency).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </NativeSelect>
+                <SimpleSelect
+                  value={toCurrency}
+                  onValueChange={(value) => {
+                    setToCurrency(value);
+                    setQuote(null);
+                  }}
+                  options={allCurrencies.filter((c) => c !== fromCurrency)}
+                />
               </div>
             </div>
 
