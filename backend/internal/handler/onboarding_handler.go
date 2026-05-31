@@ -12,11 +12,16 @@ import (
 
 type OnboardingHandler struct {
 	onboardingService *service.OnboardingService
+	kycFileService    *service.KycFileService
 }
 
-func NewOnboardingHandler(onboardingService *service.OnboardingService) *OnboardingHandler {
+func NewOnboardingHandler(
+	onboardingService *service.OnboardingService,
+	kycFileService *service.KycFileService,
+) *OnboardingHandler {
 	return &OnboardingHandler{
 		onboardingService: onboardingService,
+		kycFileService:    kycFileService,
 	}
 }
 
@@ -94,6 +99,58 @@ func (h *OnboardingHandler) GetKycStatus(c *gin.Context) {
 	}
 
 	result, err := h.onboardingService.GetKycStatus(c.Request.Context(), userID.(uint64))
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}
+
+func (h *OnboardingHandler) PresignKycFile(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	var req dtoreq.PresignKycFileReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	result, err := h.kycFileService.PresignUpload(c.Request.Context(), userID.(uint64), &req)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}
+
+func (h *OnboardingHandler) PresignKycFileAccess(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	var req dtoreq.PresignKycFileAccessReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	result, err := h.kycFileService.PresignAccess(c.Request.Context(), userID.(uint64), &req)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)

@@ -24,6 +24,7 @@ type OnboardingService struct {
 	merchantRepo     repository.MerchantRepository
 	kycSubmissionRepo repository.MerchantKycSubmissionRepository
 	walletSvc        *WalletService
+	kycFileSvc       *KycFileService
 	kunClient        kun.KUNClient
 }
 
@@ -32,6 +33,7 @@ func NewOnboardingService(
 	merchantRepo repository.MerchantRepository,
 	kycSubmissionRepo repository.MerchantKycSubmissionRepository,
 	walletSvc *WalletService,
+	kycFileSvc *KycFileService,
 	kunClient kun.KUNClient,
 ) *OnboardingService {
 	return &OnboardingService{
@@ -39,6 +41,7 @@ func NewOnboardingService(
 		merchantRepo:     merchantRepo,
 		kycSubmissionRepo: kycSubmissionRepo,
 		walletSvc:        walletSvc,
+		kycFileSvc:       kycFileSvc,
 		kunClient:        kunClient,
 	}
 }
@@ -171,6 +174,10 @@ func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, re
 
 	if req.RequestNo == "" {
 		req.RequestNo = kun.GenerateRequestNo()
+	}
+
+	if err := s.kycFileSvc.ResolveSubmitKycFiles(ctx, merchant.ID, req); err != nil {
+		return err
 	}
 
 	payloadBytes, err := json.Marshal(req)

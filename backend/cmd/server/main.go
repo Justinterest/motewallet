@@ -12,6 +12,7 @@ import (
 	"motewallet/internal/config"
 	"motewallet/internal/handler"
 	"motewallet/internal/pkg/kun"
+	"motewallet/internal/pkg/storage"
 	"motewallet/internal/repository"
 	"motewallet/internal/router"
 	"motewallet/internal/service"
@@ -75,11 +76,20 @@ func main() {
 		kunClient = kun.NewClient(cfg.KUN)
 	}
 
+	s3Storage, err := storage.NewS3Storage(cfg.S3)
+	if err != nil {
+		log.Fatalf("failed to init S3 storage: %v", err)
+	}
+	if !s3Storage.Enabled() {
+		slog.Warn("S3 storage is not configured; KYC file upload will be unavailable")
+	}
+
 	// Services
 	authService := service.NewAuthService(cfg, merchantRepo, feeTemplateRepo, kunClient)
 	adminAuthService := service.NewAdminAuthService(cfg, adminUserRepo)
 	walletService := service.NewWalletService(merchantWalletRepo)
-	onboardingService := service.NewOnboardingService(cfg, merchantRepo, merchantKycSubmissionRepo, walletService, kunClient)
+	kycFileService := service.NewKycFileService(cfg, merchantRepo, s3Storage, kunClient)
+	onboardingService := service.NewOnboardingService(cfg, merchantRepo, merchantKycSubmissionRepo, walletService, kycFileService, kunClient)
 	feeTemplateService := service.NewFeeTemplateService(db, feeTemplateRepo, exchangeItemRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, auditLogRepo)
 	merchantMgmtService := service.NewMerchantManagementService(merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo)
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
@@ -93,7 +103,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler()
 	authHandler := handler.NewAuthHandler(cfg, authService)
 	adminAuthHandler := handler.NewAdminAuthHandler(cfg, adminAuthService)
-	onboardingHandler := handler.NewOnboardingHandler(onboardingService)
+	onboardingHandler := handler.NewOnboardingHandler(onboardingService, kycFileService)
 	walletHandler := handler.NewWalletHandler(walletService)
 	feeTemplateHandler := handler.NewFeeTemplateHandler(feeTemplateService)
 	merchantMgmtHandler := handler.NewMerchantManagementHandler(merchantMgmtService)

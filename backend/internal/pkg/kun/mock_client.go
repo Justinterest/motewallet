@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"motewallet/internal/config"
+	kundto "motewallet/internal/pkg/kun/dto"
 )
 
 // MockClient implements KUNClient for development/testing.
@@ -64,4 +65,16 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 	}
 
 	return nil
+}
+
+func (m *MockClient) UploadFileAsCustomer(
+	ctx context.Context,
+	customerNo, filename string,
+	content []byte,
+	contentType string,
+) (*kundto.FileUploadResp, error) {
+	log.Printf("[KUN Mock] POST /rest/v2.0/upload Customer-No=%s filename=%s size=%d", customerNo, filename, len(content))
+	return &kundto.FileUploadResp{
+		URL: fmt.Sprintf("https://mock.kun.global/files/%s", hex.EncodeToString([]byte(filename))[:12]),
+	}, nil
 }

@@ -1,6 +1,7 @@
 import type { FileRef, SubmitKycRequest } from "@/types/onboarding";
 import type { KycFormValues } from "@/lib/validations/onboarding";
 
+/** Staged S3 object keys; backend resolves to KUN URLs on submit. */
 function pathsToFileRefs(paths?: string[]): FileRef[] {
   return (paths ?? []).filter(Boolean).map((path) => ({ path }));
 }
@@ -28,11 +29,11 @@ function personToApi(
     residenceCountry: p.residenceCountry,
     shareholdingRatio: p.shareholdingRatio || undefined,
     idHolding: pathsToFileRefs(p.idHoldingPaths),
-    verificationType: p.verificationType,
+    verificationType: "idHolding",
   };
 }
 
-/** Map validated form values to KUN API request body. */
+/** Map validated form values to onboarding API request body. */
 export function formValuesToSubmitRequest(
   values: KycFormValues
 ): SubmitKycRequest {
@@ -71,7 +72,7 @@ export function formValuesToSubmitRequest(
       authenticMaterials: pathsToFileRefs(e.authenticMaterialsPaths),
       managerCountry: e.managerCountry,
       managerAuthType: e.managerAuthType,
-      managerVerificationType: e.managerVerificationType,
+      managerVerificationType: "idHolding",
       managerIdHolding: pathsToFileRefs(e.managerIdHoldingPaths),
       managerCertificateTerm:
         e.managerCertificateStart && e.managerCertificateEnd

@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"time"
 
 	"motewallet/internal/config"
+	kundto "motewallet/internal/pkg/kun/dto"
 )
 
 // KUNClient defines the interface for KUN API calls.
@@ -18,6 +20,9 @@ type KUNClient interface {
 	Post(ctx context.Context, path string, reqBody interface{}, respBody interface{}) error
 	// PostAsCustomer signs the request with the given Customer-No (e.g. sub-merchant no for onboarding auth).
 	PostAsCustomer(ctx context.Context, customerNo, path string, reqBody interface{}, respBody interface{}) error
+	// UploadFileAsCustomer uploads a file via POST /rest/v2.0/upload (multipart/form-data).
+	// See: https://opendocs.kun.global/docs/api/file-upload
+	UploadFileAsCustomer(ctx context.Context, customerNo, filename string, content []byte, contentType string) (*kundto.FileUploadResp, error)
 	GetRegionCode() string
 	GetCustomerNo() string
 }
@@ -153,4 +158,76 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	}
 
 	return nil
+}
+
+func (c *Client) UploadFileAsCustomer(
+	ctx context.Context,
+	customerNo, filename string,
+	content []byte,
+	contentType string,
+) (*kundto.FileUploadResp, error) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", filename)
+	if err != nil {
+		return nil, fmt.Errorf("create form file: %w", err)
+	}
+	if _, err := part.Write(content); err != nil {
+		return nil, fmt.Errorf("write file content: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("close multipart writer: %w", err)
+	}
+
+	url := c.baseURL + "/rest/v2.0/upload"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	_, sign, err := CanonicalizeAndSignRequest(map[string]interface{}{}, customerNo, timestamp, c.privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("sign request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("App-Key", c.appKey)
+	req.Header.Set("Api-Version", c.apiVersion)
+	req.Header.Set("Customer-No", customerNo)
+	req.Header.Set("Timestamp", timestamp)
+	req.Header.Set("Sign", sign)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	var kunResp struct {
+		Code string                `json:"code"`
+		Msg  string                `json:"message"`
+		Data kundto.FileUploadResp `json:"data"`
+	}
+	if err := json.Unmarshal(respBytes, &kunResp); err != nil {
+		return nil, fmt.Errorf("unmarshal KUN response: %w", err)
+	}
+
+	if kunResp.Code != "000000" && kunResp.Code != "200" {
+		return nil, &KUNError{
+			Code:    kunResp.Code,
+			Message: kunResp.Msg,
+		}
+	}
+
+	if kunResp.Data.URL == "" {
+		return nil, fmt.Errorf("KUN file upload returned empty url")
+	}
+
+	return &kunResp.Data, nil
 }

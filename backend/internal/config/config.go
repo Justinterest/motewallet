@@ -30,6 +30,17 @@ type FrontendConfig struct {
 	AdminURL string
 }
 
+type S3Config struct {
+	Region          string
+	Bucket          string
+	AccessKeyID     string
+	SecretAccessKey string
+	Endpoint        string
+	ForcePathStyle  bool
+	Prefix          string
+	PresignExpiry   time.Duration
+}
+
 type KUNConfig struct {
 	// AppKey is the "App-Key" request header required by KUN.
 	AppKey string
@@ -53,6 +64,7 @@ type Config struct {
 	DB       DBConfig
 	JWT      JWTConfig
 	Frontend FrontendConfig
+	S3       S3Config
 	KUN      KUNConfig
 }
 
@@ -84,6 +96,10 @@ func Load() (*Config, error) {
 	viper.SetDefault("KUN_WEBHOOK_TIME_DIFF", "5m")
 	viper.SetDefault("KUN_MOCK_ENABLED", false)
 	viper.SetDefault("KUN_API_VERSION", "2")
+	viper.SetDefault("S3_REGION", "ap-southeast-1")
+	viper.SetDefault("S3_PREFIX", "motewallet")
+	viper.SetDefault("S3_PRESIGN_EXPIRY", "15m")
+	viper.SetDefault("S3_FORCE_PATH_STYLE", false)
 
 	// Ignore error if .env file doesn't exist — env vars still work
 	_ = viper.ReadInConfig()
@@ -108,6 +124,11 @@ func Load() (*Config, error) {
 		kunWebhookTimeDiff = 5 * time.Minute
 	}
 
+	s3PresignExpiry, err := time.ParseDuration(viper.GetString("S3_PRESIGN_EXPIRY"))
+	if err != nil {
+		s3PresignExpiry = 15 * time.Minute
+	}
+
 	cfg := &Config{
 		App: AppConfig{
 			Port: viper.GetString("APP_PORT"),
@@ -128,6 +149,16 @@ func Load() (*Config, error) {
 		Frontend: FrontendConfig{
 			URL:      viper.GetString("FRONTEND_URL"),
 			AdminURL: viper.GetString("ADMIN_URL"),
+		},
+		S3: S3Config{
+			Region:          viper.GetString("S3_REGION"),
+			Bucket:          viper.GetString("S3_BUCKET"),
+			AccessKeyID:     viper.GetString("S3_ACCESS_KEY_ID"),
+			SecretAccessKey: viper.GetString("S3_SECRET_ACCESS_KEY"),
+			Endpoint:        viper.GetString("S3_ENDPOINT"),
+			ForcePathStyle:  viper.GetBool("S3_FORCE_PATH_STYLE"),
+			Prefix:          viper.GetString("S3_PREFIX"),
+			PresignExpiry:   s3PresignExpiry,
 		},
 		KUN: KUNConfig{
 			AppKey:          viper.GetString("KUN_APP_KEY"),

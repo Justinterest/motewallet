@@ -5,13 +5,17 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { FormDatePicker } from "@/components/ui/date-picker";
 import { FormSelect } from "@/components/ui/form-select";
-import { FilePathList } from "@/components/kyc/file-path-list";
-import { GENDERS, REGISTER_REGIONS, VERIFICATION_TYPES } from "@/lib/kyc/constants";
+import { Input } from "@/components/ui/input";
+import { CertificateValidityFields } from "@/components/kyc/certificate-validity-fields";
+import { KycFileUpload } from "@/components/kyc/kyc-file-upload";
+import { KycFormRow } from "@/components/kyc/kyc-form-row";
+import { KycFormLabel, kycPlaceholder } from "@/components/kyc/kyc-form-label";
+import { getKycFieldMeta } from "@/lib/kyc/field-meta";
+import { GENDERS, REGISTER_REGIONS } from "@/lib/kyc/constants";
 import type { KycFormValues } from "@/lib/validations/onboarding";
 
 interface PersonFieldsProps {
@@ -27,155 +31,131 @@ export function PersonFields({
 }: PersonFieldsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <FormField
-        control={control}
-        name={`${namePrefix}.nameCHS`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>中文姓名</FormLabel>
+      <KycFormRow>
+        <FormField
+          control={control}
+          name={`${namePrefix}.surnameCHS`}
+          render={({ field }) => (
+            <FormItem>
+            <KycFormLabel fieldKey="person.surnameCHS" />
             <FormControl>
-              <Input placeholder="中文姓名" {...field} />
+              <Input placeholder={kycPlaceholder("person.surnameCHS")} {...field} />
             </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.surname`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>英文姓 *</FormLabel>
-            <FormControl>
-              <Input placeholder="Surname" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.nameEN`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>英文名 *</FormLabel>
-            <FormControl>
-              <Input placeholder="Given name" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.gender`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>性别 *</FormLabel>
-            <FormControl>
-              <FormSelect {...field} options={GENDERS} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.birthday`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>出生日期 *</FormLabel>
-            <FormControl>
-              <Input type="date" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.country`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>国籍 *</FormLabel>
-            <FormControl>
-              <FormSelect {...field} options={REGISTER_REGIONS} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.authType`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>证件类型 code *</FormLabel>
-            <FormControl>
-              <Input placeholder="鲲「国家认证类型」接口 docCode" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`${namePrefix}.nameCHS`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.nameCHS" />
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </KycFormRow>
+
+      <KycFormRow>
+        <FormField
+          control={control}
+          name={`${namePrefix}.surname`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.surname" />
+              <FormControl>
+                <Input placeholder="Surname" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`${namePrefix}.nameEN`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.nameEN" />
+              <FormControl>
+                <Input placeholder="Given name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </KycFormRow>
+
+      <KycFormRow>
+        <FormField
+          control={control}
+          name={`${namePrefix}.gender`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.gender" />
+              <FormControl>
+                <FormSelect {...field} options={GENDERS} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`${namePrefix}.birthday`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.birthday" />
+              <FormControl>
+                <FormDatePicker {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </KycFormRow>
+
+      <KycFormRow>
+        <FormField
+          control={control}
+          name={`${namePrefix}.country`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.country" />
+              <FormControl>
+                <FormSelect {...field} options={REGISTER_REGIONS} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`${namePrefix}.authType`}
+          render={({ field }) => (
+            <FormItem>
+              <KycFormLabel fieldKey="person.authType" />
+              <FormControl>
+                <Input
+                  placeholder={kycPlaceholder("person.authType")}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </KycFormRow>
+
       <FormField
         control={control}
         name={`${namePrefix}.idCard`}
         render={({ field }) => (
-          <FormItem>
-            <FormLabel>证件号码 *</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.certificateStart`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>证件有效期起</FormLabel>
-            <FormControl>
-              <Input type="date" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.certificateEnd`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>证件有效期止</FormLabel>
-            <FormControl>
-              <Input type="date" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.residenceCountry`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>居住国家 *</FormLabel>
-            <FormControl>
-              <FormSelect {...field} options={REGISTER_REGIONS} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name={`${namePrefix}.residenceAddress`}
-        render={({ field }) => (
           <FormItem className="sm:col-span-2">
-            <FormLabel>居住地址 *</FormLabel>
+            <KycFormLabel fieldKey="person.idCard" />
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -183,43 +163,86 @@ export function PersonFields({
           </FormItem>
         )}
       />
-      {showShareholding && (
+
+      <CertificateValidityFields
+        control={control}
+        startName={`${namePrefix}.certificateStart`}
+        endName={`${namePrefix}.certificateEnd`}
+        startLabelKey="person.certificateTerm"
+        endLabelKey="person.certificateEnd"
+      />
+
+      {showShareholding ? (
+        <KycFormRow>
+          <FormField
+            control={control}
+            name={`${namePrefix}.residenceCountry`}
+            render={({ field }) => (
+              <FormItem>
+                <KycFormLabel fieldKey="person.residenceCountry" />
+                <FormControl>
+                  <FormSelect {...field} options={REGISTER_REGIONS} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name={`${namePrefix}.shareholdingRatio`}
+            render={({ field }) => (
+              <FormItem>
+                <KycFormLabel fieldKey="person.shareholdingRatio" />
+                <FormControl>
+                  <Input
+                    placeholder={kycPlaceholder("person.shareholdingRatio")}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </KycFormRow>
+      ) : (
         <FormField
           control={control}
-          name={`${namePrefix}.shareholdingRatio`}
+          name={`${namePrefix}.residenceCountry`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>持股比例 *</FormLabel>
+              <KycFormLabel fieldKey="person.residenceCountry" />
               <FormControl>
-                <Input placeholder="例如 25" {...field} />
+                <FormSelect {...field} options={REGISTER_REGIONS} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
       )}
+
       <FormField
         control={control}
-        name={`${namePrefix}.verificationType`}
+        name={`${namePrefix}.residenceAddress`}
         render={({ field }) => (
-          <FormItem>
-            <FormLabel>验证方式</FormLabel>
+          <FormItem className="sm:col-span-2">
+            <KycFormLabel fieldKey="person.residenceAddress" />
             <FormControl>
-              <FormSelect {...field} options={VERIFICATION_TYPES} />
+              <Input {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
+
       <FormField
         control={control}
         name={`${namePrefix}.idHoldingPaths`}
         render={({ field }) => (
           <FormItem className="sm:col-span-2">
             <FormControl>
-              <FilePathList
-                label="手持证件 / 证件照文件 path"
-                description="idHolding 方式至少 3 个 path（证件照、自拍、手持照）"
+              <KycFileUpload
+                label={getKycFieldMeta("person.idHolding").label + " *"}
+                description={getKycFieldMeta("person.idHolding").description}
                 paths={field.value ?? [""]}
                 onChange={field.onChange}
                 minItems={1}

@@ -7,8 +7,8 @@ export const REGISTER_REGIONS = [
 ];
 
 export const ENTERPRISE_TYPES = [
-  { value: "Private limited company", label: "Private limited company" },
-  { value: "Public limited company", label: "Public limited company" },
+  { value: "Private limited company", label: "私人有限公司" },
+  { value: "Public limited company", label: "公众有限公司" },
 ];
 
 export const FUNDING_SOURCES = [
@@ -18,6 +18,35 @@ export const FUNDING_SOURCES = [
   { value: "Digital currency mining", label: "数字货币挖矿" },
   { value: "Digital currency pledge", label: "数字货币质押" },
   { value: "Others", label: "其他来源" },
+];
+
+/** 财富来源（比资金来源多「资产出售」选项） */
+export const WEALTH_SOURCES = [
+  ...FUNDING_SOURCES.slice(0, 3),
+  { value: "Asset sale", label: "资产出售所得" },
+  ...FUNDING_SOURCES.slice(3),
+];
+
+export const INDUSTRIES = [
+  { value: "Goods Trade", label: "商品贸易" },
+  { value: "logistics transportation", label: "物流运输" },
+  { value: "Software Service", label: "软件服务" },
+  { value: "Education Service", label: "教育服务" },
+  { value: "Advertising service", label: "广告服务" },
+  { value: "Air & Travel Service", label: "航空及旅游服务" },
+  { value: "Culture & Entertainment", label: "文化娱乐" },
+  { value: "IT Service", label: "IT 服务" },
+  { value: "PSP", label: "支付服务提供商" },
+  { value: "System Servicer", label: "系统服务商" },
+];
+
+export const SALES_VOLUME_OPTIONS = [
+  { value: "HKD 0-2,500,000", label: "HKD 0–2,500,000" },
+  { value: "HKD 2,500,001-5,000,000", label: "HKD 2,500,001–5,000,000" },
+  { value: "HKD 5,000,001-10,000,000", label: "HKD 5,000,001–10,000,000" },
+  { value: "HKD 10,000,001-30,000,000", label: "HKD 10,000,001–30,000,000" },
+  { value: "HKD 30,000,001-50,000,000", label: "HKD 30,000,001–50,000,000" },
+  { value: "HKD 50,000,001或以上", label: "HKD 50,000,001 或以上" },
 ];
 
 export const OPEN_ACCOUNT_PURPOSES = [
@@ -36,11 +65,6 @@ export const EMPLOYEE_NUM_OPTIONS = [
 export const GENDERS = [
   { value: "Male", label: "男" },
   { value: "Female", label: "女" },
-];
-
-export const VERIFICATION_TYPES = [
-  { value: "facialRecognition", label: "人脸识别" },
-  { value: "idHolding", label: "手持证件照" },
 ];
 
 export const YES_NO = [

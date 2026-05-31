@@ -19,32 +19,35 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { FormDatePicker } from "@/components/ui/date-picker";
 import { FormSelect } from "@/components/ui/form-select";
-import { FilePathList } from "@/components/kyc/file-path-list";
+import { Input } from "@/components/ui/input";
+import { KycFileUpload } from "@/components/kyc/kyc-file-upload";
+import { KycFormLabel, kycPlaceholder } from "@/components/kyc/kyc-form-label";
+import { CertificateValidityFields } from "@/components/kyc/certificate-validity-fields";
+import { CollapsibleSection } from "@/components/kyc/collapsible-section";
+import { KycFormRow } from "@/components/kyc/kyc-form-row";
 import { PersonFields } from "@/components/kyc/person-fields";
 import { cn } from "@/lib/utils";
+import { getKycFieldMeta } from "@/lib/kyc/field-meta";
 import { KYC_DRAFT_KEY } from "@/lib/kyc/constants";
 import { createKycFormDefaults } from "@/lib/kyc/form-defaults";
 import { formValuesToSubmitRequest } from "@/lib/kyc/transform";
 import {
+  EMPLOYEE_NUM_OPTIONS,
   ENTERPRISE_TYPES,
   FUNDING_SOURCES,
   GENDERS,
+  INDUSTRIES,
   OPEN_ACCOUNT_PURPOSES,
   REGISTER_REGIONS,
-  VERIFICATION_TYPES,
+  SALES_VOLUME_OPTIONS,
+  WEALTH_SOURCES,
+  YES_NO,
 } from "@/lib/kyc/constants";
-import {
-  kycFormSchema,
-  kycStep0Schema,
-  kycStep1Schema,
-  kycStep2Schema,
-  type KycFormValues,
-} from "@/lib/validations/onboarding";
+import { kycFormSchema, type KycFormValues } from "@/lib/validations/onboarding";
 import { useSubmitKyc } from "@/lib/hooks/use-onboarding";
 import { toast } from "@/hooks/use-toast";
 
@@ -71,10 +74,12 @@ export function KycWizard() {
   });
 
   const registerRegion = form.watch("enterpriseInfo.registerRegion");
-  const managerVerification = form.watch(
-    "enterpriseInfo.managerVerificationType"
+  const nameChanged = form.watch(
+    "enterpriseInfo.isChangeEnterpriseNameInFiveYears"
   );
-
+  const middleTierShareholders = form.watch(
+    "enterpriseInfo.middleTierShareholders"
+  );
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KYC_DRAFT_KEY);
@@ -98,30 +103,62 @@ export function KycWizard() {
     return () => sub.unsubscribe();
   }, [form]);
 
-  async function validateCurrentStep(): Promise<boolean> {
-    const values = form.getValues();
-    const schemas = [kycStep0Schema, kycStep1Schema, kycStep2Schema] as const;
-    const result = schemas[step].safeParse(values);
-    if (!result.success) {
-      result.error.issues.forEach((issue) => {
-        const path = issue.path.join(".") as Parameters<
-          typeof form.setError
-        >[0];
-        form.setError(path, { message: issue.message });
-      });
-      return false;
+  useEffect(() => {
+    if (middleTierShareholders === "No") {
+      form.setValue("enterpriseInfo.equityStructurePaths", []);
     }
-    return true;
+  }, [middleTierShareholders, form]);
+
+  function goToStep(index: number) {
+    setStep(Math.max(0, Math.min(index, STEPS.length - 1)));
   }
 
-  async function handleNext() {
-    const ok = await validateCurrentStep();
-    if (!ok) return;
+  function handleNext() {
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
   function handleBack() {
     setStep((s) => Math.max(s - 1, 0));
+  }
+
+  function stepIndexForIssuePath(path: PropertyKey[]): number {
+    const parts = path.map(String);
+    if (parts[0] === "shareholdersInfo" || parts[0] === "directorInfo") {
+      return 2;
+    }
+    if (parts[0] === "enterpriseInfo" && parts[1]) {
+      const key = parts[1];
+      if (
+        key.startsWith("manager") ||
+        key === "authorizationLetterPaths" ||
+        key === "equityStructurePaths" ||
+        key === "middleTierShareholders" ||
+        key === "nnc1Paths"
+      ) {
+        return 1;
+      }
+      return 0;
+    }
+    return 0;
+  }
+
+  function focusFirstInvalidStep() {
+    const result = kycFormSchema.safeParse(form.getValues());
+    if (result.success) return;
+
+    let firstStep = 2;
+    result.error.issues.forEach((issue) => {
+      firstStep = Math.min(firstStep, stepIndexForIssuePath(issue.path));
+      const path = issue.path.join(".") as Parameters<typeof form.setError>[0];
+      form.setError(path, { message: issue.message });
+    });
+
+    goToStep(firstStep);
+    toast({
+      variant: "destructive",
+      title: "请完善表单",
+      description: `请先完成「${STEPS[firstStep]}」中的必填项。`,
+    });
   }
 
   async function onSubmit(values: KycFormValues) {
@@ -147,34 +184,49 @@ export function KycWizard() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex items-center justify-center gap-2">
+      <form
+        onSubmit={form.handleSubmit(onSubmit, focusFirstInvalidStep)}
+        className="space-y-6"
+      >
+        <nav
+          className="flex items-center justify-center gap-2"
+          aria-label="认证步骤"
+        >
           {STEPS.map((label, index) => (
             <div key={label} className="flex items-center">
-              <div
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
-                  index <= step
-                    ? "bg-blue-700 text-white"
-                    : "bg-slate-200 text-slate-500"
-                )}
+              <button
+                type="button"
+                onClick={() => goToStep(index)}
+                className="flex items-center rounded-lg px-1 py-1 transition-colors hover:bg-slate-100"
+                aria-current={index === step ? "step" : undefined}
               >
-                {index + 1}
-              </div>
-              <span
-                className={cn(
-                  "ml-2 hidden text-sm sm:inline",
-                  index === step ? "font-medium text-blue-700" : "text-slate-500"
-                )}
-              >
-                {label}
-              </span>
+                <span
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
+                    index === step
+                      ? "bg-blue-700 text-white"
+                      : "bg-slate-200 text-slate-600"
+                  )}
+                >
+                  {index + 1}
+                </span>
+                <span
+                  className={cn(
+                    "ml-2 hidden text-sm sm:inline",
+                    index === step
+                      ? "font-medium text-blue-700"
+                      : "text-slate-600"
+                  )}
+                >
+                  {label}
+                </span>
+              </button>
               {index < STEPS.length - 1 && (
                 <div className="mx-3 h-px w-8 bg-slate-200 sm:w-12" />
               )}
             </div>
           ))}
-        </div>
+        </nav>
 
         {submitMutation.isError && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
@@ -187,44 +239,25 @@ export function KycWizard() {
             <CardHeader>
               <CardTitle className="text-base">企业信息</CardTitle>
               <CardDescription>
-                字段与鲲「子商户入网认证」接口一致；文件须先通过鲲上传接口获取 path。
+                请如实填写企业基本信息并上传证明材料，提交后将进入平台审核。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="enterpriseInfo.enterpriseEN"
+                name="enterpriseInfo.incorporationCertificatePaths"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>公司英文名称 *</FormLabel>
                     <FormControl>
-                      <Input placeholder="须与注册证书一致" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.enterpriseNameCHS"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>公司中文名称</FormLabel>
-                    <FormControl>
-                      <Input placeholder="无中文名填「无」" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.registerRegion"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>注册地区 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={REGISTER_REGIONS} />
+                      <KycFileUpload
+                        label={getKycFieldMeta("incorporationCertificate").label + " *"}
+                        description={
+                          getKycFieldMeta("incorporationCertificate").description
+                        }
+                        exampleImage={getKycFieldMeta("incorporationCertificate").exampleImage}
+                        paths={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -234,10 +267,13 @@ export function KycWizard() {
                 control={form.control}
                 name="enterpriseInfo.incorporationCertificateNo"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>注册证书编号 *</FormLabel>
+                  <FormItem className="sm:col-span-2">
+                    <KycFormLabel fieldKey="incorporationCertificateNo" />
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        placeholder={kycPlaceholder("incorporationCertificateNo")}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -245,25 +281,90 @@ export function KycWizard() {
               />
               <FormField
                 control={form.control}
-                name="enterpriseInfo.establishTime"
+                name="enterpriseInfo.enterpriseEN"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>成立日期 *</FormLabel>
+                  <FormItem className="sm:col-span-2">
+                    <KycFormLabel fieldKey="enterpriseEN" />
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input
+                        placeholder={kycPlaceholder("enterpriseEN")}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.enterpriseNameCHS"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="enterpriseNameCHS" required={false} />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("enterpriseNameCHS")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.registerRegion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="registerRegion" />
+                      <FormControl>
+                        <FormSelect {...field} options={REGISTER_REGIONS} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.establishTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="establishTime" />
+                      <FormControl>
+                        <FormDatePicker {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.enterpriseType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="enterpriseType" />
+                      <FormControl>
+                        <FormSelect {...field} options={ENTERPRISE_TYPES} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
               <FormField
                 control={form.control}
                 name="enterpriseInfo.registerAddress"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>注册地址 *</FormLabel>
+                    <KycFormLabel fieldKey="registerAddress" />
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        placeholder={kycPlaceholder("registerAddress")}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -271,91 +372,225 @@ export function KycWizard() {
               />
               <FormField
                 control={form.control}
-                name="enterpriseInfo.enterpriseType"
+                name="enterpriseInfo.mainBusinessAddress"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>公司类型 *</FormLabel>
+                  <FormItem className="sm:col-span-2">
+                    <KycFormLabel fieldKey="mainBusinessAddress" />
                     <FormControl>
-                      <FormSelect {...field} options={ENTERPRISE_TYPES} />
+                      <Input
+                        placeholder={kycPlaceholder("mainBusinessAddress")}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="phone" />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.isChangeEnterpriseNameInFiveYears"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="isChangeEnterpriseNameInFiveYears" />
+                      <FormControl>
+                        <FormSelect {...field} options={YES_NO} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              {nameChanged === "Yes" && (
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.usedEnterpriseName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="usedEnterpriseName" required />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("usedEnterpriseName")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
-                name="enterpriseInfo.phone"
+                name="enterpriseInfo.enterpriseDomain"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>企业电话</FormLabel>
+                  <FormItem className="sm:col-span-2">
+                    <KycFormLabel fieldKey="enterpriseDomain" required={false} />
                     <FormControl>
-                      <Input {...field} />
+                      <Input
+                        placeholder={kycPlaceholder("enterpriseDomain")}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.industry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="industry" />
+                      <FormControl>
+                        <FormSelect {...field} options={INDUSTRIES} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.subIndustry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="subIndustry" />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("subIndustry")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.initialFundingSource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="initialFundingSource" />
+                      <FormControl>
+                        <FormSelect {...field} options={FUNDING_SOURCES} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.wealthSource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="wealthSource" />
+                      <FormControl>
+                        <FormSelect {...field} options={WEALTH_SOURCES} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.continuousFundingSource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="continuousFundingSource" />
+                      <FormControl>
+                        <FormSelect {...field} options={FUNDING_SOURCES} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.salesVolumeLastyear"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="salesVolumeLastyear" />
+                      <FormControl>
+                        <FormSelect {...field} options={SALES_VOLUME_OPTIONS} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.employeeNum"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="employeeNum" required={false} />
+                      <FormControl>
+                        <FormSelect {...field} options={EMPLOYEE_NUM_OPTIONS} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.openAccountPurpose"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="openAccountPurpose" />
+                      <FormControl>
+                        <FormSelect {...field} options={OPEN_ACCOUNT_PURPOSES} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
               <FormField
                 control={form.control}
-                name="enterpriseInfo.industry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>一级行业 code *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="鲲枚举 industry" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.subIndustry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>二级行业 code *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="鲲枚举 subIndustry" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.initialFundingSource"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>初始资金来源 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={FUNDING_SOURCES} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.openAccountPurpose"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>开户目的 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={OPEN_ACCOUNT_PURPOSES} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.incorporationCertificatePaths"
+                name="enterpriseInfo.associationRulesPaths"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
                     <FormControl>
-                      <FilePathList
-                        label="营业执照 / 注册证书 *"
-                        paths={field.value}
+                      <KycFileUpload
+                        label={getKycFieldMeta("associationRules").label + " *"}
+                        description={getKycFieldMeta("associationRules").description}
+                        exampleImage={getKycFieldMeta("associationRules").exampleImage}
+                        paths={field.value ?? [""]}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="enterpriseInfo.authenticMaterialsPaths"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormControl>
+                      <KycFileUpload
+                        label={getKycFieldMeta("authenticMaterials").label + " *"}
+                        description={getKycFieldMeta("authenticMaterials").description}
+                        paths={field.value ?? [""]}
                         onChange={field.onChange}
                       />
                     </FormControl>
@@ -370,9 +605,12 @@ export function KycWizard() {
                     name="enterpriseInfo.businessRegistrationNo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>商业登记证编号 *</FormLabel>
+                        <KycFormLabel fieldKey="businessRegistrationNo" required />
                         <FormControl>
-                          <Input {...field} />
+                          <Input
+                            placeholder={kycPlaceholder("businessRegistrationNo")}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -384,8 +622,9 @@ export function KycWizard() {
                     render={({ field }) => (
                       <FormItem className="sm:col-span-2">
                         <FormControl>
-                          <FilePathList
-                            label="商业登记证 *"
+                          <KycFileUpload
+                            label={getKycFieldMeta("businessRegistration").label + " *"}
+                            description={getKycFieldMeta("businessRegistration").description}
                             paths={field.value ?? [""]}
                             onChange={field.onChange}
                           />
@@ -405,68 +644,112 @@ export function KycWizard() {
             <CardHeader>
               <CardTitle className="text-base">账户管理人</CardTitle>
               <CardDescription>
-                管理人信息包含在 enterpriseInfo 中提交给鲲。
+                填写企业账户管理人的身份与联系方式，须与授权文件一致。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerNameEN"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>管理人英文名 *</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerSurnameCHS"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>中文姓</FormLabel>
-                    <FormControl>
-                      <Input placeholder="仅填姓氏" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerCountry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>国籍 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={REGISTER_REGIONS} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerAuthType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>证件类型 code *</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerSurnameCHS"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerSurnameCHS" />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("managerSurnameCHS")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerNameCHS"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerNameCHS" />
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerSurname"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerSurname" />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("managerSurname")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerNameEN"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerNameEN" />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("managerNameEN")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerCountry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerCountry" />
+                      <FormControl>
+                        <FormSelect {...field} options={REGISTER_REGIONS} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerAuthType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerAuthType" />
+                      <FormControl>
+                        <Input
+                          placeholder={kycPlaceholder("managerAuthType")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
               <FormField
                 control={form.control}
                 name="enterpriseInfo.managerIdCard"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>证件号码 *</FormLabel>
+                  <FormItem className="sm:col-span-2">
+                    <KycFormLabel fieldKey="managerIdCard" />
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -474,64 +757,79 @@ export function KycWizard() {
                   </FormItem>
                 )}
               />
-              <FormField
+              <CertificateValidityFields
                 control={form.control}
-                name="enterpriseInfo.managerBirthday"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>出生日期 *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                startName="enterpriseInfo.managerCertificateStart"
+                endName="enterpriseInfo.managerCertificateEnd"
+                startLabelKey="managerCertificateTerm"
+                endLabelKey="managerCertificateEnd"
               />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerGender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>性别 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={GENDERS} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerVerificationType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>验证方式 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={VERIFICATION_TYPES} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="enterpriseInfo.managerResidenceCountry"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>居住国家 *</FormLabel>
-                    <FormControl>
-                      <FormSelect {...field} options={REGISTER_REGIONS} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerBirthday"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerBirthday" />
+                      <FormControl>
+                        <FormDatePicker {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerGender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerGender" />
+                      <FormControl>
+                        <FormSelect {...field} options={GENDERS} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
+              <KycFormRow>
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerResidenceCountry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerResidenceCountry" />
+                      <FormControl>
+                        <FormSelect {...field} options={REGISTER_REGIONS} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="enterpriseInfo.managerContactsEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <KycFormLabel fieldKey="managerContactsEmail" required={false} />
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder={kycPlaceholder("managerContactsEmail")}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </KycFormRow>
               <FormField
                 control={form.control}
                 name="enterpriseInfo.managerResidenceAddress"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>居住地址 *</FormLabel>
+                    <KycFormLabel fieldKey="managerResidenceAddress" />
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -541,30 +839,50 @@ export function KycWizard() {
               />
               <FormField
                 control={form.control}
-                name="enterpriseInfo.managerContactsEmail"
+                name="enterpriseInfo.managerIdHoldingPaths"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>联系邮箱</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} />
+                      <KycFileUpload
+                        label={getKycFieldMeta("managerIdHolding").label + " *"}
+                        description={getKycFieldMeta("managerIdHolding").description}
+                        paths={field.value ?? ["", "", ""]}
+                        onChange={field.onChange}
+                        minItems={3}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {managerVerification === "idHolding" && (
+              <FormField
+                control={form.control}
+                name="enterpriseInfo.middleTierShareholders"
+                render={({ field }) => (
+                  <FormItem>
+                    <KycFormLabel fieldKey="middleTierShareholders" />
+                    <FormControl>
+                      <FormSelect {...field} options={YES_NO} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {middleTierShareholders === "Yes" && (
                 <FormField
                   control={form.control}
-                  name="enterpriseInfo.managerIdHoldingPaths"
+                  name="enterpriseInfo.equityStructurePaths"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
                       <FormControl>
-                        <FilePathList
-                          label="管理人证件照 *"
-                          description="至少 3 张：证件照、自拍、手持证件照"
-                          paths={field.value ?? ["", "", ""]}
+                        <KycFileUpload
+                          label={getKycFieldMeta("equityStructure").label + " *"}
+                          description={
+                            getKycFieldMeta("equityStructure").description
+                          }
+                          paths={field.value ?? [""]}
                           onChange={field.onChange}
-                          minItems={3}
+                          minItems={1}
                         />
                       </FormControl>
                       <FormMessage />
@@ -598,34 +916,44 @@ export function KycWizard() {
                   添加股东
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-8">
-                {shareholders.fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="rounded-lg border border-slate-200 p-4"
-                  >
-                    <div className="mb-4 flex items-center justify-between">
-                      <h4 className="font-medium text-slate-800">
-                        股东 {index + 1}
-                      </h4>
-                      {shareholders.fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => shareholders.remove(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      )}
-                    </div>
-                    <PersonFields
-                      control={form.control}
-                      namePrefix={`shareholdersInfo.${index}`}
-                      showShareholding
-                    />
-                  </div>
-                ))}
+              <CardContent className="space-y-4">
+                {shareholders.fields.map((field, index) => {
+                  const nameChs = form.watch(
+                    `shareholdersInfo.${index}.nameCHS`
+                  );
+                  const surnameChs = form.watch(
+                    `shareholdersInfo.${index}.surnameCHS`
+                  );
+                  const titleLabel =
+                    [surnameChs, nameChs].filter(Boolean).join("") ||
+                    `股东 ${index + 1}`;
+
+                  return (
+                    <CollapsibleSection
+                      key={field.id}
+                      title={titleLabel}
+                      defaultOpen={index === 0}
+                      actions={
+                        shareholders.fields.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => shareholders.remove(index)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        ) : undefined
+                      }
+                    >
+                      <PersonFields
+                        control={form.control}
+                        namePrefix={`shareholdersInfo.${index}`}
+                        showShareholding
+                      />
+                    </CollapsibleSection>
+                  );
+                })}
               </CardContent>
             </Card>
 
@@ -649,33 +977,41 @@ export function KycWizard() {
                   添加董事
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-8">
-                {directors.fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="rounded-lg border border-slate-200 p-4"
-                  >
-                    <div className="mb-4 flex items-center justify-between">
-                      <h4 className="font-medium text-slate-800">
-                        董事 {index + 1}
-                      </h4>
-                      {directors.fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => directors.remove(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      )}
-                    </div>
-                    <PersonFields
-                      control={form.control}
-                      namePrefix={`directorInfo.${index}`}
-                    />
-                  </div>
-                ))}
+              <CardContent className="space-y-4">
+                {directors.fields.map((field, index) => {
+                  const nameChs = form.watch(`directorInfo.${index}.nameCHS`);
+                  const surnameChs = form.watch(
+                    `directorInfo.${index}.surnameCHS`
+                  );
+                  const titleLabel =
+                    [surnameChs, nameChs].filter(Boolean).join("") ||
+                    `董事 ${index + 1}`;
+
+                  return (
+                    <CollapsibleSection
+                      key={field.id}
+                      title={titleLabel}
+                      defaultOpen={index === 0}
+                      actions={
+                        directors.fields.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => directors.remove(index)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        ) : undefined
+                      }
+                    >
+                      <PersonFields
+                        control={form.control}
+                        namePrefix={`directorInfo.${index}`}
+                      />
+                    </CollapsibleSection>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>

@@ -23,6 +23,7 @@ const (
 	ErrWithdrawalNotFound          = 10031
 	ErrWithdrawalNotPending        = 10032
 	ErrInternal                    = 50000
+	ErrStorageNotConfigured        = 10040
 	ErrKUNAPIFailed                = 50001
 	ErrKUNSignatureFailed          = 50002
 	ErrKUNTimestampExpired         = 50003
@@ -67,6 +68,7 @@ var (
 	ErrInsufficientBalanceE         = NewBusinessError(http.StatusBadRequest, ErrInsufficientBalance, "insufficient balance")
 	ErrWithdrawalNotFoundE          = NewBusinessError(http.StatusNotFound, ErrWithdrawalNotFound, "withdrawal order not found")
 	ErrWithdrawalNotPendingE        = NewBusinessError(http.StatusBadRequest, ErrWithdrawalNotPending, "withdrawal order is not in pending review status")
+	ErrStorageNotConfiguredE        = NewBusinessError(http.StatusServiceUnavailable, ErrStorageNotConfigured, "file storage is not configured")
 	ErrKUNAPIFailedE                = NewBusinessError(http.StatusBadGateway, ErrKUNAPIFailed, "KUN API call failed")
 	ErrKUNSignatureFailedE          = NewBusinessError(http.StatusUnauthorized, ErrKUNSignatureFailed, "webhook signature verification failed")
 	ErrKUNTimestampExpiredE         = NewBusinessError(http.StatusUnauthorized, ErrKUNTimestampExpired, "webhook timestamp expired")
