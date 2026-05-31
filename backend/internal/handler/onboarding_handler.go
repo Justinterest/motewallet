@@ -162,3 +162,49 @@ func (h *OnboardingHandler) PresignKycFileAccess(c *gin.Context) {
 
 	response.Success(c, result)
 }
+
+func (h *OnboardingHandler) ListKycCountries(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	scene := c.DefaultQuery("scene", "REGISTER_ADDRESS")
+	language := c.DefaultQuery("language", "ZH_CN")
+
+	result, err := h.onboardingService.ListKycCountries(c.Request.Context(), scene, language)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}
+
+func (h *OnboardingHandler) ListKycCountryAuthTypes(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	countryCode := c.Query("country_code")
+	if countryCode == "" {
+		countryCode = c.Param("country_code")
+	}
+
+	result, err := h.onboardingService.ListKycCountryAuthTypes(c.Request.Context(), countryCode)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}

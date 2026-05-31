@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { onboardingApi } from "@/lib/api/onboarding";
+import {
+  KYC_COUNTRY_SCENE,
+  kycAuthTypesQueryOptions,
+  kycCountriesQueryOptions,
+} from "@/lib/kyc/reference-queries";
 import type { SubmitKycRequest } from "@/types/onboarding";
+import type { KycCountryScene } from "@/types/kyc-reference";
+
+export { KYC_COUNTRY_SCENE };
 
 export function useAgreements() {
   return useQuery({
@@ -39,5 +47,29 @@ export function useKycStatus() {
       const status = query.state.data?.kyc_status;
       return status === "AUTHING" ? 15000 : false;
     },
+  });
+}
+
+/** Prefer `useKycReference()` inside KYC wizard; this hook shares the same query cache. */
+export function useKycCountries(scene: KycCountryScene = KYC_COUNTRY_SCENE) {
+  return useQuery({
+    ...kycCountriesQueryOptions(scene),
+    select: (data) =>
+      data.items.map((item) => ({
+        value: item.country_code,
+        label: item.country_name,
+      })),
+  });
+}
+
+export function useKycCountryAuthTypes(countryCode: string | undefined) {
+  const code = countryCode?.trim().toUpperCase() ?? "";
+  return useQuery({
+    ...kycAuthTypesQueryOptions(code),
+    select: (data) =>
+      data.items.map((item) => ({
+        value: item.doc_code,
+        label: item.doc_name,
+      })),
   });
 }

@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Control } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import {
   FormControl,
   FormField,
@@ -11,11 +13,13 @@ import { FormDatePicker } from "@/components/ui/date-picker";
 import { FormSelect } from "@/components/ui/form-select";
 import { Input } from "@/components/ui/input";
 import { CertificateValidityFields } from "@/components/kyc/certificate-validity-fields";
+import { KycAuthTypeSelect } from "@/components/kyc/kyc-auth-type-select";
+import { KycCountrySelect } from "@/components/kyc/kyc-country-select";
 import { KycFileUpload } from "@/components/kyc/kyc-file-upload";
 import { KycFormRow } from "@/components/kyc/kyc-form-row";
 import { KycFormLabel, kycPlaceholder } from "@/components/kyc/kyc-form-label";
 import { getKycFieldMeta } from "@/lib/kyc/field-meta";
-import { GENDERS, REGISTER_REGIONS } from "@/lib/kyc/constants";
+import { GENDERS } from "@/lib/kyc/constants";
 import type { KycFormValues } from "@/lib/validations/onboarding";
 
 interface PersonFieldsProps {
@@ -29,6 +33,23 @@ export function PersonFields({
   namePrefix,
   showShareholding = false,
 }: PersonFieldsProps) {
+  const { setValue } = useFormContext<KycFormValues>();
+  const personCountry = useWatch({
+    control,
+    name: `${namePrefix}.country`,
+  });
+  const prevCountryRef = useRef(personCountry);
+
+  useEffect(() => {
+    if (
+      prevCountryRef.current !== undefined &&
+      prevCountryRef.current !== personCountry
+    ) {
+      setValue(`${namePrefix}.authType`, "");
+    }
+    prevCountryRef.current = personCountry;
+  }, [personCountry, namePrefix, setValue]);
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <KycFormRow>
@@ -126,7 +147,7 @@ export function PersonFields({
             <FormItem>
               <KycFormLabel fieldKey="person.country" />
               <FormControl>
-                <FormSelect {...field} options={REGISTER_REGIONS} />
+                <KycCountrySelect {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -139,8 +160,8 @@ export function PersonFields({
             <FormItem>
               <KycFormLabel fieldKey="person.authType" />
               <FormControl>
-                <Input
-                  placeholder={kycPlaceholder("person.authType")}
+                <KycAuthTypeSelect
+                  countryCode={personCountry}
                   {...field}
                 />
               </FormControl>
@@ -181,7 +202,7 @@ export function PersonFields({
               <FormItem>
                 <KycFormLabel fieldKey="person.residenceCountry" />
                 <FormControl>
-                  <FormSelect {...field} options={REGISTER_REGIONS} />
+                  <KycCountrySelect {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -212,7 +233,7 @@ export function PersonFields({
             <FormItem>
               <KycFormLabel fieldKey="person.residenceCountry" />
               <FormControl>
-                <FormSelect {...field} options={REGISTER_REGIONS} />
+                <KycCountrySelect {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

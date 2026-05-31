@@ -38,7 +38,7 @@ const enterpriseStepSchema = z.object({
 
 const managerStepSchema = z.object({
   managerCountry: z.string().min(1, "请选择管理人国籍"),
-  managerAuthType: z.string().min(1, "请填写证件类型"),
+  managerAuthType: z.string().min(1, "请选择证件类型"),
   managerIdHoldingPaths: z
     .array(z.string())
     .refine((arr) => arr.filter(Boolean).length >= 3, "请上传 3 张手持证件照"),
@@ -67,7 +67,7 @@ export const personSchema = z.object({
   country: z.string().min(1, "请选择国籍"),
   nameCHS: z.string().min(1, "请填写中文名"),
   surname: z.string().min(1, "请填写英文姓"),
-  authType: z.string().min(1, "请填写证件类型"),
+  authType: z.string().min(1, "请选择证件类型"),
   birthday: z.string().min(1, "请填写出生日期"),
   surnameCHS: z.string().min(1, "请填写中文姓氏"),
   certificateStart: z.string().optional(),

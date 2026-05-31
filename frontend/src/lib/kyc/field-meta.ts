@@ -206,7 +206,7 @@ export const KYC_FIELD_META: Record<KycFieldMetaKey, KycFieldMeta> = {
   managerAuthType: {
     label: "管理人证件类型",
     required: true,
-    placeholder: "证件类型编码（可咨询客服）",
+    placeholder: "请先选择国籍",
   },
   managerIdHolding: {
     label: "管理人手持证件照",
@@ -309,7 +309,7 @@ export const KYC_FIELD_META: Record<KycFieldMetaKey, KycFieldMeta> = {
   "person.authType": {
     label: "证件类型",
     required: true,
-    placeholder: "证件类型编码（可咨询客服）",
+    placeholder: "请先选择国籍",
   },
   "person.birthday": {
     label: "出生日期",

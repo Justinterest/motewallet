@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -225,6 +226,82 @@ func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, re
 	}
 
 	return nil
+}
+
+const (
+	kunCountriesPath   = "/rest/v2.0/customer/fiat/withdrawal/countries"
+	kunAuthTypesPath   = "/rest/v2.0/customer/country/auth/types"
+	kycCountryScene    = "REGISTER_ADDRESS"
+	kycCountryLanguage = "ZH_CN"
+)
+
+// ListKycCountries returns countries/regions for KYC address fields (Kun REGISTER_ADDRESS scene).
+func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, language string) (*dtoresp.CountryListResp, error) {
+	if scene == "" {
+		scene = kycCountryScene
+	}
+	if language == "" {
+		language = kycCountryLanguage
+	}
+
+	var items []kundto.CountryItem
+	if err := s.kunClient.Post(ctx, kunCountriesPath, &kundto.CountriesReq{
+		RequestNo: kun.GenerateRequestNo(),
+		Scene:     scene,
+		Language:  language,
+	}, &items); err != nil {
+		slog.Error("KUN list countries failed", slog.Any("error", err), slog.String("scene", scene))
+		return nil, bizerrors.ErrInternalError
+	}
+
+	resp := &dtoresp.CountryListResp{Items: make([]dtoresp.CountryOption, 0, len(items))}
+	for _, item := range items {
+		if item.CountryCode == "" {
+			continue
+		}
+		label := item.CountryName
+		if label == "" {
+			label = item.CountryCode
+		}
+		resp.Items = append(resp.Items, dtoresp.CountryOption{
+			CountryCode: item.CountryCode,
+			CountryName: label,
+		})
+	}
+	return resp, nil
+}
+
+// ListKycCountryAuthTypes returns document types for the given ISO country code.
+func (s *OnboardingService) ListKycCountryAuthTypes(ctx context.Context, countryCode string) (*dtoresp.CountryAuthTypesResp, error) {
+	countryCode = strings.TrimSpace(strings.ToUpper(countryCode))
+	if countryCode == "" {
+		return nil, bizerrors.NewBusinessError(http.StatusBadRequest, bizerrors.ErrValidation, "country_code is required")
+	}
+
+	var items []kundto.CountryAuthTypeItem
+	if err := s.kunClient.Post(ctx, kunAuthTypesPath, &kundto.CountryAuthTypesReq{
+		CountryCode: countryCode,
+		RequestNo:   kun.GenerateRequestNo(),
+	}, &items); err != nil {
+		slog.Error("KUN list country auth types failed", slog.Any("error", err), slog.String("countryCode", countryCode))
+		return nil, bizerrors.ErrInternalError
+	}
+
+	resp := &dtoresp.CountryAuthTypesResp{Items: make([]dtoresp.AuthTypeOption, 0, len(items))}
+	for _, item := range items {
+		if item.DocCode == "" {
+			continue
+		}
+		label := item.DocName
+		if label == "" {
+			label = item.DocCode
+		}
+		resp.Items = append(resp.Items, dtoresp.AuthTypeOption{
+			DocCode: item.DocCode,
+			DocName: label,
+		})
+	}
+	return resp, nil
 }
 
 func (s *OnboardingService) GetKycStatus(ctx context.Context, merchantID uint64) (*dtoresp.KycStatusResp, error) {

@@ -74,6 +74,8 @@ func Setup(
 		onboarding.GET("/kyc/status", onboardingHandler.GetKycStatus)
 		onboarding.POST("/files/presign", onboardingHandler.PresignKycFile)
 		onboarding.POST("/files/access", onboardingHandler.PresignKycFileAccess)
+		onboarding.GET("/countries", onboardingHandler.ListKycCountries)
+		onboarding.GET("/countries/:country_code/auth-types", onboardingHandler.ListKycCountryAuthTypes)
 	}
 
 	// --- Merchant protected: wallet/account ---

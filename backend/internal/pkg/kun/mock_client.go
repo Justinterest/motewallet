@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"motewallet/internal/config"
 	kundto "motewallet/internal/pkg/kun/dto"
@@ -54,6 +55,34 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 		mockData = []byte(`{"authId":"MOCK_AUTH_001"}`)
 	case "/rest/v2.0/customer/merchant/register/query":
 		mockData = []byte(`{"authStatus":"AUTH_SUC"}`)
+	case "/rest/v2.0/customer/fiat/withdrawal/countries":
+		mockData = []byte(`[
+			{"countryName":"中国香港","countryCode":"HK"},
+			{"countryName":"中国大陆","countryCode":"CN"},
+			{"countryName":"新加坡","countryCode":"SG"},
+			{"countryName":"美国","countryCode":"US"},
+			{"countryName":"英国","countryCode":"GB"}
+		]`)
+	case "/rest/v2.0/customer/country/auth/types":
+		countryCode := "HK"
+		if reqBody != nil {
+			var req kundto.CountryAuthTypesReq
+			if err := json.Unmarshal(reqJSON, &req); err == nil && req.CountryCode != "" {
+				countryCode = strings.ToUpper(req.CountryCode)
+			}
+		}
+		switch countryCode {
+		case "CN":
+			mockData = []byte(`[
+				{"docName":"身份证","docCode":"MOCK_CN_ID"},
+				{"docName":"护照","docCode":"MOCK_CN_PASSPORT"}
+			]`)
+		default:
+			mockData = []byte(`[
+				{"docName":"香港永久性居民身份证","docCode":"MOCK_HK_ID"},
+				{"docName":"护照","docCode":"MOCK_HK_PASSPORT"}
+			]`)
+		}
 	default:
 		mockData = []byte(`{}`)
 	}

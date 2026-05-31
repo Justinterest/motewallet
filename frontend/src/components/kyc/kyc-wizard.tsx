@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +24,9 @@ import {
 import { FormDatePicker } from "@/components/ui/date-picker";
 import { FormSelect } from "@/components/ui/form-select";
 import { Input } from "@/components/ui/input";
+import { KycAuthTypeSelect } from "@/components/kyc/kyc-auth-type-select";
+import { KycCountrySelect } from "@/components/kyc/kyc-country-select";
+import { KycReferenceProvider } from "@/components/kyc/kyc-reference-provider";
 import { KycFileUpload } from "@/components/kyc/kyc-file-upload";
 import { KycFormLabel, kycPlaceholder } from "@/components/kyc/kyc-form-label";
 import { CertificateValidityFields } from "@/components/kyc/certificate-validity-fields";
@@ -42,7 +45,6 @@ import {
   GENDERS,
   INDUSTRIES,
   OPEN_ACCOUNT_PURPOSES,
-  REGISTER_REGIONS,
   SALES_VOLUME_OPTIONS,
   WEALTH_SOURCES,
   YES_NO,
@@ -80,6 +82,7 @@ export function KycWizard() {
   const middleTierShareholders = form.watch(
     "enterpriseInfo.middleTierShareholders"
   );
+  const managerCountry = form.watch("enterpriseInfo.managerCountry");
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KYC_DRAFT_KEY);
@@ -108,6 +111,17 @@ export function KycWizard() {
       form.setValue("enterpriseInfo.equityStructurePaths", []);
     }
   }, [middleTierShareholders, form]);
+
+  const prevManagerCountryRef = useRef(managerCountry);
+  useEffect(() => {
+    if (
+      prevManagerCountryRef.current !== undefined &&
+      prevManagerCountryRef.current !== managerCountry
+    ) {
+      form.setValue("enterpriseInfo.managerAuthType", "");
+    }
+    prevManagerCountryRef.current = managerCountry;
+  }, [managerCountry, form]);
 
   function goToStep(index: number) {
     setStep(Math.max(0, Math.min(index, STEPS.length - 1)));
@@ -183,6 +197,7 @@ export function KycWizard() {
   }
 
   return (
+    <KycReferenceProvider>
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, focusFirstInvalidStep)}
@@ -319,7 +334,7 @@ export function KycWizard() {
                     <FormItem>
                       <KycFormLabel fieldKey="registerRegion" />
                       <FormControl>
-                        <FormSelect {...field} options={REGISTER_REGIONS} />
+                        <KycCountrySelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -721,7 +736,7 @@ export function KycWizard() {
                     <FormItem>
                       <KycFormLabel fieldKey="managerCountry" />
                       <FormControl>
-                        <FormSelect {...field} options={REGISTER_REGIONS} />
+                        <KycCountrySelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -734,8 +749,8 @@ export function KycWizard() {
                     <FormItem>
                       <KycFormLabel fieldKey="managerAuthType" />
                       <FormControl>
-                        <Input
-                          placeholder={kycPlaceholder("managerAuthType")}
+                        <KycAuthTypeSelect
+                          countryCode={managerCountry}
                           {...field}
                         />
                       </FormControl>
@@ -800,7 +815,7 @@ export function KycWizard() {
                     <FormItem>
                       <KycFormLabel fieldKey="managerResidenceCountry" />
                       <FormControl>
-                        <FormSelect {...field} options={REGISTER_REGIONS} />
+                        <KycCountrySelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1051,5 +1066,6 @@ export function KycWizard() {
         </div>
       </form>
     </Form>
+    </KycReferenceProvider>
   );
 }
