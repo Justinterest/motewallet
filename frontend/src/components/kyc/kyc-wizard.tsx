@@ -53,7 +53,7 @@ import { kycFormSchema, type KycFormValues } from "@/lib/validations/onboarding"
 import { useSubmitKyc } from "@/lib/hooks/use-onboarding";
 import { toast } from "@/hooks/use-toast";
 
-const STEPS = ["企业信息", "管理人信息", "股东与董事"] as const;
+const STEPS = ["企业信息", "管理人信息", "股东信息", "董事信息"] as const;
 
 export function KycWizard() {
   const router = useRouter();
@@ -112,6 +112,12 @@ export function KycWizard() {
     }
   }, [middleTierShareholders, form]);
 
+  useEffect(() => {
+    if (registerRegion !== "HK") {
+      form.setValue("enterpriseInfo.nnc1Paths", []);
+    }
+  }, [registerRegion, form]);
+
   const prevManagerCountryRef = useRef(managerCountry);
   useEffect(() => {
     if (
@@ -137,8 +143,11 @@ export function KycWizard() {
 
   function stepIndexForIssuePath(path: PropertyKey[]): number {
     const parts = path.map(String);
-    if (parts[0] === "shareholdersInfo" || parts[0] === "directorInfo") {
+    if (parts[0] === "shareholdersInfo") {
       return 2;
+    }
+    if (parts[0] === "directorInfo") {
+      return 3;
     }
     if (parts[0] === "enterpriseInfo" && parts[1]) {
       const key = parts[1];
@@ -146,8 +155,7 @@ export function KycWizard() {
         key.startsWith("manager") ||
         key === "authorizationLetterPaths" ||
         key === "equityStructurePaths" ||
-        key === "middleTierShareholders" ||
-        key === "nnc1Paths"
+        key === "middleTierShareholders"
       ) {
         return 1;
       }
@@ -160,7 +168,7 @@ export function KycWizard() {
     const result = kycFormSchema.safeParse(form.getValues());
     if (result.success) return;
 
-    let firstStep = 2;
+    let firstStep = STEPS.length - 1;
     result.error.issues.forEach((issue) => {
       firstStep = Math.min(firstStep, stepIndexForIssuePath(issue.path));
       const path = issue.path.join(".") as Parameters<typeof form.setError>[0];
@@ -648,6 +656,23 @@ export function KycWizard() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="enterpriseInfo.nnc1Paths"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormControl>
+                          <KycFileUpload
+                            label={getKycFieldMeta("nnc1").label + " *"}
+                            description={getKycFieldMeta("nnc1").description}
+                            paths={field.value ?? [""]}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </>
               )}
             </CardContent>
@@ -910,126 +935,124 @@ export function KycWizard() {
         )}
 
         {step === 2 && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">股东信息</CardTitle>
-                  <CardDescription>至少一名股东</CardDescription>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    shareholders.append({
-                      ...createKycFormDefaults().shareholdersInfo[0],
-                    })
-                  }
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  添加股东
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {shareholders.fields.map((field, index) => {
-                  const nameChs = form.watch(
-                    `shareholdersInfo.${index}.nameCHS`
-                  );
-                  const surnameChs = form.watch(
-                    `shareholdersInfo.${index}.surnameCHS`
-                  );
-                  const titleLabel =
-                    [surnameChs, nameChs].filter(Boolean).join("") ||
-                    `股东 ${index + 1}`;
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">股东信息</CardTitle>
+                <CardDescription>至少一名股东</CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  shareholders.append({
+                    ...createKycFormDefaults().shareholdersInfo[0],
+                  })
+                }
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                添加股东
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {shareholders.fields.map((field, index) => {
+                const nameChs = form.watch(`shareholdersInfo.${index}.nameCHS`);
+                const surnameChs = form.watch(
+                  `shareholdersInfo.${index}.surnameCHS`
+                );
+                const titleLabel =
+                  [surnameChs, nameChs].filter(Boolean).join("") ||
+                  `股东 ${index + 1}`;
 
-                  return (
-                    <CollapsibleSection
-                      key={field.id}
-                      title={titleLabel}
-                      defaultOpen={index === 0}
-                      actions={
-                        shareholders.fields.length > 1 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => shareholders.remove(index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        ) : undefined
-                      }
-                    >
-                      <PersonFields
-                        control={form.control}
-                        namePrefix={`shareholdersInfo.${index}`}
-                        showShareholding
-                      />
-                    </CollapsibleSection>
-                  );
-                })}
-              </CardContent>
-            </Card>
+                return (
+                  <CollapsibleSection
+                    key={field.id}
+                    title={titleLabel}
+                    defaultOpen={index === 0}
+                    actions={
+                      shareholders.fields.length > 1 ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => shareholders.remove(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      ) : undefined
+                    }
+                  >
+                    <PersonFields
+                      control={form.control}
+                      namePrefix={`shareholdersInfo.${index}`}
+                      showShareholding
+                    />
+                  </CollapsibleSection>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">董事信息</CardTitle>
-                  <CardDescription>至少一名董事</CardDescription>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    directors.append({
-                      ...createKycFormDefaults().directorInfo[0],
-                    })
-                  }
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  添加董事
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {directors.fields.map((field, index) => {
-                  const nameChs = form.watch(`directorInfo.${index}.nameCHS`);
-                  const surnameChs = form.watch(
-                    `directorInfo.${index}.surnameCHS`
-                  );
-                  const titleLabel =
-                    [surnameChs, nameChs].filter(Boolean).join("") ||
-                    `董事 ${index + 1}`;
+        {step === 3 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">董事信息</CardTitle>
+                <CardDescription>至少一名董事</CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  directors.append({
+                    ...createKycFormDefaults().directorInfo[0],
+                  })
+                }
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                添加董事
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {directors.fields.map((field, index) => {
+                const nameChs = form.watch(`directorInfo.${index}.nameCHS`);
+                const surnameChs = form.watch(
+                  `directorInfo.${index}.surnameCHS`
+                );
+                const titleLabel =
+                  [surnameChs, nameChs].filter(Boolean).join("") ||
+                  `董事 ${index + 1}`;
 
-                  return (
-                    <CollapsibleSection
-                      key={field.id}
-                      title={titleLabel}
-                      defaultOpen={index === 0}
-                      actions={
-                        directors.fields.length > 1 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => directors.remove(index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        ) : undefined
-                      }
-                    >
-                      <PersonFields
-                        control={form.control}
-                        namePrefix={`directorInfo.${index}`}
-                      />
-                    </CollapsibleSection>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </div>
+                return (
+                  <CollapsibleSection
+                    key={field.id}
+                    title={titleLabel}
+                    defaultOpen={index === 0}
+                    actions={
+                      directors.fields.length > 1 ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => directors.remove(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      ) : undefined
+                    }
+                  >
+                    <PersonFields
+                      control={form.control}
+                      namePrefix={`directorInfo.${index}`}
+                    />
+                  </CollapsibleSection>
+                );
+              })}
+            </CardContent>
+          </Card>
         )}
 
         <div className="flex justify-between gap-3">

@@ -279,6 +279,7 @@ export const KYC_FIELD_META: Record<KycFieldMetaKey, KycFieldMeta> = {
   },
   nnc1: {
     label: "NNC1 表格",
+    description: "注册地为香港时须上传公司成立表格 NNC1 扫描件。",
   },
   "person.gender": {
     label: "性别",

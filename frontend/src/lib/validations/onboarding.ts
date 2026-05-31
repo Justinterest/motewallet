@@ -109,6 +109,14 @@ export const kycFormSchema = kycFormBaseSchema
           path: ["enterpriseInfo", "businessRegistrationPaths"],
         });
       }
+      const nnc1Paths = data.enterpriseInfo.nnc1Paths;
+      if (!nnc1Paths || nnc1Paths.length === 0 || !nnc1Paths.some(Boolean)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "香港企业须上传 NNC1 表格",
+          path: ["enterpriseInfo", "nnc1Paths"],
+        });
+      }
     }
 
     if (data.enterpriseInfo.isChangeEnterpriseNameInFiveYears === "Yes") {
@@ -141,5 +149,8 @@ export const kycStep1Schema = z.object({ enterpriseInfo: managerStepSchema });
 
 export const kycStep2Schema = z.object({
   shareholdersInfo: kycFormBaseSchema.shape.shareholdersInfo,
+});
+
+export const kycStep3Schema = z.object({
   directorInfo: kycFormBaseSchema.shape.directorInfo,
 });

@@ -20,7 +20,7 @@ export default function KycStatusPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-3xl">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Skeleton className="mb-4 h-16 w-16 rounded-full" />
@@ -34,7 +34,7 @@ export default function KycStatusPage() {
 
   if (isError) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-3xl">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <XCircle className="mb-4 h-16 w-16 text-red-400" />
@@ -49,7 +49,7 @@ export default function KycStatusPage() {
 
   if (kycStatus === "AUTH_SUC") {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-3xl">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <CheckCircle2 className="mb-4 h-16 w-16 text-green-500" />
@@ -73,7 +73,7 @@ export default function KycStatusPage() {
 
   if (kycStatus === "AUTHING") {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-3xl">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent">
@@ -102,7 +102,7 @@ export default function KycStatusPage() {
 
   if (kycStatus === "AUTH_FAIL") {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-3xl">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <XCircle className="mb-4 h-16 w-16 text-red-500" />
