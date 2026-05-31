@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,29 +29,71 @@ import {
   registerSchema,
   type RegisterFormValues,
 } from "@/lib/validations/auth";
-import { useRegister } from "@/lib/hooks/use-auth";
+import { useRegister, useSendVerificationCode } from "@/lib/hooks/use-auth";
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [sendMessage, setSendMessage] = useState<string | null>(null);
   const registerMutation = useRegister();
+  const sendCodeMutation = useSendVerificationCode();
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       email: "",
+      verificationCode: "",
       password: "",
       confirmPassword: "",
       agreeTerms: false as unknown as true,
     },
   });
 
+  useEffect(() => {
+    if (countdown <= 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCountdown((value) => value - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
+
+  async function handleSendCode() {
+    setSendMessage(null);
+
+    const emailValid = await form.trigger("email");
+    if (!emailValid) {
+      return;
+    }
+
+    const email = form.getValues("email");
+    sendCodeMutation.mutate(email, {
+      onSuccess: () => {
+        setSendMessage("验证码已发送，请查收邮件");
+        setCountdown(RESEND_COOLDOWN_SECONDS);
+      },
+      onError: (error) => {
+        setSendMessage(error.message || "验证码发送失败，请稍后重试");
+      },
+    });
+  }
+
   function onSubmit(values: RegisterFormValues) {
     registerMutation.mutate({
       email: values.email,
       password: values.password,
+      verification_code: values.verificationCode,
     });
   }
+
+  const canSendCode =
+    countdown === 0 && !sendCodeMutation.isPending;
 
   return (
     <Card>
@@ -80,6 +122,55 @@ export default function RegisterPage() {
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="verificationCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>邮箱验证码</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="请输入 6 位验证码"
+                        maxLength={6}
+                        className="flex-1"
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0"
+                      disabled={!canSendCode}
+                      onClick={handleSendCode}
+                    >
+                      {sendCodeMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : countdown > 0 ? (
+                        `${countdown}s`
+                      ) : (
+                        "获取验证码"
+                      )}
+                    </Button>
+                  </div>
+                  {sendMessage && (
+                    <p
+                      className={
+                        sendCodeMutation.isError
+                          ? "text-sm text-red-600"
+                          : "text-sm text-slate-500"
+                      }
+                    >
+                      {sendMessage}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

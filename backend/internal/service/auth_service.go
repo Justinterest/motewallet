@@ -10,26 +10,32 @@ import (
 	dtoresp "motewallet/internal/dto/response"
 	"motewallet/internal/model"
 	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/email"
 	"motewallet/internal/pkg/jwt"
 	"motewallet/internal/pkg/kun"
 	kundto "motewallet/internal/pkg/kun/dto"
 	"motewallet/internal/pkg/utils"
+	"motewallet/internal/pkg/verification"
 	"motewallet/internal/repository"
 )
 
 type AuthService struct {
-	cfg             *config.Config
-	merchantRepo    repository.MerchantRepository
-	feeTemplateRepo repository.FeeTemplateRepository
-	kunClient       kun.KUNClient
+	cfg               *config.Config
+	merchantRepo      repository.MerchantRepository
+	feeTemplateRepo   repository.FeeTemplateRepository
+	kunClient         kun.KUNClient
+	verificationStore *verification.Store
+	emailSender       *email.Sender
 }
 
-func NewAuthService(cfg *config.Config, merchantRepo repository.MerchantRepository, feeTemplateRepo repository.FeeTemplateRepository, kunClient kun.KUNClient) *AuthService {
+func NewAuthService(cfg *config.Config, merchantRepo repository.MerchantRepository, feeTemplateRepo repository.FeeTemplateRepository, kunClient kun.KUNClient, emailSender *email.Sender) *AuthService {
 	return &AuthService{
-		cfg:             cfg,
-		merchantRepo:    merchantRepo,
-		feeTemplateRepo: feeTemplateRepo,
-		kunClient:       kunClient,
+		cfg:               cfg,
+		merchantRepo:      merchantRepo,
+		feeTemplateRepo:   feeTemplateRepo,
+		kunClient:         kunClient,
+		verificationStore: verification.NewStore(),
+		emailSender:       emailSender,
 	}
 }
 
@@ -38,7 +44,45 @@ type RegisterResult struct {
 	Merchant *dtoresp.MerchantInfoResp
 }
 
-func (s *AuthService) Register(ctx context.Context, email, password string) (*RegisterResult, error) {
+func (s *AuthService) SendVerificationCode(ctx context.Context, emailAddr string) error {
+	existing, err := s.merchantRepo.FindByEmail(ctx, emailAddr)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerrors.ErrInternalError
+	}
+	if existing != nil {
+		return bizerrors.ErrEmailAlreadyExistsError
+	}
+
+	code, retryAfter, err := s.verificationStore.Issue(emailAddr)
+	if err != nil {
+		if errors.Is(err, verification.ErrSendTooFrequent) {
+			slog.Debug("verification code send throttled",
+				slog.String("email", emailAddr),
+				slog.Duration("retry_after", retryAfter),
+			)
+			return bizerrors.ErrVerificationSendTooFrequentE
+		}
+		return bizerrors.ErrInternalError
+	}
+
+	if err := s.emailSender.SendVerificationCode(emailAddr, code); err != nil {
+		slog.Error("failed to send verification email", slog.String("email", emailAddr), slog.Any("error", err))
+		return bizerrors.ErrInternalError
+	}
+
+	return nil
+}
+
+func (s *AuthService) Register(ctx context.Context, email, password, verificationCode string) (*RegisterResult, error) {
+	if err := s.verificationStore.Verify(email, verificationCode); err != nil {
+		switch {
+		case errors.Is(err, verification.ErrExpiredCode):
+			return nil, bizerrors.ErrVerificationCodeExpiredE
+		default:
+			return nil, bizerrors.ErrInvalidVerificationCodeE
+		}
+	}
+
 	existing, err := s.merchantRepo.FindByEmail(ctx, email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, bizerrors.ErrInternalError

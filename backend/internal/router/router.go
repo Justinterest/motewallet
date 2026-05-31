@@ -39,6 +39,7 @@ func Setup(
 	// --- Public routes ---
 	authPublic := v1.Group("/auth")
 	{
+		authPublic.POST("/send-verification-code", authHandler.SendVerificationCode)
 		authPublic.POST("/register", authHandler.Register)
 		authPublic.POST("/login", authHandler.Login)
 	}

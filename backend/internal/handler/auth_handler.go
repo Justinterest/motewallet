@@ -24,6 +24,25 @@ func NewAuthHandler(cfg *config.Config, authService *service.AuthService) *AuthH
 	}
 }
 
+func (h *AuthHandler) SendVerificationCode(c *gin.Context) {
+	var req dtoreq.SendVerificationCodeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	if err := h.authService.SendVerificationCode(c.Request.Context(), req.Email); err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, nil)
+}
+
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req dtoreq.RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -31,7 +50,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	result, err := h.authService.Register(c.Request.Context(), req.Email, req.Password)
+	result, err := h.authService.Register(c.Request.Context(), req.Email, req.Password, req.VerificationCode)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)

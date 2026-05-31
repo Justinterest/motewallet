@@ -6,6 +6,9 @@ import "net/http"
 const (
 	ErrInvalidCredentials          = 10001
 	ErrEmailAlreadyExists          = 10002
+	ErrInvalidVerificationCode     = 10008
+	ErrVerificationCodeExpired     = 10009
+	ErrVerificationSendTooFrequent = 10015
 	ErrInvalidToken                = 10003
 	ErrUnauthorized                = 10004
 	ErrForbidden                   = 10005
@@ -52,6 +55,9 @@ func NewBusinessError(httpStatus, code int, message string) *BusinessError {
 var (
 	ErrInvalidCredentialsError      = NewBusinessError(http.StatusUnauthorized, ErrInvalidCredentials, "invalid email or password")
 	ErrEmailAlreadyExistsError      = NewBusinessError(http.StatusConflict, ErrEmailAlreadyExists, "email already exists")
+	ErrInvalidVerificationCodeE     = NewBusinessError(http.StatusBadRequest, ErrInvalidVerificationCode, "invalid verification code")
+	ErrVerificationCodeExpiredE     = NewBusinessError(http.StatusBadRequest, ErrVerificationCodeExpired, "verification code expired")
+	ErrVerificationSendTooFrequentE = NewBusinessError(http.StatusTooManyRequests, ErrVerificationSendTooFrequent, "verification code sent too frequently")
 	ErrInvalidTokenError            = NewBusinessError(http.StatusUnauthorized, ErrInvalidToken, "invalid or expired token")
 	ErrUnauthorizedError            = NewBusinessError(http.StatusUnauthorized, ErrUnauthorized, "unauthorized")
 	ErrForbiddenError               = NewBusinessError(http.StatusForbidden, ErrForbidden, "forbidden")

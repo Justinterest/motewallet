@@ -38,6 +38,12 @@ export function useLogin() {
   });
 }
 
+export function useSendVerificationCode() {
+  return useMutation({
+    mutationFn: (email: string) => authApi.sendVerificationCode({ email }),
+  });
+}
+
 export function useRegister() {
   const router = useRouter();
   const queryClient = useQueryClient();

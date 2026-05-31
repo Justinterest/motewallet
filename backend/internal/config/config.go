@@ -41,6 +41,16 @@ type S3Config struct {
 	PresignExpiry   time.Duration
 }
 
+type DirectMailConfig struct {
+	AccessKeyID     string
+	AccessKeySecret string
+	Region          string
+	Endpoint        string
+	AccountName     string
+	FromAlias       string
+	TagName         string
+}
+
 type KUNConfig struct {
 	// AppKey is the "App-Key" request header required by KUN.
 	AppKey string
@@ -64,6 +74,7 @@ type Config struct {
 	DB       DBConfig
 	JWT      JWTConfig
 	Frontend FrontendConfig
+	DirectMail DirectMailConfig
 	S3       S3Config
 	KUN      KUNConfig
 }
@@ -100,6 +111,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("S3_PREFIX", "motewallet")
 	viper.SetDefault("S3_PRESIGN_EXPIRY", "15m")
 	viper.SetDefault("S3_FORCE_PATH_STYLE", false)
+	viper.SetDefault("ALIYUN_DM_REGION", "cn-hangzhou")
 
 	// Ignore error if .env file doesn't exist — env vars still work
 	_ = viper.ReadInConfig()
@@ -149,6 +161,15 @@ func Load() (*Config, error) {
 		Frontend: FrontendConfig{
 			URL:      viper.GetString("FRONTEND_URL"),
 			AdminURL: viper.GetString("ADMIN_URL"),
+		},
+		DirectMail: DirectMailConfig{
+			AccessKeyID:     viper.GetString("ALIYUN_ACCESS_KEY_ID"),
+			AccessKeySecret: viper.GetString("ALIYUN_ACCESS_KEY_SECRET"),
+			Region:          viper.GetString("ALIYUN_DM_REGION"),
+			Endpoint:        viper.GetString("ALIYUN_DM_ENDPOINT"),
+			AccountName:     viper.GetString("ALIYUN_DM_ACCOUNT_NAME"),
+			FromAlias:       viper.GetString("ALIYUN_DM_FROM_ALIAS"),
+			TagName:         viper.GetString("ALIYUN_DM_TAG_NAME"),
 		},
 		S3: S3Config{
 			Region:          viper.GetString("S3_REGION"),

@@ -11,6 +11,7 @@ import (
 
 	"motewallet/internal/config"
 	"motewallet/internal/handler"
+	"motewallet/internal/pkg/email"
 	"motewallet/internal/pkg/kun"
 	"motewallet/internal/pkg/storage"
 	"motewallet/internal/repository"
@@ -84,8 +85,24 @@ func main() {
 		slog.Warn("S3 storage is not configured; KYC file upload will be unavailable")
 	}
 
+	emailSender, err := email.NewSender(email.Config{
+		AccessKeyID:     cfg.DirectMail.AccessKeyID,
+		AccessKeySecret: cfg.DirectMail.AccessKeySecret,
+		Region:          cfg.DirectMail.Region,
+		Endpoint:        cfg.DirectMail.Endpoint,
+		AccountName:     cfg.DirectMail.AccountName,
+		FromAlias:       cfg.DirectMail.FromAlias,
+		TagName:         cfg.DirectMail.TagName,
+	})
+	if err != nil {
+		log.Fatalf("failed to init DirectMail sender: %v", err)
+	}
+	if !emailSender.Enabled() {
+		slog.Warn("Aliyun DirectMail is not configured; verification codes will be logged to console")
+	}
+
 	// Services
-	authService := service.NewAuthService(cfg, merchantRepo, feeTemplateRepo, kunClient)
+	authService := service.NewAuthService(cfg, merchantRepo, feeTemplateRepo, kunClient, emailSender)
 	adminAuthService := service.NewAdminAuthService(cfg, adminUserRepo)
 	walletService := service.NewWalletService(merchantWalletRepo)
 	kycFileService := service.NewKycFileService(cfg, merchantRepo, s3Storage, kunClient)
