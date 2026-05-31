@@ -229,10 +229,11 @@ func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, re
 }
 
 const (
-	kunCountriesPath   = "/rest/v2.0/customer/fiat/withdrawal/countries"
-	kunAuthTypesPath   = "/rest/v2.0/customer/country/auth/types"
-	kycCountryScene    = "REGISTER_ADDRESS"
-	kycCountryLanguage = "ZH_CN"
+	kunCountriesPath          = "/rest/v2.0/customer/fiat/withdrawal/countries"
+	kunAuthTypesPath          = "/rest/v2.0/customer/country/auth/types"
+	kunSubMerchantAuthQueryPath = "/rest/v2.0/customer/merchant/register/query"
+	kycCountryScene           = "REGISTER_ADDRESS"
+	kycCountryLanguage        = "ZH_CN"
 )
 
 // ListKycCountries returns countries/regions for KYC address fields (Kun REGISTER_ADDRESS scene).
@@ -313,6 +314,20 @@ func (s *OnboardingService) GetKycStatus(ctx context.Context, merchantID uint64)
 		return nil, bizerrors.ErrInternalError
 	}
 
+	if merchant.KycStatus == "AUTHING" && merchant.KycAuthID != nil && *merchant.KycAuthID != "" {
+		if syncErr := s.syncKycStatusFromKun(ctx, merchant); syncErr != nil {
+			slog.Error("KUN sub-merchant authentication result query failed", slog.Any("error", syncErr), slog.Uint64("merchant_id", merchantID))
+		} else {
+			merchant, err = s.merchantRepo.FindByID(ctx, merchantID)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return nil, bizerrors.ErrNotFoundError
+				}
+				return nil, bizerrors.ErrInternalError
+			}
+		}
+	}
+
 	return &dtoresp.KycStatusResp{
 		Status:            merchant.Status,
 		KycStatus:         merchant.KycStatus,
@@ -329,6 +344,12 @@ func (s *OnboardingService) PollKycStatus(ctx context.Context, merchantID uint64
 		return err
 	}
 
+	return s.syncKycStatusFromKun(ctx, merchant)
+}
+
+// syncKycStatusFromKun queries KUN sub-merchant authentication result and updates local merchant state.
+// See: https://opendocs.kun.global/docs/api/sub-merchant-authentication-result-query
+func (s *OnboardingService) syncKycStatusFromKun(ctx context.Context, merchant *model.Merchant) error {
 	if merchant.KunSubCustomerNo == nil {
 		return bizerrors.ErrMerchantNotRegisteredE
 	}
@@ -337,9 +358,14 @@ func (s *OnboardingService) PollKycStatus(ctx context.Context, merchantID uint64
 		return nil
 	}
 
+	if merchant.KycAuthID == nil || *merchant.KycAuthID == "" {
+		return nil
+	}
+
 	var queryResp kundto.MerchantRegisterQueryResp
-	if err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, "/rest/v2.0/customer/merchant/register/query", &kundto.MerchantRegisterQueryReq{
-		SubCustomerNo: *merchant.KunSubCustomerNo,
+	if err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kunSubMerchantAuthQueryPath, &kundto.MerchantRegisterQueryReq{
+		RequestNo: kun.GenerateRequestNo(),
+		AuthID:    *merchant.KycAuthID,
 	}, &queryResp); err != nil {
 		return err
 	}
@@ -347,24 +373,22 @@ func (s *OnboardingService) PollKycStatus(ctx context.Context, merchantID uint64
 	now := time.Now()
 	switch queryResp.AuthStatus {
 	case "AUTH_SUC":
-		err = s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
+		if err := s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
 			"status":           "ACTIVE",
 			"kyc_status":       "AUTH_SUC",
 			"kyc_completed_at": now,
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 		return s.walletSvc.InitializeWallets(ctx, merchant.ID)
 	case "AUTH_FAIL":
-		failReason := queryResp.FailReason
 		fields := map[string]interface{}{
 			"status":           "KYC_FAILED",
 			"kyc_status":       "AUTH_FAIL",
 			"kyc_completed_at": now,
 		}
-		if failReason != "" {
-			fields["kyc_fail_reason"] = failReason
+		if queryResp.FailReason != "" {
+			fields["kyc_fail_reason"] = queryResp.FailReason
 		}
 		return s.merchantRepo.UpdateFields(ctx, merchant.ID, fields)
 	}

@@ -120,10 +120,15 @@ type AgreeAuthReq struct {
 	ProtocolIds   string `json:"protocolIds"`
 }
 
+// MerchantRegisterQueryReq is the request body for POST /rest/v2.0/customer/merchant/register/query.
+// See: https://opendocs.kun.global/docs/api/sub-merchant-authentication-result-query
 type MerchantRegisterQueryReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
+	RequestNo string `json:"requestNo"`
+	AuthID    string `json:"authId"`
 }
 
+// MerchantRegisterQueryResp is the data payload for sub-merchant authentication result query.
+// authStatus: AUTHING | AUTH_SUC | AUTH_FAIL
 type MerchantRegisterQueryResp struct {
 	AuthStatus string `json:"authStatus"`
 	FailReason string `json:"failReason,omitempty"`
