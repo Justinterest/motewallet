@@ -19,6 +19,7 @@ func Setup(
 	webhookHandler *handler.WebhookHandler,
 	addressHandler *handler.AddressHandler,
 	depositHandler *handler.DepositHandler,
+	adminDepositHandler *handler.AdminDepositHandler,
 	withdrawalHandler *handler.WithdrawalHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	transferHandler *handler.TransferHandler,
@@ -149,6 +150,13 @@ func Setup(
 		adminMerchants.PUT("/:id/fee-template", merchantMgmtHandler.UpdateFeeTemplate)
 		adminMerchants.POST("/:id/kyc/approve", merchantMgmtHandler.ApproveKyc)
 		adminMerchants.POST("/:id/kyc/reject", merchantMgmtHandler.RejectKyc)
+	}
+
+	// --- Admin protected: crypto deposits ---
+	adminDeposits := v1.Group("/admin/deposits")
+	adminDeposits.Use(middleware.AdminAuth(cfg.JWT.Secret))
+	{
+		adminDeposits.GET("", adminDepositHandler.List)
 	}
 
 	// --- Admin protected: withdrawal review ---

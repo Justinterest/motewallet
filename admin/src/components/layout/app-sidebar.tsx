@@ -8,6 +8,7 @@ import {
   Receipt,
   Activity,
   ClipboardCheck,
+  ArrowDownToLine,
   Settings,
   Users,
   FileText,
@@ -51,6 +52,11 @@ const mainNavItems = [
 ];
 
 const operationNavItems = [
+  {
+    title: "数币充值记录",
+    href: "/deposits",
+    icon: ArrowDownToLine,
+  },
   {
     title: "提现审核",
     href: "/withdrawals",

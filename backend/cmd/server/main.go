@@ -111,6 +111,7 @@ func main() {
 	merchantMgmtService := service.NewMerchantManagementService(merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo)
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
 	depositService := service.NewDepositService(kunClient, merchantRepo)
+	adminDepositService := service.NewAdminDepositService(depositOrderRepo)
 	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, kunClient)
 	exchangeService := service.NewExchangeService(db, merchantRepo, walletService, exchangeOrderRepo, transactionRecordRepo, exchangeItemRepo, kunClient)
 	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient)
@@ -127,6 +128,7 @@ func main() {
 	webhookHandler := handler.NewWebhookHandler(webhookService)
 	addressHandler := handler.NewAddressHandler(addressService)
 	depositHandler := handler.NewDepositHandler(depositService)
+	adminDepositHandler := handler.NewAdminDepositHandler(adminDepositService)
 	withdrawalHandler := handler.NewWithdrawalHandler(withdrawalService)
 	exchangeHandler := handler.NewExchangeHandler(exchangeService)
 	transferHandler := handler.NewTransferHandler(transferService)
@@ -144,6 +146,7 @@ func main() {
 		webhookHandler,
 		addressHandler,
 		depositHandler,
+		adminDepositHandler,
 		withdrawalHandler,
 		exchangeHandler,
 		transferHandler,
