@@ -5,15 +5,15 @@ import "time"
 type DepositAddressResp struct {
 	Address  string `json:"address"`
 	Currency string `json:"currency"`
-	Chain    string `json:"chain"`
+	Network  string `json:"network"`
 }
 
 type DepositOrderResp struct {
-	ID        uint64    `json:"id"`
+	ID        string    `json:"id"`
 	Currency  string    `json:"currency"`
-	Chain     string    `json:"chain"`
+	Network   string    `json:"network"`
 	Amount    string    `json:"amount"`
-	TxID      *string   `json:"tx_id,omitempty"`
+	TxHash    *string   `json:"tx_hash,omitempty"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }

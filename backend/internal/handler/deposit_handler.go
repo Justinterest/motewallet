@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	dtoreq "motewallet/internal/dto/request"
@@ -54,10 +53,22 @@ func (h *DepositHandler) ListDepositOrders(c *gin.Context) {
 		return
 	}
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	var req dtoreq.ListDepositOrdersReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
 
-	result, err := h.depositService.ListDepositOrders(c.Request.Context(), userID.(uint64), page, pageSize)
+	page := req.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	result, err := h.depositService.ListDepositOrders(c.Request.Context(), userID.(uint64), req.Currency, req.Chain, page, pageSize)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)

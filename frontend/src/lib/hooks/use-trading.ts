@@ -9,10 +9,11 @@ export function useDepositAddresses(currency: string, chain: string) {
   });
 }
 
-export function useDepositOrders(page = 1) {
+export function useDepositOrders(currency?: string, chain?: string, page = 1) {
   return useQuery({
-    queryKey: ["deposit", "orders", page],
-    queryFn: () => tradingApi.listDepositOrders(page),
+    queryKey: ["deposit", "orders", currency, chain, page],
+    queryFn: () => tradingApi.listDepositOrders({ page, currency, chain }),
+    refetchInterval: 30_000,
   });
 }
 

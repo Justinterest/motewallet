@@ -110,7 +110,7 @@ func main() {
 	feeTemplateService := service.NewFeeTemplateService(db, feeTemplateRepo, exchangeItemRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, auditLogRepo)
 	merchantMgmtService := service.NewMerchantManagementService(merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo)
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
-	depositService := service.NewDepositService(kunClient, merchantRepo, depositOrderRepo)
+	depositService := service.NewDepositService(kunClient, merchantRepo)
 	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, kunClient)
 	exchangeService := service.NewExchangeService(db, merchantRepo, walletService, exchangeOrderRepo, transactionRecordRepo, exchangeItemRepo, kunClient)
 	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient)

@@ -45,7 +45,7 @@ export default function TransactionsPage() {
           <TxRow
             key={o.id}
             title={`${formatAmount(o.amount, o.currency)} ${o.currency}`}
-            sub={`${o.chain} · ${new Date(o.created_at).toLocaleString("zh-CN")}`}
+            sub={`${o.network} · ${new Date(o.created_at).toLocaleString("zh-CN")}`}
             status={o.status}
           />
         ));

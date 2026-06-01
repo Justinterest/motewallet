@@ -1,15 +1,15 @@
 export interface DepositAddress {
   address: string;
   currency: string;
-  chain: string;
+  network: string;
 }
 
 export interface DepositOrder {
-  id: number;
+  id: string;
   currency: string;
-  chain: string;
+  network: string;
   amount: string;
-  tx_id?: string;
+  tx_hash?: string;
   status: string;
   created_at: string;
 }

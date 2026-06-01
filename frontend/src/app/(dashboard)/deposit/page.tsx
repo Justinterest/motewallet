@@ -13,6 +13,7 @@ import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDepositAddresses, useDepositOrders } from "@/lib/hooks/use-trading";
 import { formatAmount } from "@/lib/utils/format";
+import { DEPOSIT_NETWORKS, formatDepositStatus } from "@/lib/utils/network";
 
 const currencies = [
   { value: "USDT", label: "USDT" },
@@ -20,27 +21,16 @@ const currencies = [
   { value: "BTC", label: "BTC" },
 ];
 
-const chains: Record<string, { value: string; label: string }[]> = {
-  USDT: [
-    { value: "TRC20", label: "TRC20 (Tron)" },
-    { value: "ERC20", label: "ERC20 (Ethereum)" },
-  ],
-  USDC: [
-    { value: "ERC20", label: "ERC20 (Ethereum)" },
-    { value: "TRC20", label: "TRC20 (Tron)" },
-  ],
-  BTC: [{ value: "BTC", label: "Bitcoin" }],
-};
-
 export default function DepositPage() {
   const [currency, setCurrency] = useState("USDT");
-  const [chain, setChain] = useState("TRC20");
+  const [chain, setChain] = useState("TRX_TRC20");
   const [copied, setCopied] = useState(false);
 
   const { data: addressData, isLoading: addressLoading } = useDepositAddresses(currency, chain);
-  const { data: ordersData, isLoading: ordersLoading } = useDepositOrders();
+  const { data: ordersData, isLoading: ordersLoading } = useDepositOrders(currency, chain);
 
   const orders = ordersData?.orders || [];
+  const networks = DEPOSIT_NETWORKS[currency] || [];
 
   function handleCopy(text: string) {
     navigator.clipboard.writeText(text);
@@ -55,7 +45,7 @@ export default function DepositPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">获取充值地址</CardTitle>
+            <CardTitle className="text-base">充值地址</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -64,18 +54,18 @@ export default function DepositPage() {
                 value={currency}
                 onValueChange={(value) => {
                   setCurrency(value);
-                  setChain(chains[value]?.[0]?.value || "");
+                  setChain(DEPOSIT_NETWORKS[value]?.[0]?.value || "");
                 }}
                 options={currencies}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">链/网络</label>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">网络</label>
               <SimpleSelect
                 value={chain}
                 onValueChange={setChain}
-                options={chains[currency] || []}
+                options={networks}
               />
             </div>
 
@@ -83,8 +73,11 @@ export default function DepositPage() {
               <Skeleton className="h-20 w-full" />
             ) : addressData?.address ? (
               <div className="rounded-lg border bg-slate-50 p-4">
-                <p className="mb-1 text-xs text-slate-500">充值地址</p>
+                <p className="mb-1 text-xs text-slate-500">收款地址</p>
                 <p className="break-all font-mono text-sm text-slate-900">{addressData.address}</p>
+                {addressData.network && (
+                  <p className="mt-1 text-xs text-slate-500">网络：{addressData.network}</p>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -98,6 +91,11 @@ export default function DepositPage() {
             ) : (
               <p className="text-sm text-slate-400">暂无可用地址</p>
             )}
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <p>请仅向该地址转入所选币种，并确认网络与上方选择一致。</p>
+              <p className="mt-1">到账后余额将自动更新，一般需要等待区块确认。</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -121,9 +119,26 @@ export default function DepositPage() {
                       <p className="text-sm font-medium text-slate-900">
                         {formatAmount(order.amount, order.currency)} {order.currency}
                       </p>
-                      <p className="text-xs text-slate-500">{order.chain} · {new Date(order.created_at).toLocaleString("zh-CN")}</p>
+                      <p className="text-xs text-slate-500">
+                        {order.network} · {new Date(order.created_at).toLocaleString("zh-CN")}
+                      </p>
+                      {order.tx_hash && (
+                        <p className="mt-0.5 truncate text-xs text-slate-400" title={order.tx_hash}>
+                          交易哈希：{order.tx_hash}
+                        </p>
+                      )}
                     </div>
-                    <span className="text-xs font-medium text-green-600">{order.status}</span>
+                    <span
+                      className={`text-xs font-medium ${
+                        order.status === "COMPLETED" || order.status === "SUCCESS"
+                          ? "text-green-600"
+                          : order.status === "FAILED"
+                            ? "text-red-600"
+                            : "text-amber-600"
+                      }`}
+                    >
+                      {formatDepositStatus(order.status)}
+                    </span>
                   </div>
                 ))}
               </div>

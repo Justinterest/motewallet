@@ -144,7 +144,7 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 		}
 	}
 
-	if kunResp.Code != "200" {
+	if kunResp.Code != "200" && kunResp.Code != "000000" {
 		return &KUNError{
 			Code:    kunResp.Code,
 			Message: kunResp.Msg,

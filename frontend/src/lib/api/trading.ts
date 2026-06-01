@@ -12,8 +12,12 @@ export const tradingApi = {
   // Deposit
   getDepositAddresses: (currency: string, chain: string) =>
     apiClient.get<never, DepositAddress>("/api/v1/deposit/addresses", { params: { currency, chain } }),
-  listDepositOrders: (page = 1, pageSize = 20) =>
-    apiClient.get<never, DepositOrderListResponse>("/api/v1/deposit/orders", { params: { page, page_size: pageSize } }),
+  listDepositOrders: (params?: { page?: number; pageSize?: number; currency?: string; chain?: string }) => {
+    const { page = 1, pageSize = 20, currency, chain } = params ?? {};
+    return apiClient.get<never, DepositOrderListResponse>("/api/v1/deposit/orders", {
+      params: { page, page_size: pageSize, currency, chain },
+    });
+  },
 
   // Withdrawal
   submitCryptoWithdrawal: (data: { currency: string; chain: string; amount: string; to_address: string }) =>

@@ -1,15 +1,77 @@
 package dto
 
-type DepositAddressReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	Currency      string `json:"currency"`
-	Chain         string `json:"chain"`
+// DepositAddressListReq is the body for POST /rest/v2.0/customer/crypto/deposit/addresses.
+// See: https://opendocs.kun.global/docs/api/crypto-deposit-address-list-query
+type DepositAddressListReq struct {
+	RequestNo string `json:"requestNo"`
+	Currency  string `json:"currency"`
+	ChainType string `json:"chainType"`
 }
 
-type DepositAddressResp struct {
-	Address  string `json:"address"`
-	Chain    string `json:"chain"`
-	Currency string `json:"currency"`
+type DepositAddressItem struct {
+	Address   string `json:"address"`
+	Currency  string `json:"currency"`
+	ChainType string `json:"chainType"`
+	Chain     string `json:"chain"`
+}
+
+// DepositHistoryQueryReq is the body for POST /rest/v2.0/trade/digital/wallet/query/recharge.
+// See: https://opendocs.kun.global/docs/api/crypto-deposit-history-query
+type DepositHistoryQueryReq struct {
+	StartTime     string `json:"startTime"`
+	EndTime       string `json:"endTime"`
+	OrderCurrency string `json:"orderCurrency,omitempty"`
+	Chain         string `json:"chain,omitempty"`
+	OrderID       string `json:"orderId,omitempty"`
+	PageNo        int    `json:"pageNo"`
+	PageSize      int    `json:"pageSize"`
+}
+
+type DepositHistoryRecord struct {
+	OrderID              string `json:"orderId"`
+	CustomerID           string `json:"customerId"`
+	OrderCurrency        string `json:"orderCurrency"`
+	OrderAmount          string `json:"orderAmount"`
+	Chain                string `json:"chain"`
+	TxID                 string `json:"txId"`
+	NetworkConfirmNumber string `json:"networkConfirmNumber"`
+	OrderTime            string `json:"orderTime"`
+	UpdateTime           string `json:"updateTime"`
+	FeeCurrency          string `json:"feeCurrency"`
+	FeeAmount            string `json:"feeAmount"`
+	OrderStatus          string `json:"orderStatus"`
+	SendWalletAddress    string `json:"sendWalletAddress"`
+	ReceiveWalletAddress string `json:"receiveWalletAddress"`
+	ErrorCode            string `json:"errorCode,omitempty"`
+	ErrorMessage         string `json:"errorMessage,omitempty"`
+}
+
+type DepositHistoryQueryResp struct {
+	PageNo      int                    `json:"pageNo"`
+	PageSize    int                    `json:"pageSize"`
+	PageCount   int                    `json:"pageCount"`
+	RecordCount int                    `json:"recordCount"`
+	Records     []DepositHistoryRecord `json:"records"`
+	TotalSize   int                    `json:"totalSize"`
+	TotalPage   int                    `json:"totalPage"`
+	Rows        []DepositHistoryRecord `json:"rows"`
+}
+
+func (r *DepositHistoryQueryResp) Items() []DepositHistoryRecord {
+	if len(r.Rows) > 0 {
+		return r.Rows
+	}
+	return r.Records
+}
+
+func (r *DepositHistoryQueryResp) Total() int64 {
+	if r.TotalSize > 0 {
+		return int64(r.TotalSize)
+	}
+	if r.RecordCount > 0 {
+		return int64(r.RecordCount)
+	}
+	return int64(len(r.Items()))
 }
 
 type BalanceQueryReq struct {

@@ -83,6 +83,25 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 				{"docName":"护照","docCode":"MOCK_HK_PASSPORT"}
 			]`)
 		}
+	case "/rest/v2.0/customer/crypto/deposit/addresses":
+		mockData = []byte(`[
+			{"address":"TMockDepositAddress123456789","currency":"USDT","chainType":"TRX_TRC20","chain":"Tron"},
+			{"address":"0xMockDepositAddress1234567890abcdef","currency":"USDT","chainType":"ETH_ERC20","chain":"Ethereum"}
+		]`)
+	case "/rest/v2.0/trade/digital/wallet/query/recharge":
+		mockData = []byte(`{
+			"totalSize": 1,
+			"totalPage": 1,
+			"rows": [{
+				"orderId": "MOCK_DEP_001",
+				"orderCurrency": "USDT",
+				"orderAmount": "100.00000000",
+				"chain": "TRX_TRC20",
+				"txId": "mock_tx_id",
+				"orderTime": "2025-11-18 10:07:41",
+				"orderStatus": "SUCCESS"
+			}]
+		}`)
 	default:
 		mockData = []byte(`{}`)
 	}
