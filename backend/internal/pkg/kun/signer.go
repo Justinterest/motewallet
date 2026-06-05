@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,13 +16,13 @@ import (
 // CanonicalizeAndSignRequest builds the KUN signature string and signs it using SHA256withRSA.
 //
 // Doc rules (high level):
-// - Business params: top-level fields of query/form/json body participate in signature.
-// - System params: Customer-No and Timestamp headers MUST participate in signature as:
-//   Customer-No -> customerNo, Timestamp -> timestamp
-// - Do NOT include Sign itself in the signature set.
-// - Sort by ASCII (String.compareTo) and concatenate key=value with '&'
-// - Values are percent-encoded (URL encode) consistently
-// - Signature output is Base64-encoded SHA256withRSA.
+//   - Business params: top-level fields of query/form/json body participate in signature.
+//   - System params: Customer-No and Timestamp headers MUST participate in signature as:
+//     Customer-No -> customerNo, Timestamp -> timestamp
+//   - Do NOT include Sign itself in the signature set.
+//   - Sort by ASCII (String.compareTo) and concatenate key=value with '&'
+//   - Values are used as-is when building key=value (same as KUN Java getSignRowData sample)
+//   - Signature output is Base64-encoded SHA256withRSA (identical to Java SHA256withRSA).
 func CanonicalizeAndSignRequest(
 	bizParams map[string]interface{},
 	customerNo string,
@@ -50,14 +49,11 @@ func CanonicalizeAndSignRequest(
 }
 
 // buildCanonicalKVString applies KUN canonicalization rules:
-// - keys are trimmed and lower-cased
+// - business keys are trimmed and lower-cased (e.g. orderId -> orderid)
+// - system keys in extraPlain keep doc-mapped casing (customerNo, timestamp)
 // - "sign" key is ignored
-// - nil values become empty string
-// - values are percent-encoded
+// - null values are skipped (KUN Java sample skips entry.getValue() == null)
 // - keys are ASCII sorted and joined as key=value&key2=value2
-//
-// extraPlain is used for injecting system params (already in the correct key casing),
-// such as customerNo/timestamp.
 func buildCanonicalKVString(
 	biz map[string]interface{},
 	extraPlain map[string]string,
@@ -65,19 +61,28 @@ func buildCanonicalKVString(
 	params := make(map[string]string, len(biz)+len(extraPlain))
 
 	for k, v := range biz {
-		key := strings.ToLower(strings.TrimSpace(k))
+		if v == nil {
+			continue
+		}
+		// requestNo 不需要转成小写
+		key := strings.TrimSpace(k)
+		if strings.EqualFold(key, "requestNo") {
+			key = key
+		} else {
+			key = strings.ToLower(key)
+		}
 		if key == "" || key == "sign" {
 			continue
 		}
-		params[key] = percentEncode(valueToString(v))
+		params[key] = valueToString(v)
 	}
 
 	for k, v := range extraPlain {
-		key := strings.ToLower(strings.TrimSpace(k))
-		if key == "" || key == "sign" {
+		key := strings.TrimSpace(k)
+		if key == "" || strings.EqualFold(key, "sign") {
 			continue
 		}
-		params[key] = percentEncode(v)
+		params[key] = v
 	}
 
 	keys := make([]string, 0, len(params))
@@ -118,16 +123,6 @@ func valueToString(v interface{}) string {
 		}
 		return string(b)
 	}
-}
-
-// percentEncode applies an RFC3986-like encoding suitable for signature canonicalization.
-// It starts from QueryEscape but normalizes space to %20 (not '+').
-func percentEncode(s string) string {
-	enc := url.QueryEscape(s)
-	enc = strings.ReplaceAll(enc, "+", "%20")
-	// Keep "~" unescaped for RFC3986 compatibility.
-	enc = strings.ReplaceAll(enc, "%7E", "~")
-	return enc
 }
 
 // StructToMap flattens a struct to map[string]interface{} using JSON marshal/unmarshal.

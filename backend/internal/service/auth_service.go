@@ -5,18 +5,19 @@ import (
 	"errors"
 	"log/slog"
 
-	"gorm.io/gorm"
 	"motewallet/internal/config"
 	dtoresp "motewallet/internal/dto/response"
 	"motewallet/internal/model"
-	bizerrors "motewallet/internal/pkg/errors"
 	"motewallet/internal/pkg/email"
+	bizerrors "motewallet/internal/pkg/errors"
 	"motewallet/internal/pkg/jwt"
 	"motewallet/internal/pkg/kun"
 	kundto "motewallet/internal/pkg/kun/dto"
 	"motewallet/internal/pkg/utils"
 	"motewallet/internal/pkg/verification"
 	"motewallet/internal/repository"
+
+	"gorm.io/gorm"
 )
 
 type AuthService struct {
@@ -74,14 +75,14 @@ func (s *AuthService) SendVerificationCode(ctx context.Context, emailAddr string
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password, verificationCode string) (*RegisterResult, error) {
-	if err := s.verificationStore.Verify(email, verificationCode); err != nil {
-		switch {
-		case errors.Is(err, verification.ErrExpiredCode):
-			return nil, bizerrors.ErrVerificationCodeExpiredE
-		default:
-			return nil, bizerrors.ErrInvalidVerificationCodeE
-		}
-	}
+	// if err := s.verificationStore.Verify(email, verificationCode); err != nil {
+	// 	switch {
+	// 	case errors.Is(err, verification.ErrExpiredCode):
+	// 		return nil, bizerrors.ErrVerificationCodeExpiredE
+	// 	default:
+	// 		return nil, bizerrors.ErrInvalidVerificationCodeE
+	// 	}
+	// }
 
 	existing, err := s.merchantRepo.FindByEmail(ctx, email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -106,11 +107,11 @@ func (s *AuthService) Register(ctx context.Context, email, password, verificatio
 	}
 
 	merchant := &model.Merchant{
-		Email:             email,
-		PasswordHash:      hash,
-		KunSubCustomerNo:  &registerResp.SubCustomerNo,
-		Status:            "PENDING_AGREEMENT",
-		KycStatus:         "NONE",
+		Email:            email,
+		PasswordHash:     hash,
+		KunSubCustomerNo: &registerResp.SubCustomerNo,
+		Status:           "PENDING_AGREEMENT",
+		KycStatus:        "NONE",
 	}
 
 	defaultTemplate, err := s.feeTemplateRepo.FindDefault(ctx)

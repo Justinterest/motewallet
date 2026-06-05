@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"motewallet/internal/config"
@@ -40,7 +39,6 @@ func (m *MockClient) Post(ctx context.Context, path string, reqBody interface{},
 
 func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string, reqBody interface{}, respBody interface{}) error {
 	reqJSON, _ := json.Marshal(reqBody)
-	log.Printf("[KUN Mock] POST %s Customer-No=%s body=%s", path, customerNo, string(reqJSON))
 
 	var mockData []byte
 
@@ -106,6 +104,8 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 		mockData = []byte(`{}`)
 	}
 
+	logKUNMockCall(path, customerNo, json.RawMessage(reqJSON), mockData)
+
 	if respBody != nil {
 		if err := json.Unmarshal(mockData, respBody); err != nil {
 			return fmt.Errorf("mock unmarshal: %w", err)
@@ -121,8 +121,16 @@ func (m *MockClient) UploadFileAsCustomer(
 	content []byte,
 	contentType string,
 ) (*kundto.FileUploadResp, error) {
-	log.Printf("[KUN Mock] POST /rest/v2.0/upload Customer-No=%s filename=%s size=%d", customerNo, filename, len(content))
-	return &kundto.FileUploadResp{
+	uploadPath := "/rest/v2.0/upload"
+	resp := &kundto.FileUploadResp{
 		URL: fmt.Sprintf("https://mock.kun.global/files/%s", hex.EncodeToString([]byte(filename))[:12]),
-	}, nil
+	}
+	data, _ := json.Marshal(resp)
+	logKUNMockCall(uploadPath, customerNo, map[string]any{
+		"type":         "multipart",
+		"filename":     filename,
+		"content_type": contentType,
+		"size":         len(content),
+	}, data)
+	return resp, nil
 }

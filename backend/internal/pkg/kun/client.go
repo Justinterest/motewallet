@@ -88,7 +88,7 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	}
 
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	_, sign, err := CanonicalizeAndSignRequest(params, customerNo, timestamp, c.privateKey)
+	signString, sign, err := CanonicalizeAndSignRequest(params, customerNo, timestamp, c.privateKey)
 	if err != nil {
 		return fmt.Errorf("sign request: %w", err)
 	}
@@ -110,6 +110,7 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	if err != nil {
 		return fmt.Errorf("read response body: %w", err)
 	}
+	logKUNRequest(http.MethodPost, url, path, signString, req.Header, resp.Header, json.RawMessage(bodyBytes), resp.StatusCode, respBytes)
 
 	var kunResp kunResponse
 	if err := json.Unmarshal(respBytes, &kunResp); err != nil {
@@ -186,7 +187,7 @@ func (c *Client) UploadFileAsCustomer(
 	}
 
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	_, sign, err := CanonicalizeAndSignRequest(map[string]interface{}{}, customerNo, timestamp, c.privateKey)
+	signString, sign, err := CanonicalizeAndSignRequest(map[string]interface{}{}, customerNo, timestamp, c.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("sign request: %w", err)
 	}
@@ -208,6 +209,13 @@ func (c *Client) UploadFileAsCustomer(
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
+	uploadPath := "/rest/v2.0/upload"
+	logKUNRequest(http.MethodPost, url, uploadPath, signString, req.Header, resp.Header, map[string]any{
+		"type":         "multipart",
+		"filename":     filename,
+		"content_type": contentType,
+		"size":         len(content),
+	}, resp.StatusCode, respBytes)
 
 	var kunResp struct {
 		Code string                `json:"code"`

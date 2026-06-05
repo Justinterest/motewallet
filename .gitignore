@@ -3,3 +3,6 @@
 # Environment files (keep .env.example)
 **/.env
 !**/.env.example
+
+# KUN RSA keys (generated locally, never commit)
+**/.kun-keys/
