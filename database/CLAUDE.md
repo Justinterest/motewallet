@@ -1,11 +1,13 @@
 # Database — MySQL
 
 ## 技术栈
+
 - MySQL 8.0+
 - golang-migrate（迁移工具）
 - 字符集：utf8mb4_unicode_ci
 
 ## 目录约定
+
 - `migrations/` — Schema 迁移（golang-migrate，up/down 成对）
 - `seeds/` — 种子数据（纯 SQL，开发/测试用，**不走** migrate）
 - `docs/schema.md` — Schema 文档
@@ -19,10 +21,12 @@
 连接参数与 `backend/.env` 对齐（默认库名 `motewallet`）。
 
 ## Migration 命名规范
+
 - 格式：`{六位序号}_{描述}.up.sql` / `.down.sql`
 - 示例：`000001_create_users_table.up.sql`
 
 ## 设计规范
+
 - 金额字段使用 `DECIMAL(28,8)`（支持法币 2 位和 BTC 8 位小数）
 - 时间字段使用 `DATETIME(3)`（毫秒精度）
 - 软删除使用 `deleted_at` 字段
@@ -46,7 +50,7 @@ brew install golang-migrate mysql-client
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS motewallet CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # 执行全部迁移
-migrate -path migrations -database "mysql://root:密码@tcp(localhost:3306)/motewallet" up
+migrate -path migrations -database "mysql://root:@tcp(localhost:3306)/motewallet" up
 
 # 查看当前版本
 migrate -path migrations -database "mysql://root:密码@tcp(localhost:3306)/motewallet" version
@@ -62,12 +66,12 @@ migrate -path migrations -database "mysql://root:密码@tcp(localhost:3306)/mote
 
 ### 与 migrate 的区别
 
-| | migrations | seeds |
-|---|------------|-------|
-| 工具 | golang-migrate | `mysql` 客户端 |
-| 文件 | `000001_xxx.up.sql` / `.down.sql` | `001_xxx.sql`（无 down） |
-| 用途 | 表结构变更 | 开发/测试初始数据 |
-| 顺序 | 先执行 | **必须在 migrate up 之后** |
+|      | migrations                        | seeds                      |
+| ---- | --------------------------------- | -------------------------- |
+| 工具 | golang-migrate                    | `mysql` 客户端             |
+| 文件 | `000001_xxx.up.sql` / `.down.sql` | `001_xxx.sql`（无 down）   |
+| 用途 | 表结构变更                        | 开发/测试初始数据          |
+| 顺序 | 先执行                            | **必须在 migrate up 之后** |
 
 ### 命名规范
 

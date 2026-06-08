@@ -36,7 +36,8 @@ export function VerificationBanner() {
 
   if (
     pathname === banner.ctaHref ||
-    pathname.startsWith("/kyc")
+    pathname.startsWith("/kyc") ||
+    pathname.startsWith("/onboarding")
   ) {
     return null;
   }

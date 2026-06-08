@@ -1,7 +1,9 @@
 export interface Agreement {
   id: string;
+  protocol_id: string;
   title: string;
-  content: string;
+  version?: string;
+  url: string;
   required: boolean;
 }
 

@@ -48,7 +48,12 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 		_, _ = rand.Read(b)
 		mockData = []byte(fmt.Sprintf(`{"subCustomerNo":"MOCK_SUB_%s"}`, hex.EncodeToString(b)))
 	case "/rest/v2.0/customer/agreeList":
-		mockData = []byte(`{"list":[]}`)
+		mockData = []byte(`[
+			{"protocolId":"MOCK_PROTO_001","title":"KUN SPACE 服务协议","url":"https://example.com/agreement.pdf","signStatus":"UNSIGN","version":"1.0"},
+			{"protocolId":"MOCK_PROTO_002","title":"隐私政策","url":"https://example.com/privacy.pdf","signStatus":"UNSIGN","version":"1.0"}
+		]`)
+	case "/rest/v2.0/customer/agree/auth":
+		mockData = []byte(`{}`)
 	case "/rest/v2.0/customer/subMerchant/register":
 		mockData = []byte(`{"authId":"MOCK_AUTH_001"}`)
 	case "/rest/v2.0/customer/merchant/register/query":

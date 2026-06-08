@@ -71,7 +71,7 @@ func (c *Client) Post(ctx context.Context, path string, reqBody interface{}, res
 }
 
 func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, reqBody interface{}, respBody interface{}) error {
-	bodyBytes, err := json.Marshal(reqBody)
+	bodyBytes, err := MarshalRequestBody(reqBody)
 	if err != nil {
 		return fmt.Errorf("marshal request body: %w", err)
 	}
@@ -82,7 +82,7 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 		return fmt.Errorf("create request: %w", err)
 	}
 
-	params, err := StructToMap(reqBody)
+	params, err := mapFromJSON(bodyBytes)
 	if err != nil {
 		return fmt.Errorf("flatten request body: %w", err)
 	}

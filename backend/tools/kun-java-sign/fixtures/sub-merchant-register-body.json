@@ -1,0 +1,128 @@
+{
+  "directorInfo": [
+    {
+      "authType": "00000001003",
+      "birthday": "2026-06-05",
+      "certificateTerm": [
+        "2026-06-27",
+        "2026-07-04"
+      ],
+      "country": "HK",
+      "gender": "Male",
+      "idCard": "111",
+      "idHolding": [
+        {
+          "path": "https://img.kun.global/kun-api/e7593fd9ba0948c69a09967ba5dd3623.png"
+        }
+      ],
+      "nameCHS": "111",
+      "nameEN": "111",
+      "residenceAddress": "111111",
+      "residenceCountry": "HK",
+      "surname": "11",
+      "surnameCHS": "111",
+      "verificationType": "idHolding"
+    }
+  ],
+  "enterpriseInfo": {
+    "associationRules": [
+      {
+        "path": "https://img.kun.global/kun-api/3ba6898fe31c44e4b7832bd985c037bb.png"
+      }
+    ],
+    "authenticMaterials": [
+      {
+        "path": "https://img.kun.global/kun-api/0167e8b5a7cc454f84da6ecfc0b8ce89.png"
+      }
+    ],
+    "businessRegistration": [
+      {
+        "path": "https://img.kun.global/kun-api/ad1b76894a8042e9a4ca1b00b2276b1b.png"
+      }
+    ],
+    "businessRegistrationNo": "12121",
+    "continuousFundingSource": "Business income",
+    "employeeNum": "<10",
+    "enterpriseEN": "1212",
+    "enterpriseNameCHS": "无",
+    "enterpriseType": "Private limited company",
+    "establishTime": "2026-05-01",
+    "incorporationCertificate": [
+      {
+        "path": "https://img.kun.global/kun-api/bfc20d02130f4c2f8b41848e52ffbea2.png"
+      }
+    ],
+    "incorporationCertificateNo": "121231",
+    "industry": "Goods Trade",
+    "initialFundingSource": "Business income",
+    "isChangeEnterpriseNameInFiveYears": "No",
+    "mainBusinessAddress": "111",
+    "managerAuthType": "00000001003",
+    "managerBirthday": "2026-06-13",
+    "managerCertificateTerm": [
+      "2026-06-12",
+      "2026-06-28"
+    ],
+    "managerCountry": "HK",
+    "managerGender": "Female",
+    "managerIdCard": "1111",
+    "managerIdHolding": [
+      {
+        "path": "https://img.kun.global/kun-api/7a62932b882744668aef60e2e107faf2.png"
+      },
+      {
+        "path": "https://img.kun.global/kun-api/fe819213464648468796a8ba5b1a6485.png"
+      },
+      {
+        "path": "https://img.kun.global/kun-api/64b0b258fbfa4195b364078791050254.png"
+      }
+    ],
+    "managerNameCHS": "111",
+    "managerNameEN": "111",
+    "managerResidenceAddress": "12121",
+    "managerResidenceCountry": "HK",
+    "managerSurname": "111",
+    "managerSurnameCHS": "121",
+    "managerVerificationType": "idHolding",
+    "middleTierShareholders": "No",
+    "nnc1": [
+      {
+        "path": "https://img.kun.global/kun-api/b71af5f61263429fb80cb3e397696bc4.png"
+      }
+    ],
+    "openAccountPurpose": "Business operation",
+    "phone": "1111",
+    "registerAddress": "111",
+    "registerRegion": "HK",
+    "salesVolumeLastyear": "HKD 0-2,500,000",
+    "subIndustry": "111",
+    "wealthSource": "Business income"
+  },
+  "requestNo": "MW202606081547141b8a5709",
+  "shareholdersInfo": [
+    {
+      "authType": "00000001003",
+      "birthday": "2026-06-19",
+      "certificateTerm": [
+        "2026-06-06",
+        "2026-06-19"
+      ],
+      "country": "HK",
+      "gender": "Male",
+      "idCard": "11",
+      "idHolding": [
+        {
+          "path": "https://img.kun.global/kun-api/5bd12dda340b48629ca1eb03bd6441f8.png"
+        }
+      ],
+      "nameCHS": "11",
+      "nameEN": "111",
+      "residenceAddress": "11111",
+      "residenceCountry": "HK",
+      "shareholdingRatio": "11",
+      "surname": "11",
+      "surnameCHS": "111",
+      "verificationType": "idHolding"
+    }
+  ]
+}

@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
 	"motewallet/internal/config"
 	dtoreq "motewallet/internal/dto/request"
 	dtoresp "motewallet/internal/dto/response"
@@ -18,15 +17,17 @@ import (
 	"motewallet/internal/pkg/kun"
 	kundto "motewallet/internal/pkg/kun/dto"
 	"motewallet/internal/repository"
+
+	"gorm.io/gorm"
 )
 
 type OnboardingService struct {
-	cfg              *config.Config
-	merchantRepo     repository.MerchantRepository
+	cfg               *config.Config
+	merchantRepo      repository.MerchantRepository
 	kycSubmissionRepo repository.MerchantKycSubmissionRepository
-	walletSvc        *WalletService
-	kycFileSvc       *KycFileService
-	kunClient        kun.KUNClient
+	walletSvc         *WalletService
+	kycFileSvc        *KycFileService
+	kunClient         kun.KUNClient
 }
 
 func NewOnboardingService(
@@ -38,13 +39,69 @@ func NewOnboardingService(
 	kunClient kun.KUNClient,
 ) *OnboardingService {
 	return &OnboardingService{
-		cfg:              cfg,
-		merchantRepo:     merchantRepo,
+		cfg:               cfg,
+		merchantRepo:      merchantRepo,
 		kycSubmissionRepo: kycSubmissionRepo,
-		walletSvc:        walletSvc,
-		kycFileSvc:       kycFileSvc,
-		kunClient:        kunClient,
+		walletSvc:         walletSvc,
+		kycFileSvc:        kycFileSvc,
+		kunClient:         kunClient,
 	}
+}
+
+const (
+	kunAgreeListPath               = "/rest/v2.0/customer/agreeList"
+	kunAgreeAuthPath               = "/rest/v2.0/customer/agree/auth"
+	kunAgreementBizCode            = "KUN_SPACE_REGIST"
+	kunAgreementSignStatusUnsigned = "UNSIGN"
+)
+
+func (s *OnboardingService) queryPendingAgreements(ctx context.Context, subCustomerNo string) (kundto.AgreementList, error) {
+	var agreements kundto.AgreementList
+	err := s.kunClient.PostAsCustomer(ctx, subCustomerNo, kunAgreeListPath, &kundto.AgreeListReq{
+		RequestNo: kun.GenerateRequestNo(),
+		// SubCustomerNo: subCustomerNo,
+		SignStatus: kunAgreementSignStatusUnsigned,
+		BizCode:    kunAgreementBizCode,
+	}, &agreements)
+	if err != nil {
+		return nil, err
+	}
+	return agreements, nil
+}
+
+func mapKunAgreements(items kundto.AgreementList) []dtoresp.AgreementResp {
+	agreements := make([]dtoresp.AgreementResp, 0, len(items))
+	for _, a := range items {
+		if a.ProtocolId == "" {
+			continue
+		}
+		agreements = append(agreements, dtoresp.AgreementResp{
+			ID:         a.ProtocolId,
+			ProtocolID: a.ProtocolId,
+			Title:      a.Title,
+			Version:    a.Version,
+			URL:        a.URL,
+			Required:   true,
+		})
+	}
+	return agreements
+}
+
+func (s *OnboardingService) completeAgreementSigning(ctx context.Context, merchant *model.Merchant) error {
+	if merchant.AgreementSignedAt != nil && merchant.Status != "PENDING_AGREEMENT" {
+		return nil
+	}
+
+	now := time.Now()
+	merchant.AgreementSignedAt = &now
+	if merchant.Status == "PENDING_AGREEMENT" {
+		merchant.Status = "PENDING_KYC"
+	}
+
+	if err := s.merchantRepo.Update(ctx, merchant); err != nil {
+		return bizerrors.ErrInternalError
+	}
+	return nil
 }
 
 func (s *OnboardingService) GetAgreements(ctx context.Context, merchantID uint64) (*dtoresp.AgreementListResp, error) {
@@ -60,52 +117,30 @@ func (s *OnboardingService) GetAgreements(ctx context.Context, merchantID uint64
 		return &dtoresp.AgreementListResp{Agreements: nil, Signed: true}, nil
 	}
 
-	if merchant.KunSubCustomerNo != nil {
-		var agreeListResp kundto.AgreeListResp
-		err = s.kunClient.Post(ctx, "/rest/v2.0/customer/agreeList", &kundto.AgreeListReq{
-			SubCustomerNo: *merchant.KunSubCustomerNo,
-			SignStatus:    "UNSIGN",
-			BizCode:       "KUN_SPACE_REGIST",
-		}, &agreeListResp)
-		if err != nil {
-			slog.Error("failed to get KUN agreements, returning defaults", slog.Any("error", err))
-			return &dtoresp.AgreementListResp{
-				Agreements: []dtoresp.AgreementResp{
-					{ID: 1, Title: "Service Agreement", Content: "Motewallet platform service agreement.", Required: true},
-					{ID: 2, Title: "Privacy Policy", Content: "Privacy and data protection policy.", Required: true},
-					{ID: 3, Title: "AML/KYC Policy", Content: "Anti-money laundering and KYC compliance policy.", Required: true},
-				},
-				Signed: false,
-			}, nil
-		}
+	if merchant.KunSubCustomerNo == nil || *merchant.KunSubCustomerNo == "" {
+		return nil, bizerrors.ErrMerchantNotRegisteredE
+	}
 
-		if len(agreeListResp.List) == 0 {
-			return &dtoresp.AgreementListResp{Agreements: nil, Signed: true}, nil
-		}
+	agreements, err := s.queryPendingAgreements(ctx, *merchant.KunSubCustomerNo)
+	if err != nil {
+		slog.Error("KUN pending agreement query failed",
+			slog.Uint64("merchant_id", merchantID),
+			slog.String("sub_customer_no", *merchant.KunSubCustomerNo),
+			slog.Any("error", err),
+		)
+		return nil, bizerrors.ErrKUNAPIFailedE
+	}
 
-		agreements := make([]dtoresp.AgreementResp, len(agreeListResp.List))
-		for i, a := range agreeListResp.List {
-			agreements[i] = dtoresp.AgreementResp{
-				ID:       i + 1,
-				Title:    a.Title,
-				Content:  a.URL,
-				Required: true,
-			}
+	if len(agreements) == 0 {
+		if err := s.completeAgreementSigning(ctx, merchant); err != nil {
+			return nil, err
 		}
-
-		return &dtoresp.AgreementListResp{
-			Agreements: agreements,
-			Signed:     false,
-		}, nil
+		return &dtoresp.AgreementListResp{Agreements: nil, Signed: true}, nil
 	}
 
 	return &dtoresp.AgreementListResp{
-		Agreements: []dtoresp.AgreementResp{
-			{ID: 1, Title: "Service Agreement", Content: "Motewallet platform service agreement.", Required: true},
-			{ID: 2, Title: "Privacy Policy", Content: "Privacy and data protection policy.", Required: true},
-			{ID: 3, Title: "AML/KYC Policy", Content: "Anti-money laundering and KYC compliance policy.", Required: true},
-		},
-		Signed: false,
+		Agreements: mapKunAgreements(agreements),
+		Signed:     false,
 	}, nil
 }
 
@@ -122,34 +157,45 @@ func (s *OnboardingService) SignAgreements(ctx context.Context, merchantID uint6
 		return bizerrors.ErrMerchantNotPendingAgreementE
 	}
 
-	if merchant.KunSubCustomerNo != nil {
-		var agreeListResp kundto.AgreeListResp
-		err = s.kunClient.Post(ctx, "/rest/v2.0/customer/agreeList", &kundto.AgreeListReq{
-			SubCustomerNo: *merchant.KunSubCustomerNo,
-			SignStatus:    "UNSIGN",
-			BizCode:       "KUN_SPACE_REGIST",
-		}, &agreeListResp)
-		if err == nil && len(agreeListResp.List) > 0 {
-			ids := make([]string, len(agreeListResp.List))
-			for i, a := range agreeListResp.List {
-				ids[i] = a.ProtocolId
-			}
-			_ = s.kunClient.Post(ctx, "/rest/v2.0/customer/agree/auth", &kundto.AgreeAuthReq{
-				SubCustomerNo: *merchant.KunSubCustomerNo,
-				ProtocolIds:   strings.Join(ids, ","),
-			}, nil)
+	if merchant.KunSubCustomerNo == nil || *merchant.KunSubCustomerNo == "" {
+		return bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	agreements, err := s.queryPendingAgreements(ctx, *merchant.KunSubCustomerNo)
+	if err != nil {
+		slog.Error("KUN pending agreement query failed before sign",
+			slog.Uint64("merchant_id", merchantID),
+			slog.Any("error", err),
+		)
+		return bizerrors.ErrKUNAPIFailedE
+	}
+	if len(agreements) == 0 {
+		return s.completeAgreementSigning(ctx, merchant)
+	}
+
+	ids := make([]string, 0, len(agreements))
+	for _, a := range agreements {
+		if a.ProtocolId != "" {
+			ids = append(ids, a.ProtocolId)
 		}
 	}
-
-	now := time.Now()
-	merchant.AgreementSignedAt = &now
-	merchant.Status = "PENDING_KYC"
-
-	if err := s.merchantRepo.Update(ctx, merchant); err != nil {
-		return bizerrors.ErrInternalError
+	if len(ids) == 0 {
+		return bizerrors.NewBusinessError(http.StatusBadRequest, bizerrors.ErrValidation, "no valid agreement protocol ids")
 	}
 
-	return nil
+	if err := s.kunClient.Post(ctx, kunAgreeAuthPath, &kundto.AgreeAuthReq{
+		RequestNo:     kun.GenerateRequestNo(),
+		SubCustomerNo: *merchant.KunSubCustomerNo,
+		ProtocolIds:   strings.Join(ids, ","),
+	}, nil); err != nil {
+		slog.Error("KUN agreement sign failed",
+			slog.Uint64("merchant_id", merchantID),
+			slog.Any("error", err),
+		)
+		return bizerrors.ErrKUNAPIFailedE
+	}
+
+	return s.completeAgreementSigning(ctx, merchant)
 }
 
 func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, req *dtoreq.SubmitKycReq) error {
@@ -176,6 +222,8 @@ func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, re
 	if req.RequestNo == "" {
 		req.RequestNo = kun.GenerateRequestNo()
 	}
+
+	// fmt.Println("ResolveSubmitKycFiles", req)
 
 	if err := s.kycFileSvc.ResolveSubmitKycFiles(ctx, merchant.ID, req); err != nil {
 		return err
@@ -229,11 +277,11 @@ func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, re
 }
 
 const (
-	kunCountriesPath          = "/rest/v2.0/customer/fiat/withdrawal/countries"
-	kunAuthTypesPath          = "/rest/v2.0/customer/country/auth/types"
+	kunCountriesPath            = "/rest/v2.0/customer/fiat/withdrawal/countries"
+	kunAuthTypesPath            = "/rest/v2.0/customer/country/auth/types"
 	kunSubMerchantAuthQueryPath = "/rest/v2.0/customer/merchant/register/query"
-	kycCountryScene           = "REGISTER_ADDRESS"
-	kycCountryLanguage        = "ZH_CN"
+	kycCountryScene             = "REGISTER_ADDRESS"
+	kycCountryLanguage          = "ZH_CN"
 )
 
 // ListKycCountries returns countries/regions for KYC address fields (Kun REGISTER_ADDRESS scene).

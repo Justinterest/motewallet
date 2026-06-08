@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gorm.io/gorm"
 	"motewallet/internal/config"
 	dtoreq "motewallet/internal/dto/request"
 	dtoresp "motewallet/internal/dto/response"
@@ -16,6 +15,8 @@ import (
 	kundto "motewallet/internal/pkg/kun/dto"
 	"motewallet/internal/pkg/storage"
 	"motewallet/internal/repository"
+
+	"gorm.io/gorm"
 )
 
 const maxKycFileBytes = 10 << 20 // 10 MB per KUN docs

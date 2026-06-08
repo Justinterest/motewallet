@@ -3,10 +3,12 @@ package response
 import "time"
 
 type AgreementResp struct {
-	ID       int    `json:"id"`
-	Title    string `json:"title"`
-	Content  string `json:"content"`
-	Required bool   `json:"required"`
+	ID         string `json:"id"`
+	ProtocolID string `json:"protocol_id"`
+	Title      string `json:"title"`
+	Version    string `json:"version,omitempty"`
+	URL        string `json:"url"`
+	Required   bool   `json:"required"`
 }
 
 type AgreementListResp struct {
