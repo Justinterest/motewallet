@@ -1,6 +1,6 @@
 "use client";
 
-import { FormSelect } from "@/components/ui/form-select";
+import { FormSearchableSelect } from "@/components/ui/form-searchable-select";
 import { useKycReference } from "@/components/kyc/kyc-reference-provider";
 
 interface KycCountrySelectProps {
@@ -23,7 +23,7 @@ export function KycCountrySelect({
   const { countryOptions, countriesLoading, countriesError } = useKycReference();
 
   return (
-    <FormSelect
+    <FormSearchableSelect
       value={value}
       onChange={onChange}
       onBlur={onBlur}
@@ -35,6 +35,7 @@ export function KycCountrySelect({
             ? "加载失败，请刷新"
             : placeholder
       }
+      searchPlaceholder="搜索国家/地区"
       disabled={
         disabled ||
         countriesLoading ||
