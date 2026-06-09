@@ -1,5 +1,6 @@
 import { KYC_DRAFT_KEY } from "@/lib/kyc/constants";
 import { createKycFormDefaults } from "@/lib/kyc/form-defaults";
+import { normalizeIndustryDraftFields } from "@/lib/kyc/industries";
 import type { KycFormValues } from "@/lib/validations/onboarding";
 
 export interface KycDraft {
@@ -15,10 +16,10 @@ export function mergeKycFormValues(
   const directorDefaults = defaults.directorInfo[0];
 
   return {
-    enterpriseInfo: {
+    enterpriseInfo: normalizeIndustryDraftFields({
       ...defaults.enterpriseInfo,
       ...(draft.enterpriseInfo ?? {}),
-    },
+    }),
     shareholdersInfo:
       draft.shareholdersInfo && draft.shareholdersInfo.length > 0
         ? draft.shareholdersInfo.map((person) => ({

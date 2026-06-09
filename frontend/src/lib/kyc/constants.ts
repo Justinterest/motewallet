@@ -27,19 +27,6 @@ export const WEALTH_SOURCES = [
   ...FUNDING_SOURCES.slice(3),
 ];
 
-export const INDUSTRIES = [
-  { value: "Goods Trade", label: "商品贸易" },
-  { value: "logistics transportation", label: "物流运输" },
-  { value: "Software Service", label: "软件服务" },
-  { value: "Education Service", label: "教育服务" },
-  { value: "Advertising service", label: "广告服务" },
-  { value: "Air & Travel Service", label: "航空及旅游服务" },
-  { value: "Culture & Entertainment", label: "文化娱乐" },
-  { value: "IT Service", label: "IT 服务" },
-  { value: "PSP", label: "支付服务提供商" },
-  { value: "System Servicer", label: "系统服务商" },
-];
-
 export const SALES_VOLUME_OPTIONS = [
   { value: "HKD 0-2,500,000", label: "HKD 0–2,500,000" },
   { value: "HKD 2,500,001-5,000,000", label: "HKD 2,500,001–5,000,000" },

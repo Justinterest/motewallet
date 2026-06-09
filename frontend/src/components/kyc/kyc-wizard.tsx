@@ -25,6 +25,8 @@ import { FormDatePicker } from "@/components/ui/date-picker";
 import { FormSelect } from "@/components/ui/form-select";
 import { Input } from "@/components/ui/input";
 import { KycAuthTypeSelect } from "@/components/kyc/kyc-auth-type-select";
+import { KycIndustryFields } from "@/components/kyc/kyc-industry-fields";
+import { KycCountryMultiSelect } from "@/components/kyc/kyc-country-multi-select";
 import { KycCountrySelect } from "@/components/kyc/kyc-country-select";
 import { KycReferenceProvider } from "@/components/kyc/kyc-reference-provider";
 import { KYC_COUNTRY_SCENE_NATIONALITY } from "@/lib/kyc/reference-queries";
@@ -42,13 +44,13 @@ import {
   loadKycDraft,
   saveKycDraft,
 } from "@/lib/kyc/draft-storage";
+import { isSubIndustryForLevel1 } from "@/lib/kyc/industries";
 import { formValuesToSubmitRequest } from "@/lib/kyc/transform";
 import {
   EMPLOYEE_NUM_OPTIONS,
   ENTERPRISE_TYPES,
   FUNDING_SOURCES,
   GENDERS,
-  INDUSTRIES,
   OPEN_ACCOUNT_PURPOSES,
   SALES_VOLUME_OPTIONS,
   WEALTH_SOURCES,
@@ -98,6 +100,7 @@ export function KycWizard() {
     "enterpriseInfo.middleTierShareholders"
   );
   const managerCountry = form.watch("enterpriseInfo.managerCountry");
+  const industry = form.watch("enterpriseInfo.industry");
   useEffect(() => {
     const draft = loadKycDraft();
     if (draft) {
@@ -164,6 +167,24 @@ export function KycWizard() {
     }
     prevManagerCountryRef.current = current;
   }, [managerCountry, form]);
+
+  const prevIndustryRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!draftHydratedRef.current) return;
+
+    const current = form.getValues("enterpriseInfo.industry");
+    if (prevIndustryRef.current === undefined) {
+      prevIndustryRef.current = current;
+      return;
+    }
+    if (prevIndustryRef.current !== current) {
+      const currentSub = form.getValues("enterpriseInfo.subIndustry");
+      if (currentSub && !isSubIndustryForLevel1(currentSub, current)) {
+        form.setValue("enterpriseInfo.subIndustry", "");
+      }
+    }
+    prevIndustryRef.current = current;
+  }, [industry, form]);
 
   function goToStep(index: number) {
     setStep(Math.max(0, Math.min(index, STEPS.length - 1)));
@@ -476,6 +497,19 @@ export function KycWizard() {
               />
               <FormField
                 control={form.control}
+                name="enterpriseInfo.businessRegion"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <KycFormLabel fieldKey="businessRegion" required={false} />
+                    <FormControl>
+                      <KycCountryMultiSelect {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="enterpriseInfo.mainBusinessAddress"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
@@ -552,37 +586,7 @@ export function KycWizard() {
                   </FormItem>
                 )}
               />
-              <KycFormRow>
-                <FormField
-                  control={form.control}
-                  name="enterpriseInfo.industry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <KycFormLabel fieldKey="industry" />
-                      <FormControl>
-                        <FormSelect {...field} options={INDUSTRIES} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="enterpriseInfo.subIndustry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <KycFormLabel fieldKey="subIndustry" />
-                      <FormControl>
-                        <Input
-                          placeholder={kycPlaceholder("subIndustry")}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </KycFormRow>
+              <KycIndustryFields control={form.control} />
               <KycFormRow>
                 <FormField
                   control={form.control}

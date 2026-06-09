@@ -145,7 +145,7 @@ export const KYC_FIELD_META: Record<KycFieldMetaKey, KycFieldMeta> = {
   },
   businessRegion: {
     label: "业务所在国家/地区",
-    placeholder: "例如 HK, SG（多个用逗号分隔）",
+    placeholder: "添加国家/地区",
   },
   mainBusinessAddress: {
     label: "营业地址",
@@ -159,7 +159,7 @@ export const KYC_FIELD_META: Record<KycFieldMetaKey, KycFieldMeta> = {
   subIndustry: {
     label: "二级行业",
     required: true,
-    placeholder: "须属于已选一级行业，如 B2B Trade",
+    placeholder: "须属于已选一级行业，如 005002",
   },
   initialFundingSource: {
     label: "原始资金来源",

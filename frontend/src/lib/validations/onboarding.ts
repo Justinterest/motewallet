@@ -20,7 +20,7 @@ const enterpriseStepSchema = z.object({
   businessRegion: z.string().optional(),
   mainBusinessAddress: z.string().min(2, "请填写营业地址"),
   industry: z.string().min(1, "请选择一级行业"),
-  subIndustry: z.string().min(1, "请填写二级行业"),
+  subIndustry: z.string().min(1, "请选择二级行业"),
   initialFundingSource: z.string().min(1, "请选择原始资金来源"),
   wealthSource: z.string().min(1, "请选择财富来源"),
   continuousFundingSource: z.string().min(1, "请选择持续资金来源"),
