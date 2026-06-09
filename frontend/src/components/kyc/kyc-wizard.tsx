@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { KycAuthTypeSelect } from "@/components/kyc/kyc-auth-type-select";
 import { KycCountrySelect } from "@/components/kyc/kyc-country-select";
 import { KycReferenceProvider } from "@/components/kyc/kyc-reference-provider";
+import { KYC_COUNTRY_SCENE_NATIONALITY } from "@/lib/kyc/reference-queries";
 import { KycFileUpload } from "@/components/kyc/kyc-file-upload";
 import { KycFormLabel, kycPlaceholder } from "@/components/kyc/kyc-form-label";
 import { CertificateValidityFields } from "@/components/kyc/certificate-validity-fields";
@@ -761,7 +762,7 @@ export function KycWizard() {
                     <FormItem>
                       <KycFormLabel fieldKey="managerCountry" />
                       <FormControl>
-                        <KycCountrySelect {...field} />
+                        <KycCountrySelect scene={KYC_COUNTRY_SCENE_NATIONALITY} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

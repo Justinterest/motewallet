@@ -1,7 +1,10 @@
 import { onboardingApi } from "@/lib/api/onboarding";
 import type { KycCountryScene } from "@/types/kyc-reference";
 
-export const KYC_COUNTRY_SCENE: KycCountryScene = "REGISTER_ADDRESS";
+export const KYC_COUNTRY_SCENE_NATIONALITY: KycCountryScene = "REGISTER";
+export const KYC_COUNTRY_SCENE_ADDRESS: KycCountryScene = "REGISTER_ADDRESS";
+/** Default scene for address-related country fields. */
+export const KYC_COUNTRY_SCENE: KycCountryScene = KYC_COUNTRY_SCENE_ADDRESS;
 
 /** Shared React Query keys for KYC reference data (countries / auth types). */
 export const kycReferenceKeys = {

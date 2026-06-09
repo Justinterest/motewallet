@@ -16,4 +16,4 @@ export interface CountryAuthTypesResponse {
   items: AuthTypeOption[];
 }
 
-export type KycCountryScene = "REGISTER_ADDRESS" | "WITHDRAWAL";
+export type KycCountryScene = "REGISTER" | "REGISTER_ADDRESS" | "WITHDRAWAL";

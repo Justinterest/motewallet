@@ -1,9 +1,15 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { FormSearchableSelect } from "@/components/ui/form-searchable-select";
-import { useKycReference } from "@/components/kyc/kyc-reference-provider";
+import {
+  KYC_COUNTRY_SCENE_ADDRESS,
+  kycCountriesQueryOptions,
+} from "@/lib/kyc/reference-queries";
+import type { KycCountryScene } from "@/types/kyc-reference";
 
 interface KycCountrySelectProps {
+  scene?: KycCountryScene;
   value?: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -13,6 +19,7 @@ interface KycCountrySelectProps {
 }
 
 export function KycCountrySelect({
+  scene = KYC_COUNTRY_SCENE_ADDRESS,
   value,
   onChange,
   onBlur,
@@ -20,7 +27,14 @@ export function KycCountrySelect({
   disabled,
   className,
 }: KycCountrySelectProps) {
-  const { countryOptions, countriesLoading, countriesError } = useKycReference();
+  const { data: countryOptions = [], isLoading, isError } = useQuery({
+    ...kycCountriesQueryOptions(scene),
+    select: (response) =>
+      response.items.map((item) => ({
+        value: item.country_code,
+        label: item.country_name,
+      })),
+  });
 
   return (
     <FormSearchableSelect
@@ -29,17 +43,17 @@ export function KycCountrySelect({
       onBlur={onBlur}
       options={countryOptions}
       placeholder={
-        countriesLoading
+        isLoading
           ? "加载中…"
-          : countriesError
+          : isError
             ? "加载失败，请刷新"
             : placeholder
       }
       searchPlaceholder="搜索国家/地区"
       disabled={
         disabled ||
-        countriesLoading ||
-        countriesError ||
+        isLoading ||
+        isError ||
         countryOptions.length === 0
       }
       className={className}

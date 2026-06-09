@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { CertificateValidityFields } from "@/components/kyc/certificate-validity-fields";
 import { KycAuthTypeSelect } from "@/components/kyc/kyc-auth-type-select";
 import { KycCountrySelect } from "@/components/kyc/kyc-country-select";
+import { KYC_COUNTRY_SCENE_NATIONALITY } from "@/lib/kyc/reference-queries";
 import { KycFileUpload } from "@/components/kyc/kyc-file-upload";
 import { KycFormRow } from "@/components/kyc/kyc-form-row";
 import { KycFormLabel, kycPlaceholder } from "@/components/kyc/kyc-form-label";
@@ -147,7 +148,7 @@ export function PersonFields({
             <FormItem>
               <KycFormLabel fieldKey="person.country" />
               <FormControl>
-                <KycCountrySelect {...field} />
+                <KycCountrySelect scene={KYC_COUNTRY_SCENE_NATIONALITY} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

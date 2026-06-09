@@ -280,14 +280,30 @@ const (
 	kunCountriesPath            = "/rest/v2.0/customer/fiat/withdrawal/countries"
 	kunAuthTypesPath            = "/rest/v2.0/customer/country/auth/types"
 	kunSubMerchantAuthQueryPath = "/rest/v2.0/customer/merchant/register/query"
-	kycCountryScene             = "REGISTER_ADDRESS"
+	kycCountrySceneAddress      = "REGISTER_ADDRESS"
+	kycCountrySceneRegister     = "REGISTER"
+	kycCountrySceneWithdrawal   = "WITHDRAWAL"
 	kycCountryLanguage          = "ZH_CN"
 )
 
-// ListKycCountries returns countries/regions for KYC address fields (Kun REGISTER_ADDRESS scene).
+var allowedKycCountryScenes = map[string]bool{
+	kycCountrySceneAddress:    true,
+	kycCountrySceneRegister:   true,
+	kycCountrySceneWithdrawal: true,
+}
+
+// ListKycCountries returns countries/regions for KYC fields.
+// REGISTER_ADDRESS: address-related fields; REGISTER: nationality and related fields; WITHDRAWAL: fiat withdrawal.
 func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, language string) (*dtoresp.CountryListResp, error) {
 	if scene == "" {
-		scene = kycCountryScene
+		scene = kycCountrySceneAddress
+	}
+	if !allowedKycCountryScenes[scene] {
+		return nil, bizerrors.NewBusinessError(
+			http.StatusBadRequest,
+			bizerrors.ErrValidation,
+			"invalid scene; allowed: REGISTER_ADDRESS, REGISTER, WITHDRAWAL",
+		)
 	}
 	if language == "" {
 		language = kycCountryLanguage

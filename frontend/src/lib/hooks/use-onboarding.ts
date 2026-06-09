@@ -2,13 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { onboardingApi } from "@/lib/api/onboarding";
 import {
   KYC_COUNTRY_SCENE,
+  KYC_COUNTRY_SCENE_ADDRESS,
+  KYC_COUNTRY_SCENE_NATIONALITY,
   kycAuthTypesQueryOptions,
   kycCountriesQueryOptions,
 } from "@/lib/kyc/reference-queries";
 import type { SubmitKycRequest } from "@/types/onboarding";
 import type { KycCountryScene } from "@/types/kyc-reference";
 
-export { KYC_COUNTRY_SCENE };
+export { KYC_COUNTRY_SCENE, KYC_COUNTRY_SCENE_ADDRESS, KYC_COUNTRY_SCENE_NATIONALITY };
 
 export function useAgreements() {
   return useQuery({
@@ -50,7 +52,7 @@ export function useKycStatus() {
   });
 }
 
-/** Prefer `useKycReference()` inside KYC wizard; this hook shares the same query cache. */
+/** Shares the same React Query cache as `KycCountrySelect` inside the KYC wizard. */
 export function useKycCountries(scene: KycCountryScene = KYC_COUNTRY_SCENE) {
   return useQuery({
     ...kycCountriesQueryOptions(scene),

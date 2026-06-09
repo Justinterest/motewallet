@@ -1,52 +1,21 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import type { SelectOption } from "@/components/ui/select";
+import { type ReactNode } from "react";
+import { useQueries } from "@tanstack/react-query";
 import {
-  KYC_COUNTRY_SCENE,
+  KYC_COUNTRY_SCENE_ADDRESS,
+  KYC_COUNTRY_SCENE_NATIONALITY,
   kycCountriesQueryOptions,
 } from "@/lib/kyc/reference-queries";
 
-interface KycReferenceContextValue {
-  countryOptions: SelectOption[];
-  countriesLoading: boolean;
-  countriesError: boolean;
-}
-
-const KycReferenceContext = createContext<KycReferenceContextValue | null>(null);
-
-/** Loads country/region list once for the whole KYC wizard. */
+/** Prefetches nationality and address country lists for the KYC wizard. */
 export function KycReferenceProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading, isError } = useQuery({
-    ...kycCountriesQueryOptions(KYC_COUNTRY_SCENE),
-    select: (response) =>
-      response.items.map((item) => ({
-        value: item.country_code,
-        label: item.country_name,
-      })),
+  useQueries({
+    queries: [
+      kycCountriesQueryOptions(KYC_COUNTRY_SCENE_NATIONALITY),
+      kycCountriesQueryOptions(KYC_COUNTRY_SCENE_ADDRESS),
+    ],
   });
 
-  const value = useMemo(
-    () => ({
-      countryOptions: data ?? [],
-      countriesLoading: isLoading,
-      countriesError: isError,
-    }),
-    [data, isLoading, isError]
-  );
-
-  return (
-    <KycReferenceContext.Provider value={value}>
-      {children}
-    </KycReferenceContext.Provider>
-  );
-}
-
-export function useKycReference() {
-  const ctx = useContext(KycReferenceContext);
-  if (!ctx) {
-    throw new Error("useKycReference must be used within KycReferenceProvider");
-  }
-  return ctx;
+  return children;
 }
