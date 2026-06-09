@@ -3,6 +3,10 @@
 import { useEffect, useRef } from "react";
 import type { Control } from "react-hook-form";
 import { useFormContext, useWatch } from "react-hook-form";
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { managerInfoToPerson } from "@/lib/kyc/copy-manager";
 import {
   FormControl,
   FormField,
@@ -27,14 +31,17 @@ interface PersonFieldsProps {
   control: Control<KycFormValues>;
   namePrefix: `shareholdersInfo.${number}` | `directorInfo.${number}`;
   showShareholding?: boolean;
+  /** Show button to copy account manager info into this person. */
+  showCopyFromManager?: boolean;
 }
 
 export function PersonFields({
   control,
   namePrefix,
   showShareholding = false,
+  showCopyFromManager = false,
 }: PersonFieldsProps) {
-  const { setValue } = useFormContext<KycFormValues>();
+  const { setValue, getValues } = useFormContext<KycFormValues>();
   const personCountry = useWatch({
     control,
     name: `${namePrefix}.country`,
@@ -51,8 +58,47 @@ export function PersonFields({
     prevCountryRef.current = personCountry;
   }, [personCountry, namePrefix, setValue]);
 
+  function copyFromManager() {
+    const enterprise = getValues("enterpriseInfo");
+    const person = managerInfoToPerson(enterprise);
+
+    if (showShareholding) {
+      const shareholdingRatio = getValues(`${namePrefix}.shareholdingRatio`);
+      setValue(
+        namePrefix,
+        { ...person, shareholdingRatio: shareholdingRatio ?? "" },
+        { shouldDirty: true }
+      );
+      toast({
+        title: "已复制管理人信息",
+        description: "请核对持股比例等股东专有字段。",
+      });
+      return;
+    }
+
+    setValue(namePrefix, person, { shouldDirty: true });
+    toast({
+      title: "已复制管理人信息",
+      description: "身份与证件信息已填入，请核对后提交。",
+    });
+  }
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-4">
+      {showCopyFromManager ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={copyFromManager}
+          >
+            <Copy className="mr-1 h-4 w-4" />
+            从管理人复制
+          </Button>
+        </div>
+      ) : null}
+      <div className="grid gap-4 sm:grid-cols-2">
       <KycFormRow>
         <FormField
           control={control}
@@ -203,7 +249,7 @@ export function PersonFields({
               <FormItem>
                 <KycFormLabel fieldKey="person.residenceCountry" />
                 <FormControl>
-                  <KycCountrySelect {...field} />
+                  <KycCountrySelect scene={KYC_COUNTRY_SCENE_NATIONALITY} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -234,7 +280,7 @@ export function PersonFields({
             <FormItem>
               <KycFormLabel fieldKey="person.residenceCountry" />
               <FormControl>
-                <KycCountrySelect {...field} />
+                <KycCountrySelect scene={KYC_COUNTRY_SCENE_NATIONALITY} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -274,6 +320,7 @@ export function PersonFields({
           </FormItem>
         )}
       />
+      </div>
     </div>
   );
 }

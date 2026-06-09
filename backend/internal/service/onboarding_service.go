@@ -248,6 +248,9 @@ func (s *OnboardingService) SubmitKyc(ctx context.Context, merchantID uint64, re
 	var registerResp kundto.SubMerchantRegisterResp
 	if err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, "/rest/v2.0/customer/subMerchant/register", req, &registerResp); err != nil {
 		slog.Error("KUN sub-merchant onboarding authentication failed", slog.Any("error", err))
+		if kunErr, ok := kun.IsKUNError(err); ok && len(kunErr.Errors) > 0 {
+			return bizerrors.NewKycValidationError(kunErr.Errors)
+		}
 		return bizerrors.ErrKUNAPIFailedE
 	}
 

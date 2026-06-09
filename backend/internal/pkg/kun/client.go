@@ -110,7 +110,7 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	if err != nil {
 		return fmt.Errorf("read response body: %w", err)
 	}
-	logKUNRequest(http.MethodPost, url, path, signString, req.Header, resp.Header, json.RawMessage(bodyBytes), resp.StatusCode, nil)
+	logKUNRequest(http.MethodPost, url, path, signString, req.Header, resp.Header, json.RawMessage(bodyBytes), resp.StatusCode, respBytes)
 
 	var kunResp kunResponse
 	if err := json.Unmarshal(respBytes, &kunResp); err != nil {
@@ -146,9 +146,16 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	}
 
 	if kunResp.Code != "200" && kunResp.Code != "000000" {
+		var errData struct {
+			Errors []string `json:"errors"`
+		}
+		if len(kunResp.Data) > 0 {
+			_ = json.Unmarshal(kunResp.Data, &errData)
+		}
 		return &KUNError{
 			Code:    kunResp.Code,
 			Message: kunResp.Msg,
+			Errors:  errData.Errors,
 		}
 	}
 

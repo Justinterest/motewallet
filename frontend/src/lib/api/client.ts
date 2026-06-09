@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { ApiResponse } from "@/types/api";
+import { ApiError, extractFieldErrors } from "./api-error";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
@@ -14,7 +15,13 @@ apiClient.interceptors.response.use(
     const data = response.data as ApiResponse<unknown>;
 
     if (data.code !== 0) {
-      return Promise.reject(new Error(data.message || "请求失败"));
+      const fieldErrors = extractFieldErrors(data.data);
+      return Promise.reject(
+        new ApiError(data.message || "请求失败", {
+          code: data.code,
+          fieldErrors,
+        })
+      );
     }
 
     return data.data as never;
@@ -26,9 +33,16 @@ apiClient.interceptors.response.use(
       }
     }
 
+    const responseData = error.response?.data;
     const message =
-      error.response?.data?.message || error.message || "网络错误，请稍后重试";
-    return Promise.reject(new Error(message));
+      responseData?.message || error.message || "网络错误，请稍后重试";
+    const fieldErrors = extractFieldErrors(responseData?.data);
+    return Promise.reject(
+      new ApiError(message, {
+        code: responseData?.code,
+        fieldErrors,
+      })
+    );
   }
 );
 

@@ -37,6 +37,7 @@ type BusinessError struct {
 	HTTPStatus int
 	Code       int
 	Message    string
+	Data       interface{}
 }
 
 func (e *BusinessError) Error() string {
@@ -48,6 +49,17 @@ func NewBusinessError(httpStatus, code int, message string) *BusinessError {
 		HTTPStatus: httpStatus,
 		Code:       code,
 		Message:    message,
+	}
+}
+
+func NewKycValidationError(errors []string) *BusinessError {
+	return &BusinessError{
+		HTTPStatus: http.StatusBadRequest,
+		Code:       ErrValidation,
+		Message:    "实名认证信息校验失败，请检查以下字段",
+		Data: map[string]interface{}{
+			"errors": errors,
+		},
 	}
 }
 

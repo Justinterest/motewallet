@@ -52,6 +52,8 @@ import {
 } from "@/lib/kyc/constants";
 import { kycFormSchema, type KycFormValues } from "@/lib/validations/onboarding";
 import { useSubmitKyc } from "@/lib/hooks/use-onboarding";
+import { ApiError } from "@/lib/api/api-error";
+import { parseKycFieldErrors } from "@/lib/kyc/parse-field-errors";
 import { toast } from "@/hooks/use-toast";
 
 const STEPS = ["企业信息", "管理人信息", "股东信息", "董事信息"] as const;
@@ -59,6 +61,9 @@ const STEPS = ["企业信息", "管理人信息", "股东信息", "董事信息"
 export function KycWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const [submitFieldErrors, setSubmitFieldErrors] = useState<
+    { label: string; message: string }[]
+  >([]);
   const submitMutation = useSubmitKyc();
 
   const form = useForm<KycFormValues>({
@@ -184,7 +189,31 @@ export function KycWizard() {
     });
   }
 
+  function applySubmitFieldErrors(errors: string[]) {
+    const parsed = parseKycFieldErrors(errors);
+    if (parsed.length === 0) return false;
+
+    let firstStep = STEPS.length - 1;
+    parsed.forEach(({ path, message }) => {
+      const pathParts = path.split(".");
+      firstStep = Math.min(firstStep, stepIndexForIssuePath(pathParts));
+      form.setError(path as Parameters<typeof form.setError>[0], { message });
+    });
+
+    setSubmitFieldErrors(
+      parsed.map(({ label, message }) => ({ label, message }))
+    );
+    goToStep(firstStep);
+    toast({
+      variant: "destructive",
+      title: "提交失败",
+      description: `共 ${parsed.length} 处字段需要修正，请查看表单中的提示。`,
+    });
+    return true;
+  }
+
   async function onSubmit(values: KycFormValues) {
+    setSubmitFieldErrors([]);
     const payload = formValuesToSubmitRequest(values);
     submitMutation.mutate(payload, {
       onSuccess: () => {
@@ -196,6 +225,11 @@ export function KycWizard() {
         router.push("/kyc/status");
       },
       onError: (error) => {
+        if (error instanceof ApiError && error.fieldErrors?.length) {
+          applySubmitFieldErrors(error.fieldErrors);
+          return;
+        }
+        setSubmitFieldErrors([]);
         toast({
           variant: "destructive",
           title: "提交失败",
@@ -252,9 +286,25 @@ export function KycWizard() {
           ))}
         </nav>
 
-        {submitMutation.isError && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
-            {submitMutation.error?.message || "提交失败，请重试"}
+        {(submitFieldErrors.length > 0 || submitMutation.isError) && (
+          <div
+            className="rounded-md bg-red-50 p-3 text-sm text-red-600"
+            role="alert"
+          >
+            {submitFieldErrors.length > 0 ? (
+              <>
+                <p className="font-medium">以下字段需要修正：</p>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
+                  {submitFieldErrors.map((item) => (
+                    <li key={`${item.label}-${item.message}`}>
+                      {item.label}：{item.message}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              submitMutation.error?.message || "提交失败，请重试"
+            )}
           </div>
         )}
 
@@ -841,7 +891,7 @@ export function KycWizard() {
                     <FormItem>
                       <KycFormLabel fieldKey="managerResidenceCountry" />
                       <FormControl>
-                        <KycCountrySelect {...field} />
+                        <KycCountrySelect scene={KYC_COUNTRY_SCENE_NATIONALITY} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -988,6 +1038,7 @@ export function KycWizard() {
                       control={form.control}
                       namePrefix={`shareholdersInfo.${index}`}
                       showShareholding
+                      showCopyFromManager
                     />
                   </CollapsibleSection>
                 );
@@ -1048,6 +1099,7 @@ export function KycWizard() {
                     <PersonFields
                       control={form.control}
                       namePrefix={`directorInfo.${index}`}
+                      showCopyFromManager
                     />
                   </CollapsibleSection>
                 );

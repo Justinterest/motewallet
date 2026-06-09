@@ -8,6 +8,7 @@ import (
 type KUNError struct {
 	Code    string
 	Message string
+	Errors  []string
 }
 
 func (e *KUNError) Error() string {

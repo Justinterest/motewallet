@@ -81,7 +81,11 @@ func (h *OnboardingHandler) SubmitKyc(c *gin.Context) {
 	err := h.onboardingService.SubmitKyc(c.Request.Context(), userID.(uint64), &req)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
-			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			if bizErr.Data != nil {
+				response.ErrorWithData(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message, bizErr.Data)
+			} else {
+				response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			}
 			return
 		}
 		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
