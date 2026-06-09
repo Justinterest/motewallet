@@ -46,17 +46,19 @@ export function PersonFields({
     control,
     name: `${namePrefix}.country`,
   });
-  const prevCountryRef = useRef(personCountry);
+  const prevCountryRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (
-      prevCountryRef.current !== undefined &&
-      prevCountryRef.current !== personCountry
-    ) {
+    const current = getValues(`${namePrefix}.country`);
+    if (prevCountryRef.current === undefined) {
+      prevCountryRef.current = current;
+      return;
+    }
+    if (prevCountryRef.current !== current) {
       setValue(`${namePrefix}.authType`, "");
     }
-    prevCountryRef.current = personCountry;
-  }, [personCountry, namePrefix, setValue]);
+    prevCountryRef.current = current;
+  }, [personCountry, namePrefix, setValue, getValues]);
 
   function copyFromManager() {
     const enterprise = getValues("enterpriseInfo");

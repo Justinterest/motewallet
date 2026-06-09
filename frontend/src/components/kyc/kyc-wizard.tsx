@@ -36,8 +36,12 @@ import { KycFormRow } from "@/components/kyc/kyc-form-row";
 import { PersonFields } from "@/components/kyc/person-fields";
 import { cn } from "@/lib/utils";
 import { getKycFieldMeta } from "@/lib/kyc/field-meta";
-import { KYC_DRAFT_KEY } from "@/lib/kyc/constants";
 import { createKycFormDefaults } from "@/lib/kyc/form-defaults";
+import {
+  clearKycDraft,
+  loadKycDraft,
+  saveKycDraft,
+} from "@/lib/kyc/draft-storage";
 import { formValuesToSubmitRequest } from "@/lib/kyc/transform";
 import {
   EMPLOYEE_NUM_OPTIONS,
@@ -70,7 +74,12 @@ export function KycWizard() {
     resolver: zodResolver(kycFormSchema),
     defaultValues: createKycFormDefaults(),
     mode: "onBlur",
+    shouldUnregister: false,
   });
+
+  const draftHydratedRef = useRef(false);
+  const stepRef = useRef(step);
+  stepRef.current = step;
 
   const shareholders = useFieldArray({
     control: form.control,
@@ -90,49 +99,70 @@ export function KycWizard() {
   );
   const managerCountry = form.watch("enterpriseInfo.managerCountry");
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KYC_DRAFT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as KycFormValues;
-        form.reset(parsed);
-      }
-    } catch {
-      /* ignore corrupt draft */
+    const draft = loadKycDraft();
+    if (draft) {
+      form.reset(draft.values);
+      setStep(draft.step);
     }
+    draftHydratedRef.current = true;
   }, [form]);
 
   useEffect(() => {
-    const sub = form.watch((values) => {
-      try {
-        localStorage.setItem(KYC_DRAFT_KEY, JSON.stringify(values));
-      } catch {
-        /* quota exceeded */
-      }
+    const sub = form.watch(() => {
+      if (!draftHydratedRef.current) return;
+      saveKycDraft(stepRef.current, form.getValues());
     });
     return () => sub.unsubscribe();
   }, [form]);
 
   useEffect(() => {
-    if (middleTierShareholders === "No") {
+    if (!draftHydratedRef.current) return;
+    saveKycDraft(step, form.getValues());
+  }, [step, form]);
+
+  const prevMiddleTierRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!draftHydratedRef.current) return;
+
+    const current = form.getValues("enterpriseInfo.middleTierShareholders");
+    if (prevMiddleTierRef.current === undefined) {
+      prevMiddleTierRef.current = current;
+      return;
+    }
+    if (prevMiddleTierRef.current !== current && current === "No") {
       form.setValue("enterpriseInfo.equityStructurePaths", []);
     }
+    prevMiddleTierRef.current = current;
   }, [middleTierShareholders, form]);
 
+  const prevRegisterRegionRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (registerRegion !== "HK") {
+    if (!draftHydratedRef.current) return;
+
+    const current = form.getValues("enterpriseInfo.registerRegion");
+    if (prevRegisterRegionRef.current === undefined) {
+      prevRegisterRegionRef.current = current;
+      return;
+    }
+    if (prevRegisterRegionRef.current !== current && current !== "HK") {
       form.setValue("enterpriseInfo.nnc1Paths", []);
     }
+    prevRegisterRegionRef.current = current;
   }, [registerRegion, form]);
 
-  const prevManagerCountryRef = useRef(managerCountry);
+  const prevManagerCountryRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (
-      prevManagerCountryRef.current !== undefined &&
-      prevManagerCountryRef.current !== managerCountry
-    ) {
+    if (!draftHydratedRef.current) return;
+
+    const current = form.getValues("enterpriseInfo.managerCountry");
+    if (prevManagerCountryRef.current === undefined) {
+      prevManagerCountryRef.current = current;
+      return;
+    }
+    if (prevManagerCountryRef.current !== current) {
       form.setValue("enterpriseInfo.managerAuthType", "");
     }
-    prevManagerCountryRef.current = managerCountry;
+    prevManagerCountryRef.current = current;
   }, [managerCountry, form]);
 
   function goToStep(index: number) {
@@ -217,7 +247,7 @@ export function KycWizard() {
     const payload = formValuesToSubmitRequest(values);
     submitMutation.mutate(payload, {
       onSuccess: () => {
-        localStorage.removeItem(KYC_DRAFT_KEY);
+        clearKycDraft();
         toast({
           title: "提交成功",
           description: "实名认证资料已提交，请等待审核。",
