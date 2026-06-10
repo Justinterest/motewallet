@@ -32,10 +32,10 @@ type kunAPILog struct {
 	Path            string            `json:"path"`
 	SignString      string            `json:"sign_string,omitempty"`
 	RequestHeaders  map[string]string `json:"request_headers"`
-	RequestBody     any               `json:"request_body"`
+	RequestBody     any               `json:"request_body,omitempty"`
 	HTTPStatus      int               `json:"http_status"`
 	ResponseHeaders map[string]string `json:"response_headers"`
-	ResponseBody    any               `json:"response_body"`
+	ResponseBody    any               `json:"response_body,omitempty"`
 }
 
 func kunHeadersFrom(h http.Header, keys []string) map[string]string {
@@ -92,12 +92,12 @@ func logKUNRequest(
 	responseBody []byte,
 ) {
 	entry := kunAPILog{
-		Method:          method,
-		URL:             url,
-		Path:            path,
-		SignString:      signString,
-		RequestHeaders:  kunHeadersFrom(reqHeaders, kunLogRequestHeaderKeys),
-		RequestBody:     kunLogJSONValue(requestBody),
+		Method:         method,
+		URL:            url,
+		Path:           path,
+		SignString:     signString,
+		RequestHeaders: kunHeadersFrom(reqHeaders, kunLogRequestHeaderKeys),
+		// RequestBody:     kunLogJSONValue(requestBody),
 		HTTPStatus:      httpStatus,
 		ResponseHeaders: kunHeadersFrom(respHeaders, kunLogResponseHeaderKeys),
 		ResponseBody:    kunLogJSONValue(responseBody),
