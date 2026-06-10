@@ -110,7 +110,17 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	if err != nil {
 		return fmt.Errorf("read response body: %w", err)
 	}
-	logKUNRequest(http.MethodPost, url, path, signString, req.Header, resp.Header, json.RawMessage(bodyBytes), resp.StatusCode, respBytes)
+
+	success := false
+	defer func() {
+		var reqBody any
+		var respBody []byte
+		if !success {
+			reqBody = json.RawMessage(bodyBytes)
+			respBody = respBytes
+		}
+		logKUNRequest(http.MethodPost, url, path, signString, req.Header, resp.Header, reqBody, resp.StatusCode, respBody)
+	}()
 
 	var kunResp kunResponse
 	if err := json.Unmarshal(respBytes, &kunResp); err != nil {
@@ -165,6 +175,7 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 		}
 	}
 
+	success = true
 	return nil
 }
 
@@ -217,12 +228,23 @@ func (c *Client) UploadFileAsCustomer(
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 	uploadPath := "/rest/v2.0/upload"
-	logKUNRequest(http.MethodPost, url, uploadPath, signString, req.Header, resp.Header, map[string]any{
+	reqLogBody := map[string]any{
 		"type":         "multipart",
 		"filename":     filename,
 		"content_type": contentType,
 		"size":         len(content),
-	}, resp.StatusCode, respBytes)
+	}
+
+	success := false
+	defer func() {
+		var reqBody any
+		var respBody []byte
+		if !success {
+			reqBody = reqLogBody
+			respBody = respBytes
+		}
+		logKUNRequest(http.MethodPost, url, uploadPath, signString, req.Header, resp.Header, reqBody, resp.StatusCode, respBody)
+	}()
 
 	var kunResp struct {
 		Code string                `json:"code"`
@@ -244,5 +266,6 @@ func (c *Client) UploadFileAsCustomer(
 		return nil, fmt.Errorf("KUN file upload returned empty url")
 	}
 
+	success = true
 	return &kunResp.Data, nil
 }

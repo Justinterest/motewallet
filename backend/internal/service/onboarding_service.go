@@ -183,10 +183,10 @@ func (s *OnboardingService) SignAgreements(ctx context.Context, merchantID uint6
 		return bizerrors.NewBusinessError(http.StatusBadRequest, bizerrors.ErrValidation, "no valid agreement protocol ids")
 	}
 
-	if err := s.kunClient.Post(ctx, kunAgreeAuthPath, &kundto.AgreeAuthReq{
-		RequestNo:     kun.GenerateRequestNo(),
-		SubCustomerNo: *merchant.KunSubCustomerNo,
-		ProtocolIds:   strings.Join(ids, ","),
+	if err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kunAgreeAuthPath, &kundto.AgreeAuthReq{
+		RequestNo: kun.GenerateRequestNo(),
+		// SubCustomerNo: *merchant.KunSubCustomerNo,
+		ProtocolIds: strings.Join(ids, ","),
 	}, nil); err != nil {
 		slog.Error("KUN agreement sign failed",
 			slog.Uint64("merchant_id", merchantID),
