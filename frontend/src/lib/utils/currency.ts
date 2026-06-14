@@ -6,5 +6,5 @@ export function getAllSupportedCurrencies(data?: {
   crypto_currencies?: string[];
   fiat_currencies?: string[];
 }) {
-  return [...(data?.crypto_currencies ?? []), ...(data?.fiat_currencies ?? [])];
+  return [...(data?.fiat_currencies ?? []), ...(data?.crypto_currencies ?? [])];
 }

@@ -13,7 +13,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWalletBalances } from "@/lib/hooks/use-wallet";
+import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount, getCurrencySymbol } from "@/lib/utils/format";
+import { getAllSupportedCurrencies } from "@/lib/utils/currency";
 import type { WalletBalance } from "@/types/wallet";
 import type { LucideIcon } from "lucide-react";
 
@@ -67,7 +69,7 @@ function BalanceRows({
             </span>
             <div>
               <p className="text-sm font-medium text-foreground">
-                {getCurrencySymbol(wallet.currency)} {wallet.currency}
+                {wallet.currency}
               </p>
               {parseFloat(wallet.frozen_balance) > 0 && (
                 <p className="text-xs text-muted-foreground">
@@ -124,9 +126,15 @@ function AccountPanel({
 }
 
 export default function DashboardPage() {
-  const { data, isLoading } = useWalletBalances();
+  const { data, isLoading: balancesLoading } = useWalletBalances();
+  const { data: supportedCurrencies, isLoading: currenciesLoading } =
+    useSupportedCurrencies();
+  const isLoading = balancesLoading || currenciesLoading;
 
-  const wallets = data?.wallets || [];
+  const supported = new Set(getAllSupportedCurrencies(supportedCurrencies));
+  const wallets = (data?.wallets || []).filter((wallet) =>
+    supported.has(wallet.currency),
+  );
   const fundingBalances = wallets.filter((w) => w.account_type === "FUNDING");
   const tradingBalances = wallets.filter((w) => w.account_type === "TRADING");
   const totalUSD = estimateTotalUSD(wallets);
