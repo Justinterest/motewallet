@@ -66,6 +66,8 @@ func main() {
 	depositOrderRepo := repository.NewDepositOrderRepository(db)
 	withdrawalOrderRepo := repository.NewWithdrawalOrderRepository(db)
 	exchangeOrderRepo := repository.NewExchangeOrderRepository(db)
+	systemConfigRepo := repository.NewSystemConfigRepository(db)
+
 	transferOrderRepo := repository.NewTransferOrderRepository(db)
 
 	// KUN Client
@@ -108,13 +110,14 @@ func main() {
 	kycFileService := service.NewKycFileService(cfg, merchantRepo, s3Storage, kunClient)
 	onboardingService := service.NewOnboardingService(cfg, merchantRepo, merchantKycSubmissionRepo, walletService, kycFileService, kunClient)
 	feeTemplateService := service.NewFeeTemplateService(db, feeTemplateRepo, exchangeItemRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, auditLogRepo)
-	merchantMgmtService := service.NewMerchantManagementService(merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo)
+	currencyConfigService := service.NewCurrencyConfigService(systemConfigRepo)
+	merchantMgmtService := service.NewMerchantManagementService(merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo, currencyConfigService)
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
-	depositService := service.NewDepositService(kunClient, merchantRepo)
+	depositService := service.NewDepositService(kunClient, merchantRepo, currencyConfigService)
 	adminDepositService := service.NewAdminDepositService(depositOrderRepo)
-	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, kunClient)
-	exchangeService := service.NewExchangeService(db, merchantRepo, walletService, exchangeOrderRepo, transactionRecordRepo, exchangeItemRepo, kunClient)
-	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient)
+	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, kunClient, currencyConfigService)
+	exchangeService := service.NewExchangeService(db, merchantRepo, walletService, exchangeOrderRepo, transactionRecordRepo, exchangeItemRepo, kunClient, currencyConfigService)
+	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient, currencyConfigService)
 	webhookService := service.NewWebhookService(db, webhookLogRepo, merchantRepo, walletService, transactionRecordRepo, depositOrderRepo, withdrawalOrderRepo, exchangeOrderRepo, transferOrderRepo)
 
 	// Handlers
@@ -132,6 +135,7 @@ func main() {
 	withdrawalHandler := handler.NewWithdrawalHandler(withdrawalService)
 	exchangeHandler := handler.NewExchangeHandler(exchangeService)
 	transferHandler := handler.NewTransferHandler(transferService)
+	currencyConfigHandler := handler.NewCurrencyConfigHandler(merchantRepo, currencyConfigService)
 
 	// Router
 	r := router.Setup(
@@ -150,6 +154,7 @@ func main() {
 		withdrawalHandler,
 		exchangeHandler,
 		transferHandler,
+		currencyConfigHandler,
 	)
 
 	addr := ":" + cfg.App.Port

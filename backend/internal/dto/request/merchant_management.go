@@ -19,3 +19,8 @@ type UpdateMerchantFeeTemplateReq struct {
 type KycRejectReq struct {
 	Reason string `json:"reason" binding:"required"`
 }
+
+type UpdateMerchantSupportedCurrenciesReq struct {
+	CryptoCurrencies []string `json:"crypto_currencies" binding:"required,min=1"`
+	FiatCurrencies   []string `json:"fiat_currencies" binding:"required,min=1"`
+}

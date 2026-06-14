@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,19 +12,26 @@ import {
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDepositAddresses, useDepositOrders } from "@/lib/hooks/use-trading";
+import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
+import { toCurrencyOptions } from "@/lib/utils/currency";
 import { DEPOSIT_NETWORKS, formatDepositStatus } from "@/lib/utils/network";
 
-const currencies = [
-  { value: "USDT", label: "USDT" },
-  { value: "USDC", label: "USDC" },
-  { value: "BTC", label: "BTC" },
-];
-
 export default function DepositPage() {
-  const [currency, setCurrency] = useState("USDT");
-  const [chain, setChain] = useState("TRX_TRC20");
+  const { data: supportedCurrencies } = useSupportedCurrencies();
+  const currencies = toCurrencyOptions(supportedCurrencies?.crypto_currencies ?? []);
+  const [currency, setCurrency] = useState("");
+  const [chain, setChain] = useState("");
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const nextCurrency = supportedCurrencies?.crypto_currencies?.[0];
+    if (!nextCurrency) return;
+    if (!currency || !supportedCurrencies.crypto_currencies.includes(currency)) {
+      setCurrency(nextCurrency);
+      setChain(DEPOSIT_NETWORKS[nextCurrency]?.[0]?.value || "");
+    }
+  }, [supportedCurrencies, currency]);
 
   const { data: addressData, isLoading: addressLoading } = useDepositAddresses(currency, chain);
   const { data: ordersData, isLoading: ordersLoading } = useDepositOrders(currency, chain);

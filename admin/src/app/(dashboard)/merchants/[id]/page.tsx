@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Shield, ShieldOff, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,12 +52,14 @@ import {
   useMerchant,
   useUpdateMerchantStatus,
   useUpdateMerchantFeeTemplate,
+  useUpdateMerchantSupportedCurrencies,
   useApproveKyc,
   useRejectKyc,
 } from "@/lib/hooks/use-merchants";
 import { useFeeTemplates } from "@/lib/hooks/use-fee-templates";
 import { formatAmount } from "@/lib/utils/format";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -100,6 +102,7 @@ export default function MerchantDetailPage({
   const { data: templates } = useFeeTemplates();
   const updateStatusMutation = useUpdateMerchantStatus();
   const updateFeeTemplateMutation = useUpdateMerchantFeeTemplate();
+  const updateSupportedCurrenciesMutation = useUpdateMerchantSupportedCurrencies();
   const approveKycMutation = useApproveKyc();
   const rejectKycMutation = useRejectKyc();
 
@@ -108,6 +111,14 @@ export default function MerchantDetailPage({
   const [kycApproveDialogOpen, setKycApproveDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedCrypto, setSelectedCrypto] = useState<string[]>([]);
+  const [selectedFiat, setSelectedFiat] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!merchant) return;
+    setSelectedCrypto(merchant.supported_crypto_currencies ?? []);
+    setSelectedFiat(merchant.supported_fiat_currencies ?? []);
+  }, [merchant]);
 
   const handleFreezeToggle = () => {
     const newStatus = merchant?.status === "FROZEN" ? "ACTIVE" : "FROZEN";
@@ -136,6 +147,41 @@ export default function MerchantDetailPage({
         },
         onError: (error) => {
           toast({ title: "分配失败", description: error.message, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const toggleCurrency = (
+    currency: string,
+    selected: string[],
+    setSelected: (value: string[]) => void
+  ) => {
+    if (selected.includes(currency)) {
+      setSelected(selected.filter((item) => item !== currency));
+      return;
+    }
+    setSelected([...selected, currency]);
+  };
+
+  const handleSaveSupportedCurrencies = () => {
+    if (selectedCrypto.length === 0 || selectedFiat.length === 0) {
+      toast({
+        title: "保存失败",
+        description: "至少需保留一种数字币和一种法币",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateSupportedCurrenciesMutation.mutate(
+      { id, crypto_currencies: selectedCrypto, fiat_currencies: selectedFiat },
+      {
+        onSuccess: () => {
+          toast({ title: "币种配置已保存" });
+        },
+        onError: (error) => {
+          toast({ title: "保存失败", description: error.message, variant: "destructive" });
         },
       }
     );
@@ -282,6 +328,55 @@ export default function MerchantDetailPage({
           ) : (
             <p className="py-4 text-center text-sm text-slate-400">暂无钱包数据</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Supported Currencies */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">支持币种</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <p className="mb-3 text-sm font-medium text-slate-700">数字货币</p>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {(merchant.available_crypto_currencies ?? []).map((currency) => (
+                <div key={currency} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <span className="text-sm font-medium">{currency}</span>
+                  <Switch
+                    checked={selectedCrypto.includes(currency)}
+                    onCheckedChange={() => toggleCurrency(currency, selectedCrypto, setSelectedCrypto)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div>
+            <p className="mb-3 text-sm font-medium text-slate-700">法币</p>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {(merchant.available_fiat_currencies ?? []).map((currency) => (
+                <div key={currency} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                  <span className="text-sm font-medium">{currency}</span>
+                  <Switch
+                    checked={selectedFiat.includes(currency)}
+                    onCheckedChange={() => toggleCurrency(currency, selectedFiat, setSelectedFiat)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveSupportedCurrencies}
+              disabled={updateSupportedCurrenciesMutation.isPending}
+            >
+              {updateSupportedCurrenciesMutation.isPending ? "保存中..." : "保存币种配置"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

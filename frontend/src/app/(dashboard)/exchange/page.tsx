@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,17 +13,30 @@ import {
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExchangeQuote, useCreateExchangeOrder, useExchangeOrders } from "@/lib/hooks/use-trading";
+import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
+import { getAllSupportedCurrencies } from "@/lib/utils/currency";
 import { toast } from "@/hooks/use-toast";
 import type { ExchangeQuote } from "@/types/trading";
 
-const allCurrencies = ["USDT", "USDC", "BTC", "USD", "HKD", "EUR"];
-
 export default function ExchangePage() {
-  const [fromCurrency, setFromCurrency] = useState("USDT");
-  const [toCurrency, setToCurrency] = useState("USD");
+  const { data: supportedCurrencies } = useSupportedCurrencies();
+  const allCurrencies = getAllSupportedCurrencies(supportedCurrencies);
+  const [fromCurrency, setFromCurrency] = useState("");
+  const [toCurrency, setToCurrency] = useState("");
   const [fromAmount, setFromAmount] = useState("");
   const [quote, setQuote] = useState<ExchangeQuote | null>(null);
+
+  useEffect(() => {
+    if (allCurrencies.length === 0) return;
+    if (!fromCurrency || !allCurrencies.includes(fromCurrency)) {
+      setFromCurrency(allCurrencies[0]);
+    }
+    if (!toCurrency || !allCurrencies.includes(toCurrency)) {
+      const fallback = allCurrencies.find((item) => item !== allCurrencies[0]) ?? allCurrencies[0];
+      setToCurrency(fallback);
+    }
+  }, [allCurrencies, fromCurrency, toCurrency]);
 
   const quoteMutation = useExchangeQuote();
   const orderMutation = useCreateExchangeOrder();

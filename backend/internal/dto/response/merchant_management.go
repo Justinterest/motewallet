@@ -29,6 +29,10 @@ type AdminMerchantDetailResp struct {
 	KycSubmittedAt    *time.Time          `json:"kyc_submitted_at,omitempty"`
 	KycCompletedAt    *time.Time          `json:"kyc_completed_at,omitempty"`
 	FrozenAt          *time.Time          `json:"frozen_at,omitempty"`
-	CreatedAt         time.Time           `json:"created_at"`
-	Wallets           []WalletBalanceResp `json:"wallets"`
+	CreatedAt                 time.Time           `json:"created_at"`
+	Wallets                   []WalletBalanceResp `json:"wallets"`
+	SupportedCryptoCurrencies []string            `json:"supported_crypto_currencies"`
+	SupportedFiatCurrencies   []string            `json:"supported_fiat_currencies"`
+	AvailableCryptoCurrencies []string            `json:"available_crypto_currencies"`
+	AvailableFiatCurrencies   []string            `json:"available_fiat_currencies"`
 }

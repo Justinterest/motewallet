@@ -25,6 +25,7 @@ type ExchangeService struct {
 	transactionRecordRepo repository.TransactionRecordRepository
 	exchangeItemRepo      repository.FeeTemplateExchangeItemRepository
 	kunClient             kun.KUNClient
+	currencyConfigSvc     *CurrencyConfigService
 }
 
 func NewExchangeService(
@@ -35,6 +36,7 @@ func NewExchangeService(
 	transactionRecordRepo repository.TransactionRecordRepository,
 	exchangeItemRepo repository.FeeTemplateExchangeItemRepository,
 	kunClient kun.KUNClient,
+	currencyConfigSvc *CurrencyConfigService,
 ) *ExchangeService {
 	return &ExchangeService{
 		db:                    db,
@@ -44,6 +46,7 @@ func NewExchangeService(
 		transactionRecordRepo: transactionRecordRepo,
 		exchangeItemRepo:      exchangeItemRepo,
 		kunClient:             kunClient,
+		currencyConfigSvc:     currencyConfigSvc,
 	}
 }
 
@@ -58,6 +61,13 @@ func (s *ExchangeService) GetQuote(ctx context.Context, merchantID uint64, req *
 
 	if merchant.KunSubCustomerNo == nil {
 		return nil, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.FromCurrency); err != nil {
+		return nil, err
+	}
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.ToCurrency); err != nil {
+		return nil, err
 	}
 
 	var quoteResp kundto.ExchangeQuoteResp
@@ -99,6 +109,13 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 
 	if merchant.KunSubCustomerNo == nil {
 		return 0, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.FromCurrency); err != nil {
+		return 0, err
+	}
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.ToCurrency); err != nil {
+		return 0, err
 	}
 
 	fromAmount, err := decimal.NewFromString(req.FromAmount)
@@ -180,6 +197,13 @@ func (s *ExchangeService) Create1to1Order(ctx context.Context, merchantID uint64
 
 	if merchant.KunSubCustomerNo == nil {
 		return 0, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.FromCurrency); err != nil {
+		return 0, err
+	}
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.ToCurrency); err != nil {
+		return 0, err
 	}
 
 	fromAmount, err := decimal.NewFromString(req.FromAmount)

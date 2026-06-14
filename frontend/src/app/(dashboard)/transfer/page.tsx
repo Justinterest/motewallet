@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, ArrowDownUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,16 +13,26 @@ import {
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTransfer, useTransferOrders } from "@/lib/hooks/use-trading";
+import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
+import { getAllSupportedCurrencies } from "@/lib/utils/currency";
 import { toast } from "@/hooks/use-toast";
 
-const currencies = ["USDT", "USDC", "BTC", "USD", "HKD", "EUR"];
-
 export default function TransferPage() {
+  const { data: supportedCurrencies } = useSupportedCurrencies();
+  const currencies = getAllSupportedCurrencies(supportedCurrencies);
   const [fromAccount, setFromAccount] = useState("FUNDING");
   const [toAccount, setToAccount] = useState("TRADING");
-  const [currency, setCurrency] = useState("USDT");
+  const [currency, setCurrency] = useState("");
   const [amount, setAmount] = useState("");
+
+  useEffect(() => {
+    const nextCurrency = currencies[0];
+    if (!nextCurrency) return;
+    if (!currency || !currencies.includes(currency)) {
+      setCurrency(nextCurrency);
+    }
+  }, [currencies, currency]);
 
   const transferMutation = useTransfer();
   const { data: ordersData, isLoading: ordersLoading } = useTransferOrders();

@@ -23,6 +23,7 @@ func Setup(
 	withdrawalHandler *handler.WithdrawalHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	transferHandler *handler.TransferHandler,
+	currencyConfigHandler *handler.CurrencyConfigHandler,
 ) *gin.Engine {
 	r := gin.New()
 
@@ -85,6 +86,7 @@ func Setup(
 	account.Use(middleware.JWTAuth(cfg.JWT.Secret))
 	{
 		account.GET("/balances", walletHandler.GetBalances)
+		account.GET("/supported-currencies", currencyConfigHandler.GetSupportedCurrencies)
 		account.POST("/transfer", transferHandler.Transfer)
 		account.GET("/transfers", transferHandler.ListTransfers)
 	}
@@ -148,6 +150,7 @@ func Setup(
 		adminMerchants.GET("/:id", merchantMgmtHandler.GetDetail)
 		adminMerchants.PUT("/:id/status", merchantMgmtHandler.UpdateStatus)
 		adminMerchants.PUT("/:id/fee-template", merchantMgmtHandler.UpdateFeeTemplate)
+		adminMerchants.PUT("/:id/supported-currencies", merchantMgmtHandler.UpdateSupportedCurrencies)
 		adminMerchants.POST("/:id/kyc/approve", merchantMgmtHandler.ApproveKyc)
 		adminMerchants.POST("/:id/kyc/reject", merchantMgmtHandler.RejectKyc)
 	}

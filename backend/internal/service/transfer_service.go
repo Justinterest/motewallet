@@ -24,6 +24,7 @@ type TransferService struct {
 	transferOrderRepo     repository.TransferOrderRepository
 	transactionRecordRepo repository.TransactionRecordRepository
 	kunClient             kun.KUNClient
+	currencyConfigSvc     *CurrencyConfigService
 }
 
 func NewTransferService(
@@ -33,6 +34,7 @@ func NewTransferService(
 	transferOrderRepo repository.TransferOrderRepository,
 	transactionRecordRepo repository.TransactionRecordRepository,
 	kunClient kun.KUNClient,
+	currencyConfigSvc *CurrencyConfigService,
 ) *TransferService {
 	return &TransferService{
 		db:                    db,
@@ -41,6 +43,7 @@ func NewTransferService(
 		transferOrderRepo:     transferOrderRepo,
 		transactionRecordRepo: transactionRecordRepo,
 		kunClient:             kunClient,
+		currencyConfigSvc:     currencyConfigSvc,
 	}
 }
 
@@ -55,6 +58,10 @@ func (s *TransferService) Transfer(ctx context.Context, merchantID uint64, req *
 
 	if merchant.KunSubCustomerNo == nil {
 		return 0, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.Currency); err != nil {
+		return 0, err
 	}
 
 	if req.FromAccountType == req.ToAccountType {

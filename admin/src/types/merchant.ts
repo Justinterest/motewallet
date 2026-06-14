@@ -23,4 +23,8 @@ export interface AdminMerchant {
 export interface AdminMerchantDetail extends AdminMerchant {
   wallets: MerchantWallet[];
   kyc_fail_reason?: string;
+  supported_crypto_currencies: string[];
+  supported_fiat_currencies: string[];
+  available_crypto_currencies: string[];
+  available_fiat_currencies: string[];
 }

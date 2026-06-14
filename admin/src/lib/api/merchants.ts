@@ -15,4 +15,6 @@ export const merchantApi = {
     apiClient.post<never, void>(`/api/v1/admin/merchants/${id}/kyc/approve`),
   rejectKyc: (id: number, data: { reason: string }) =>
     apiClient.post<never, void>(`/api/v1/admin/merchants/${id}/kyc/reject`, data),
+  updateSupportedCurrencies: (id: number, data: { crypto_currencies: string[]; fiat_currencies: string[] }) =>
+    apiClient.put<never, void>(`/api/v1/admin/merchants/${id}/supported-currencies`, data),
 };

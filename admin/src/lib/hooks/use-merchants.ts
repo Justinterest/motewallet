@@ -50,3 +50,19 @@ export function useRejectKyc() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["merchants"] }),
   });
 }
+
+export function useUpdateMerchantSupportedCurrencies() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      crypto_currencies,
+      fiat_currencies,
+    }: {
+      id: number;
+      crypto_currencies: string[];
+      fiat_currencies: string[];
+    }) => merchantApi.updateSupportedCurrencies(id, { crypto_currencies, fiat_currencies }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["merchants"] }),
+  });
+}

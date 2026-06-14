@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,14 +13,10 @@ import {
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSubmitCryptoWithdrawal, useWithdrawalOrders } from "@/lib/hooks/use-trading";
+import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
+import { toCurrencyOptions } from "@/lib/utils/currency";
 import { toast } from "@/hooks/use-toast";
-
-const currencies = [
-  { value: "USDT", label: "USDT" },
-  { value: "USDC", label: "USDC" },
-  { value: "BTC", label: "BTC" },
-];
 
 const chains: Record<string, { value: string; label: string }[]> = {
   USDT: [
@@ -48,10 +44,21 @@ const reviewLabels: Record<string, string> = {
 };
 
 export default function WithdrawPage() {
-  const [currency, setCurrency] = useState("USDT");
-  const [chain, setChain] = useState("TRC20");
+  const { data: supportedCurrencies } = useSupportedCurrencies();
+  const currencies = toCurrencyOptions(supportedCurrencies?.crypto_currencies ?? []);
+  const [currency, setCurrency] = useState("");
+  const [chain, setChain] = useState("");
   const [amount, setAmount] = useState("");
   const [toAddress, setToAddress] = useState("");
+
+  useEffect(() => {
+    const nextCurrency = supportedCurrencies?.crypto_currencies?.[0];
+    if (!nextCurrency) return;
+    if (!currency || !supportedCurrencies.crypto_currencies.includes(currency)) {
+      setCurrency(nextCurrency);
+      setChain(chains[nextCurrency]?.[0]?.value || "");
+    }
+  }, [supportedCurrencies, currency]);
 
   const submitMutation = useSubmitCryptoWithdrawal();
   const { data: ordersData, isLoading: ordersLoading } = useWithdrawalOrders();

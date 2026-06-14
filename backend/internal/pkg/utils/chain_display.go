@@ -13,8 +13,10 @@ func ChainDisplayName(chain string) string {
 		return "Bitcoin"
 	case "SOL_Solana", "SOL":
 		return "Solana"
-	case "BNB_BEP20", "BEP20":
+	case "BSC_BEP20", "BNB_BEP20", "BEP20":
 		return "BEP20（BNB Chain）"
+	case "TON":
+		return "TON"
 	default:
 		if chain == "" {
 			return ""

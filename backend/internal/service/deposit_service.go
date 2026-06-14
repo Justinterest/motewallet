@@ -22,17 +22,20 @@ const (
 )
 
 type DepositService struct {
-	kunClient    kun.KUNClient
-	merchantRepo repository.MerchantRepository
+	kunClient         kun.KUNClient
+	merchantRepo      repository.MerchantRepository
+	currencyConfigSvc *CurrencyConfigService
 }
 
 func NewDepositService(
 	kunClient kun.KUNClient,
 	merchantRepo repository.MerchantRepository,
+	currencyConfigSvc *CurrencyConfigService,
 ) *DepositService {
 	return &DepositService{
-		kunClient:    kunClient,
-		merchantRepo: merchantRepo,
+		kunClient:         kunClient,
+		merchantRepo:      merchantRepo,
+		currencyConfigSvc: currencyConfigSvc,
 	}
 }
 
@@ -47,6 +50,10 @@ func (s *DepositService) GetDepositAddresses(ctx context.Context, merchantID uin
 
 	if merchant.KunSubCustomerNo == nil {
 		return nil, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, currency); err != nil {
+		return nil, err
 	}
 
 	chainType := normalizeDepositChainType(currency, chain)
@@ -101,6 +108,12 @@ func (s *DepositService) ListDepositOrders(ctx context.Context, merchantID uint6
 		return nil, bizerrors.ErrMerchantNotRegisteredE
 	}
 
+	if currency != "" {
+		if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, currency); err != nil {
+			return nil, err
+		}
+	}
+
 	now := time.Now()
 	req := kundto.DepositHistoryQueryReq{
 		StartTime: now.AddDate(0, -3, 0).Format("2006-01-02 15:04:05"),
@@ -150,6 +163,12 @@ func normalizeDepositChainType(currency, chain string) string {
 		return "ETH_ERC20"
 	case "BTC", "BTC_BITCOIN":
 		return "BTC_Bitcoin"
+	case "SOL", "SOL_SOLANA":
+		return "SOL_Solana"
+	case "BSC_BEP20", "BEP20", "BNB_BEP20":
+		return "BSC_BEP20"
+	case "TON":
+		return "TON"
 	default:
 		if chain != "" {
 			return chain

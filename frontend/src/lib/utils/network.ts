@@ -1,12 +1,16 @@
 /** Internal chain codes sent to the API (not shown in UI). */
 export const DEPOSIT_NETWORKS: Record<string, { value: string; label: string }[]> = {
   USDT: [
-    { value: "TRX_TRC20", label: "TRC20（波场）" },
     { value: "ETH_ERC20", label: "ERC20（以太坊）" },
+    { value: "TRX_TRC20", label: "TRC20（波场）" },
+    { value: "TON", label: "TON" },
+    { value: "SOL_Solana", label: "Solana" },
+    { value: "BSC_BEP20", label: "BEP20（BNB Chain）" },
   ],
   USDC: [
     { value: "ETH_ERC20", label: "ERC20（以太坊）" },
-    { value: "TRX_TRC20", label: "TRC20（波场）" },
+    { value: "SOL_Solana", label: "Solana" },
+    { value: "BSC_BEP20", label: "BEP20（BNB Chain）" },
   ],
   BTC: [{ value: "BTC_Bitcoin", label: "Bitcoin" }],
 };

@@ -23,6 +23,7 @@ const (
 	ErrMerchantNotRegistered       = 10024
 	ErrKycAlreadyProcessing        = 10025
 	ErrInsufficientBalance         = 10030
+	ErrUnsupportedCurrency         = 10033
 	ErrWithdrawalNotFound          = 10031
 	ErrWithdrawalNotPending        = 10032
 	ErrInternal                    = 50000
@@ -84,6 +85,7 @@ var (
 	ErrMerchantNotRegisteredE       = NewBusinessError(http.StatusBadRequest, ErrMerchantNotRegistered, "请先完成企业认证后再使用该功能")
 	ErrKycAlreadyProcessingE        = NewBusinessError(http.StatusBadRequest, ErrKycAlreadyProcessing, "企业认证审核中，请耐心等待")
 	ErrInsufficientBalanceE         = NewBusinessError(http.StatusBadRequest, ErrInsufficientBalance, "余额不足")
+	ErrUnsupportedCurrencyE         = NewBusinessError(http.StatusBadRequest, ErrUnsupportedCurrency, "该币种暂未对您开放")
 	ErrWithdrawalNotFoundE          = NewBusinessError(http.StatusNotFound, ErrWithdrawalNotFound, "提现记录不存在")
 	ErrWithdrawalNotPendingE        = NewBusinessError(http.StatusBadRequest, ErrWithdrawalNotPending, "该提现申请当前无法审核")
 	ErrStorageNotConfiguredE        = NewBusinessError(http.StatusServiceUnavailable, ErrStorageNotConfigured, "文件服务暂不可用，请稍后重试")

@@ -20,6 +20,7 @@ type MerchantManagementService struct {
 	merchantWalletRepo repository.MerchantWalletRepository
 	feeTemplateRepo    repository.FeeTemplateRepository
 	auditLogRepo       repository.AuditLogRepository
+	currencyConfigSvc  *CurrencyConfigService
 }
 
 func NewMerchantManagementService(
@@ -27,12 +28,14 @@ func NewMerchantManagementService(
 	merchantWalletRepo repository.MerchantWalletRepository,
 	feeTemplateRepo repository.FeeTemplateRepository,
 	auditLogRepo repository.AuditLogRepository,
+	currencyConfigSvc *CurrencyConfigService,
 ) *MerchantManagementService {
 	return &MerchantManagementService{
 		merchantRepo:       merchantRepo,
 		merchantWalletRepo: merchantWalletRepo,
 		feeTemplateRepo:    feeTemplateRepo,
 		auditLogRepo:       auditLogRepo,
+		currencyConfigSvc:  currencyConfigSvc,
 	}
 }
 
@@ -117,6 +120,27 @@ func (s *MerchantManagementService) GetDetail(ctx context.Context, id uint64) (*
 			resp.FeeTemplateName = &template.Name
 		}
 	}
+
+	supportedCrypto, err := s.currencyConfigSvc.GetSupportedCrypto(ctx, merchant)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	supportedFiat, err := s.currencyConfigSvc.GetSupportedFiat(ctx, merchant)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	availableCrypto, err := s.currencyConfigSvc.GetAvailableCrypto(ctx)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	availableFiat, err := s.currencyConfigSvc.GetAvailableFiat(ctx)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	resp.SupportedCryptoCurrencies = supportedCrypto
+	resp.SupportedFiatCurrencies = supportedFiat
+	resp.AvailableCryptoCurrencies = availableCrypto
+	resp.AvailableFiatCurrencies = availableFiat
 
 	return resp, nil
 }
@@ -240,6 +264,38 @@ func (s *MerchantManagementService) RejectKyc(ctx context.Context, adminID, merc
 
 	s.logAudit(ctx, adminID, "REJECT_KYC", "Merchant", fmt.Sprintf("%d", merchantID), map[string]string{
 		"reason": req.Reason,
+	})
+
+	return nil
+}
+
+func (s *MerchantManagementService) UpdateSupportedCurrencies(ctx context.Context, adminID, merchantID uint64, req *dtoreq.UpdateMerchantSupportedCurrenciesReq) error {
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerrors.ErrNotFoundError
+		}
+		return bizerrors.ErrInternalError
+	}
+
+	selectedCrypto, selectedFiat, err := s.currencyConfigSvc.NormalizeMerchantSelection(ctx, req.CryptoCurrencies, req.FiatCurrencies)
+	if err != nil {
+		return err
+	}
+	cryptoCSV, fiatCSV := s.currencyConfigSvc.SerializeSelection(selectedCrypto, selectedFiat)
+
+	if err := s.merchantRepo.UpdateFields(ctx, merchantID, map[string]interface{}{
+		"supported_crypto_currencies": *cryptoCSV,
+		"supported_fiat_currencies":   *fiatCSV,
+	}); err != nil {
+		return bizerrors.ErrInternalError
+	}
+
+	s.logAudit(ctx, adminID, "UPDATE_MERCHANT_SUPPORTED_CURRENCIES", "Merchant", fmt.Sprintf("%d", merchantID), map[string]interface{}{
+		"old_crypto": merchant.SupportedCryptoCurrencies,
+		"old_fiat":   merchant.SupportedFiatCurrencies,
+		"new_crypto": selectedCrypto,
+		"new_fiat":   selectedFiat,
 	})
 
 	return nil

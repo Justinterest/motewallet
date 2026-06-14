@@ -28,6 +28,7 @@ type WithdrawalService struct {
 	fiatWithdrawalItemRepo   repository.FeeTemplateFiatWithdrawalItemRepository
 	bankAccountRepo          repository.BankAccountRepository
 	kunClient                kun.KUNClient
+	currencyConfigSvc        *CurrencyConfigService
 }
 
 func NewWithdrawalService(
@@ -40,6 +41,7 @@ func NewWithdrawalService(
 	fiatWithdrawalItemRepo repository.FeeTemplateFiatWithdrawalItemRepository,
 	bankAccountRepo repository.BankAccountRepository,
 	kunClient kun.KUNClient,
+	currencyConfigSvc *CurrencyConfigService,
 ) *WithdrawalService {
 	return &WithdrawalService{
 		db:                       db,
@@ -51,6 +53,7 @@ func NewWithdrawalService(
 		fiatWithdrawalItemRepo:   fiatWithdrawalItemRepo,
 		bankAccountRepo:          bankAccountRepo,
 		kunClient:                kunClient,
+		currencyConfigSvc:        currencyConfigSvc,
 	}
 }
 
@@ -65,6 +68,10 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 
 	if merchant.KunSubCustomerNo == nil {
 		return 0, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.Currency); err != nil {
+		return 0, err
 	}
 
 	amount, err := decimal.NewFromString(req.Amount)
@@ -136,6 +143,10 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 
 	if merchant.KunSubCustomerNo == nil {
 		return 0, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.Currency); err != nil {
+		return 0, err
 	}
 
 	bankAccount, err := s.bankAccountRepo.FindByID(ctx, req.BankAccountID)
