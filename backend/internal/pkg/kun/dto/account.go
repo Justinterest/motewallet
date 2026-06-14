@@ -47,13 +47,13 @@ type DepositHistoryRecord struct {
 }
 
 type DepositHistoryQueryResp struct {
-	PageNo      int                    `json:"pageNo"`
-	PageSize    int                    `json:"pageSize"`
-	PageCount   int                    `json:"pageCount"`
-	RecordCount int                    `json:"recordCount"`
+	PageNo      FlexInt                `json:"pageNo"`
+	PageSize    FlexInt                `json:"pageSize"`
+	PageCount   FlexInt                `json:"pageCount"`
+	RecordCount FlexInt                `json:"recordCount"`
 	Records     []DepositHistoryRecord `json:"records"`
-	TotalSize   int                    `json:"totalSize"`
-	TotalPage   int                    `json:"totalPage"`
+	TotalSize   FlexInt                `json:"totalSize"`
+	TotalPage   FlexInt                `json:"totalPage"`
 	Rows        []DepositHistoryRecord `json:"rows"`
 }
 
@@ -65,11 +65,11 @@ func (r *DepositHistoryQueryResp) Items() []DepositHistoryRecord {
 }
 
 func (r *DepositHistoryQueryResp) Total() int64 {
-	if r.TotalSize > 0 {
-		return int64(r.TotalSize)
+	if r.TotalSize.Int() > 0 {
+		return int64(r.TotalSize.Int())
 	}
-	if r.RecordCount > 0 {
-		return int64(r.RecordCount)
+	if r.RecordCount.Int() > 0 {
+		return int64(r.RecordCount.Int())
 	}
 	return int64(len(r.Items()))
 }

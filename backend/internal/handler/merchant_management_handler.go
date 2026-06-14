@@ -180,6 +180,32 @@ func (h *MerchantManagementHandler) SyncKUNBalances(c *gin.Context) {
 	response.Success(c, result)
 }
 
+func (h *MerchantManagementHandler) SyncDeposits(c *gin.Context) {
+	adminID, exists := c.Get("admin_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, "invalid id")
+		return
+	}
+
+	result, err := h.merchantMgmtService.SyncDeposits(c.Request.Context(), adminID.(uint64), id)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}
+
 func (h *MerchantManagementHandler) ApproveKyc(c *gin.Context) {
 	adminID, exists := c.Get("admin_id")
 	if !exists {

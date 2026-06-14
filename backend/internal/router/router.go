@@ -152,6 +152,7 @@ func Setup(
 		adminMerchants.PUT("/:id/fee-template", merchantMgmtHandler.UpdateFeeTemplate)
 		adminMerchants.PUT("/:id/supported-currencies", merchantMgmtHandler.UpdateSupportedCurrencies)
 		adminMerchants.POST("/:id/sync-kun-balances", merchantMgmtHandler.SyncKUNBalances)
+		adminMerchants.POST("/:id/sync-deposits", merchantMgmtHandler.SyncDeposits)
 		adminMerchants.POST("/:id/kyc/approve", merchantMgmtHandler.ApproveKyc)
 		adminMerchants.POST("/:id/kyc/reject", merchantMgmtHandler.RejectKyc)
 	}

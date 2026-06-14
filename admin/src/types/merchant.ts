@@ -17,6 +17,14 @@ export interface SyncKUNBalancesResponse {
   synced_at: string;
 }
 
+export interface SyncDepositsResponse {
+  synced_count: number;
+  updated_count: number;
+  skipped_count: number;
+  total_fetched: number;
+  synced_at: string;
+}
+
 export interface AdminMerchant {
   id: number;
   email: string;

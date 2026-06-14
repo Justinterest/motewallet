@@ -54,10 +54,12 @@ import {
   useUpdateMerchantFeeTemplate,
   useUpdateMerchantSupportedCurrencies,
   useSyncKUNBalances,
+  useSyncDeposits,
   useApproveKyc,
   useRejectKyc,
 } from "@/lib/hooks/use-merchants";
 import { useFeeTemplates } from "@/lib/hooks/use-fee-templates";
+import { useMerchantDeposits } from "@/lib/hooks/use-deposits";
 import { formatAmount } from "@/lib/utils/format";
 import { toast } from "@/hooks/use-toast";
 import type { KUNWalletBalance, MerchantWallet } from "@/types/merchant";
@@ -126,6 +128,20 @@ function buildMergedWalletRows(
   });
 }
 
+function getDepositStatusBadge(status: string) {
+  switch (status) {
+    case "COMPLETED":
+      return <Badge className="bg-green-100 text-green-700 border-green-200">已到账</Badge>;
+    case "PROCESSING":
+    case "PENDING":
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200">处理中</Badge>;
+    case "FAILED":
+      return <Badge className="bg-red-100 text-red-700 border-red-200">失败</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
+
 function getKycBadge(kycStatus: string) {
   switch (kycStatus) {
     case "AUTH_SUC":
@@ -154,6 +170,8 @@ export default function MerchantDetailPage({
   const updateFeeTemplateMutation = useUpdateMerchantFeeTemplate();
   const updateSupportedCurrenciesMutation = useUpdateMerchantSupportedCurrencies();
   const syncKUNBalancesMutation = useSyncKUNBalances();
+  const syncDepositsMutation = useSyncDeposits();
+  const { data: depositsData, isLoading: depositsLoading } = useMerchantDeposits(id);
   const approveKycMutation = useApproveKyc();
   const rejectKycMutation = useRejectKyc();
 
@@ -166,6 +184,7 @@ export default function MerchantDetailPage({
   const [selectedFiat, setSelectedFiat] = useState<string[]>([]);
   const [kunBalances, setKunBalances] = useState<KUNWalletBalance[]>([]);
   const [kunSyncedAt, setKunSyncedAt] = useState<string | null>(null);
+  const [depositsSyncedAt, setDepositsSyncedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!merchant) return;
@@ -246,6 +265,21 @@ export default function MerchantDetailPage({
         setKunBalances(data.kun_balances);
         setKunSyncedAt(data.synced_at);
         toast({ title: "KUN 余额已同步" });
+      },
+      onError: (error) => {
+        toast({ title: "同步失败", description: error.message, variant: "destructive" });
+      },
+    });
+  };
+
+  const handleSyncDeposits = () => {
+    syncDepositsMutation.mutate(id, {
+      onSuccess: (data) => {
+        setDepositsSyncedAt(data.synced_at);
+        toast({
+          title: "充值记录已同步",
+          description: `新增 ${data.synced_count} 条，更新 ${data.updated_count} 条，共拉取 ${data.total_fetched} 条`,
+        });
       },
       onError: (error) => {
         toast({ title: "同步失败", description: error.message, variant: "destructive" });
@@ -427,6 +461,74 @@ export default function MerchantDetailPage({
           {!merchant.kun_sub_customer_no && (
             <p className="mt-3 text-center text-xs text-slate-400">
               商户尚未完成 KUN 入网，无法同步 KUN 余额
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Deposit Records */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">充值记录</CardTitle>
+            {depositsSyncedAt && (
+              <p className="mt-1 text-xs text-slate-500">
+                最近同步：{new Date(depositsSyncedAt).toLocaleString("zh-CN")}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncDeposits}
+            disabled={syncDepositsMutation.isPending || !merchant.kun_sub_customer_no}
+          >
+            <RefreshCw className={`mr-2 size-4 ${syncDepositsMutation.isPending ? "animate-spin" : ""}`} />
+            {syncDepositsMutation.isPending ? "同步中..." : "同步充值记录"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {depositsLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (depositsData?.deposits?.length ?? 0) > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>时间</TableHead>
+                  <TableHead>币种</TableHead>
+                  <TableHead>网络</TableHead>
+                  <TableHead className="text-right">金额</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>交易哈希</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {depositsData?.deposits.map((deposit) => (
+                  <TableRow key={deposit.id}>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {new Date(deposit.created_at).toLocaleString("zh-CN")}
+                    </TableCell>
+                    <TableCell>{deposit.currency}</TableCell>
+                    <TableCell>{deposit.network}</TableCell>
+                    <TableCell className="text-right">
+                      {formatAmount(deposit.amount, deposit.currency)}
+                    </TableCell>
+                    <TableCell>{getDepositStatusBadge(deposit.status)}</TableCell>
+                    <TableCell className="max-w-[180px] truncate font-mono text-xs text-slate-500">
+                      {deposit.tx_hash || "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="py-4 text-center text-sm text-slate-400">
+              暂无充值记录，点击「同步充值记录」从 KUN 拉取
+            </p>
+          )}
+          {!merchant.kun_sub_customer_no && (
+            <p className="mt-3 text-center text-xs text-slate-400">
+              商户尚未完成 KUN 入网，无法同步充值记录
             </p>
           )}
         </CardContent>

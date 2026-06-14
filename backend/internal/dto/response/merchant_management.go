@@ -47,3 +47,11 @@ type SyncKUNBalancesResp struct {
 	KUNBalances []KUNWalletBalanceResp `json:"kun_balances"`
 	SyncedAt    time.Time              `json:"synced_at"`
 }
+
+type SyncDepositsResp struct {
+	SyncedCount  int       `json:"synced_count"`
+	UpdatedCount int       `json:"updated_count"`
+	SkippedCount int       `json:"skipped_count"`
+	TotalFetched int       `json:"total_fetched"`
+	SyncedAt     time.Time `json:"synced_at"`
+}

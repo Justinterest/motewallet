@@ -17,29 +17,41 @@ import (
 )
 
 type MerchantManagementService struct {
-	merchantRepo       repository.MerchantRepository
-	merchantWalletRepo repository.MerchantWalletRepository
-	feeTemplateRepo    repository.FeeTemplateRepository
-	auditLogRepo       repository.AuditLogRepository
-	currencyConfigSvc  *CurrencyConfigService
-	kunClient          kun.KUNClient
+	db                    *gorm.DB
+	merchantRepo          repository.MerchantRepository
+	merchantWalletRepo    repository.MerchantWalletRepository
+	feeTemplateRepo       repository.FeeTemplateRepository
+	auditLogRepo          repository.AuditLogRepository
+	depositOrderRepo      repository.DepositOrderRepository
+	transactionRecordRepo repository.TransactionRecordRepository
+	walletSvc             *WalletService
+	currencyConfigSvc     *CurrencyConfigService
+	kunClient             kun.KUNClient
 }
 
 func NewMerchantManagementService(
+	db *gorm.DB,
 	merchantRepo repository.MerchantRepository,
 	merchantWalletRepo repository.MerchantWalletRepository,
 	feeTemplateRepo repository.FeeTemplateRepository,
 	auditLogRepo repository.AuditLogRepository,
+	depositOrderRepo repository.DepositOrderRepository,
+	transactionRecordRepo repository.TransactionRecordRepository,
+	walletSvc *WalletService,
 	currencyConfigSvc *CurrencyConfigService,
 	kunClient kun.KUNClient,
 ) *MerchantManagementService {
 	return &MerchantManagementService{
-		merchantRepo:       merchantRepo,
-		merchantWalletRepo: merchantWalletRepo,
-		feeTemplateRepo:    feeTemplateRepo,
-		auditLogRepo:       auditLogRepo,
-		currencyConfigSvc:  currencyConfigSvc,
-		kunClient:          kunClient,
+		db:                    db,
+		merchantRepo:          merchantRepo,
+		merchantWalletRepo:    merchantWalletRepo,
+		feeTemplateRepo:       feeTemplateRepo,
+		auditLogRepo:          auditLogRepo,
+		depositOrderRepo:      depositOrderRepo,
+		transactionRecordRepo: transactionRecordRepo,
+		walletSvc:             walletSvc,
+		currencyConfigSvc:     currencyConfigSvc,
+		kunClient:             kunClient,
 	}
 }
 

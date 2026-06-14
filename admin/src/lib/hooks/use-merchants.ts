@@ -72,3 +72,15 @@ export function useSyncKUNBalances() {
     mutationFn: (id: number) => merchantApi.syncKUNBalances(id),
   });
 }
+
+export function useSyncDeposits() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => merchantApi.syncDeposits(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "deposits"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "deposits", id] });
+      queryClient.invalidateQueries({ queryKey: ["merchants", id] });
+    },
+  });
+}

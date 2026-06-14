@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -19,6 +18,8 @@ import (
 const (
 	kunDepositAddressListPath = "/rest/v2.0/customer/crypto/deposit/addresses"
 	kunDepositHistoryPath     = "/rest/v2.0/trade/digital/wallet/query/recharge"
+	// KUN rejects queries spanning more than 90 days.
+	kunDepositHistoryMaxDays = 89
 )
 
 type DepositService struct {
@@ -56,7 +57,7 @@ func (s *DepositService) GetDepositAddresses(ctx context.Context, merchantID uin
 		return nil, err
 	}
 
-	chainType := normalizeDepositChainType(currency, chain)
+	chainType := utils.KUNDepositChain(currency, chain)
 
 	var addresses []kundto.DepositAddressItem
 	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kunDepositAddressListPath, &kundto.DepositAddressListReq{
@@ -114,9 +115,10 @@ func (s *DepositService) ListDepositOrders(ctx context.Context, merchantID uint6
 		}
 	}
 
-	now := time.Now()
+	loc := kunDepositLocation()
+	now := time.Now().In(loc)
 	req := kundto.DepositHistoryQueryReq{
-		StartTime: now.AddDate(0, -3, 0).Format("2006-01-02 15:04:05"),
+		StartTime: now.AddDate(0, 0, -kunDepositHistoryMaxDays).Format("2006-01-02 15:04:05"),
 		EndTime:   now.Format("2006-01-02 15:04:05"),
 		PageNo:    page,
 		PageSize:  pageSize,
@@ -125,7 +127,7 @@ func (s *DepositService) ListDepositOrders(ctx context.Context, merchantID uint6
 		req.OrderCurrency = currency
 	}
 	if chain != "" {
-		req.Chain = normalizeDepositChainType(currency, chain)
+		req.Chain = utils.KUNDepositChain(currency, chain)
 	}
 
 	var kunResp kundto.DepositHistoryQueryResp
@@ -153,61 +155,4 @@ func (s *DepositService) ListDepositOrders(ctx context.Context, merchantID uint6
 		Orders: resp,
 		Total:  kunResp.Total(),
 	}, nil
-}
-
-func normalizeDepositChainType(currency, chain string) string {
-	switch strings.ToUpper(chain) {
-	case "TRC20", "TRX_TRC20":
-		return "TRX_TRC20"
-	case "ERC20", "ETH_ERC20":
-		return "ETH_ERC20"
-	case "BTC", "BTC_BITCOIN":
-		return "BTC_Bitcoin"
-	case "SOL", "SOL_SOLANA":
-		return "SOL_Solana"
-	case "BSC_BEP20", "BEP20", "BNB_BEP20":
-		return "BSC_BEP20"
-	case "TON":
-		return "TON"
-	default:
-		if chain != "" {
-			return chain
-		}
-		if strings.ToUpper(currency) == "BTC" {
-			return "BTC_Bitcoin"
-		}
-		return "TRX_TRC20"
-	}
-}
-
-func mapDepositOrderStatus(status string) string {
-	switch strings.ToUpper(status) {
-	case "SUCCESS":
-		return "COMPLETED"
-	case "FAIL", "FAILED":
-		return "FAILED"
-	case "PROCESSING", "PENDING":
-		return "PROCESSING"
-	default:
-		return status
-	}
-}
-
-func parseKunDateTime(value string) time.Time {
-	if value == "" {
-		return time.Now()
-	}
-	for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339} {
-		if t, err := time.ParseInLocation(layout, value, time.Local); err == nil {
-			return t
-		}
-	}
-	return time.Now()
-}
-
-func nullableString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
 }
