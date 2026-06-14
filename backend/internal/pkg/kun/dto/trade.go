@@ -28,11 +28,10 @@ type FiatWithdrawalResp struct {
 }
 
 type ExchangeQuoteReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	FromCurrency  string `json:"fromCurrency"`
-	ToCurrency    string `json:"toCurrency"`
-	FromAmount    string `json:"fromAmount,omitempty"`
-	ToAmount      string `json:"toAmount,omitempty"`
+	RequestNo      string `json:"requestNo"`
+	Amount         string `json:"amount"`
+	QuoteCurrency  string `json:"quoteCurrency"`
+	QuotedCurrency string `json:"quotedCurrency"`
 }
 
 type ExchangeQuoteResp struct {

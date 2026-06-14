@@ -61,11 +61,11 @@ func (s *ExchangeService) GetQuote(ctx context.Context, merchantID uint64, req *
 	}
 
 	var quoteResp kundto.ExchangeQuoteResp
-	err = s.kunClient.Post(ctx, "/rest/v2.0/trade/exchange/marketInquiry", &kundto.ExchangeQuoteReq{
-		SubCustomerNo: *merchant.KunSubCustomerNo,
-		FromCurrency:  req.FromCurrency,
-		ToCurrency:    req.ToCurrency,
-		FromAmount:    req.FromAmount,
+	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, "/rest/v2.0/trade/exchange/marketInquiry", &kundto.ExchangeQuoteReq{
+		RequestNo:      kun.GenerateRequestNo(),
+		Amount:         req.FromAmount,
+		QuoteCurrency:  req.FromCurrency,
+		QuotedCurrency: req.ToCurrency,
 	}, &quoteResp)
 	if err != nil {
 		slog.Error("KUN exchange quote failed", slog.Any("error", err))

@@ -28,9 +28,10 @@ type KUNClient interface {
 }
 
 type kunResponse struct {
-	Code string          `json:"code"`
-	Msg  string          `json:"msg"`
-	Data json.RawMessage `json:"data"`
+	Code    string          `json:"code"`
+	Msg     string          `json:"msg"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data"`
 }
 
 // Client implements KUNClient with real HTTP calls.
@@ -162,9 +163,13 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 		if len(kunResp.Data) > 0 {
 			_ = json.Unmarshal(kunResp.Data, &errData)
 		}
+		errMsg := kunResp.Msg
+		if errMsg == "" {
+			errMsg = kunResp.Message
+		}
 		return &KUNError{
 			Code:    kunResp.Code,
-			Message: kunResp.Msg,
+			Message: errMsg,
 			Errors:  errData.Errors,
 		}
 	}
