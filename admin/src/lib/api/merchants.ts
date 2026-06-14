@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { AdminMerchant, AdminMerchantDetail } from "@/types/merchant";
+import type { AdminMerchant, AdminMerchantDetail, SyncKUNBalancesResponse } from "@/types/merchant";
 import type { PaginatedData } from "@/types/api";
 
 export const merchantApi = {
@@ -17,4 +17,6 @@ export const merchantApi = {
     apiClient.post<never, void>(`/api/v1/admin/merchants/${id}/kyc/reject`, data),
   updateSupportedCurrencies: (id: number, data: { crypto_currencies: string[]; fiat_currencies: string[] }) =>
     apiClient.put<never, void>(`/api/v1/admin/merchants/${id}/supported-currencies`, data),
+  syncKUNBalances: (id: number) =>
+    apiClient.post<never, SyncKUNBalancesResponse>(`/api/v1/admin/merchants/${id}/sync-kun-balances`),
 };

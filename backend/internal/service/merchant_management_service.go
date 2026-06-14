@@ -12,6 +12,7 @@ import (
 	dtoresp "motewallet/internal/dto/response"
 	"motewallet/internal/model"
 	bizerrors "motewallet/internal/pkg/errors"
+	"motewallet/internal/pkg/kun"
 	"motewallet/internal/repository"
 )
 
@@ -21,6 +22,7 @@ type MerchantManagementService struct {
 	feeTemplateRepo    repository.FeeTemplateRepository
 	auditLogRepo       repository.AuditLogRepository
 	currencyConfigSvc  *CurrencyConfigService
+	kunClient          kun.KUNClient
 }
 
 func NewMerchantManagementService(
@@ -29,6 +31,7 @@ func NewMerchantManagementService(
 	feeTemplateRepo repository.FeeTemplateRepository,
 	auditLogRepo repository.AuditLogRepository,
 	currencyConfigSvc *CurrencyConfigService,
+	kunClient kun.KUNClient,
 ) *MerchantManagementService {
 	return &MerchantManagementService{
 		merchantRepo:       merchantRepo,
@@ -36,6 +39,7 @@ func NewMerchantManagementService(
 		feeTemplateRepo:    feeTemplateRepo,
 		auditLogRepo:       auditLogRepo,
 		currencyConfigSvc:  currencyConfigSvc,
+		kunClient:          kunClient,
 	}
 }
 

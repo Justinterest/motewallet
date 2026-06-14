@@ -105,6 +105,23 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 				"orderStatus": "SUCCESS"
 			}]
 		}`)
+	case "/rest/v2.0/account/query/balance":
+		mockData = []byte(`[
+			{"currency":"USD","balance":"1000.00000000","regionCode":"KUN_PL"},
+			{"currency":"HKD","balance":"5000.00000000","regionCode":"KUN_PL"},
+			{"currency":"USDT","balance":"820.00000000","regionCode":"KUN_PL"},
+			{"currency":"USDC","balance":"300.00000000","regionCode":"KUN_PL"},
+			{"currency":"BTC","balance":"0.50000000","regionCode":"KUN_PL"}
+		]`)
+	case "/rest/v2.0/trade/account/outAccount/query":
+		currencyCode := "USDT"
+		if reqBody != nil {
+			var req kundto.OutAccountBalanceQueryReq
+			if err := json.Unmarshal(reqJSON, &req); err == nil && req.Currency != "" {
+				currencyCode = strings.ToUpper(req.Currency)
+			}
+		}
+		mockData = []byte(fmt.Sprintf(`[{"currency":"%s","balance":"205.00000000"}]`, currencyCode))
 	default:
 		mockData = []byte(`{}`)
 	}

@@ -36,3 +36,14 @@ type AdminMerchantDetailResp struct {
 	AvailableCryptoCurrencies []string            `json:"available_crypto_currencies"`
 	AvailableFiatCurrencies   []string            `json:"available_fiat_currencies"`
 }
+
+type KUNWalletBalanceResp struct {
+	AccountType string `json:"account_type"`
+	Currency    string `json:"currency"`
+	Balance     string `json:"balance"`
+}
+
+type SyncKUNBalancesResp struct {
+	KUNBalances []KUNWalletBalanceResp `json:"kun_balances"`
+	SyncedAt    time.Time              `json:"synced_at"`
+}

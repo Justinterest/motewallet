@@ -75,6 +75,7 @@ func (r *DepositHistoryQueryResp) Total() int64 {
 }
 
 type BalanceQueryReq struct {
+	RequestNo     string `json:"requestNo"`
 	SubCustomerNo string `json:"subCustomerNo"`
 	Currency      string `json:"currency"`
 	CurrencyType  string `json:"currencyType,omitempty"`
@@ -117,17 +118,25 @@ type FiatAddressAddResp struct {
 }
 
 type RegionBalanceQueryReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	RegionCode    string `json:"regionCode"`
+	RequestNo    string `json:"requestNo"`
+	Currency     string `json:"currency,omitempty"`
+	CurrencyType string `json:"currencyType,omitempty"`
+	RegionCode   string `json:"regionCode,omitempty"`
 }
 
-type RegionBalanceItem struct {
-	Currency  string `json:"currency"`
-	Available string `json:"available"`
-	Frozen    string `json:"frozen"`
-	Total     string `json:"total"`
+// AccountBalanceItem is a balance record returned by KUN account balance APIs.
+// See: https://opendocs.kun.global/docs/api/get-account-balance
+// See: https://opendocs.kun.global/docs/api/get-regional-account-balance
+type AccountBalanceItem struct {
+	Currency   string `json:"currency"`
+	Balance    string `json:"balance"`
+	RegionCode string `json:"regionCode,omitempty"`
 }
 
-type RegionBalanceQueryResp struct {
-	Balances []RegionBalanceItem `json:"balances"`
+// OutAccountBalanceQueryReq is the body for POST /rest/v2.0/trade/account/outAccount/query.
+// See: https://opendocs.kun.global/docs/api/get-account-balance
+type OutAccountBalanceQueryReq struct {
+	RequestNo    string `json:"requestNo"`
+	Currency     string `json:"currency"`
+	CurrencyType string `json:"currencyType"`
 }

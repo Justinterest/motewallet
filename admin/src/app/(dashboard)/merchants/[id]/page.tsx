@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Shield, ShieldOff, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Shield, ShieldOff, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -53,12 +53,14 @@ import {
   useUpdateMerchantStatus,
   useUpdateMerchantFeeTemplate,
   useUpdateMerchantSupportedCurrencies,
+  useSyncKUNBalances,
   useApproveKyc,
   useRejectKyc,
 } from "@/lib/hooks/use-merchants";
 import { useFeeTemplates } from "@/lib/hooks/use-fee-templates";
 import { formatAmount } from "@/lib/utils/format";
 import { toast } from "@/hooks/use-toast";
+import type { KUNWalletBalance, MerchantWallet } from "@/types/merchant";
 import { Switch } from "@/components/ui/switch";
 
 function getStatusBadge(status: string) {
@@ -74,6 +76,54 @@ function getStatusBadge(status: string) {
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
+}
+
+function walletRowKey(accountType: string, currency: string) {
+  return `${accountType}:${currency}`;
+}
+
+function buildMergedWalletRows(
+  platform: MerchantWallet[] | undefined,
+  kun: KUNWalletBalance[]
+) {
+  type Row = {
+    account_type: string;
+    currency: string;
+    balance?: string;
+    frozen_balance?: string;
+    available_balance?: string;
+    kun_balance?: string;
+  };
+  const rows = new Map<string, Row>();
+  for (const wallet of platform ?? []) {
+    const key = walletRowKey(wallet.account_type, wallet.currency);
+    rows.set(key, {
+      account_type: wallet.account_type,
+      currency: wallet.currency,
+      balance: wallet.balance,
+      frozen_balance: wallet.frozen_balance,
+      available_balance: wallet.available_balance,
+    });
+  }
+  for (const wallet of kun) {
+    const key = walletRowKey(wallet.account_type, wallet.currency);
+    const existing = rows.get(key);
+    if (existing) {
+      existing.kun_balance = wallet.balance;
+    } else {
+      rows.set(key, {
+        account_type: wallet.account_type,
+        currency: wallet.currency,
+        kun_balance: wallet.balance,
+      });
+    }
+  }
+  return Array.from(rows.values()).sort((a, b) => {
+    if (a.account_type !== b.account_type) {
+      return a.account_type.localeCompare(b.account_type);
+    }
+    return a.currency.localeCompare(b.currency);
+  });
 }
 
 function getKycBadge(kycStatus: string) {
@@ -103,6 +153,7 @@ export default function MerchantDetailPage({
   const updateStatusMutation = useUpdateMerchantStatus();
   const updateFeeTemplateMutation = useUpdateMerchantFeeTemplate();
   const updateSupportedCurrenciesMutation = useUpdateMerchantSupportedCurrencies();
+  const syncKUNBalancesMutation = useSyncKUNBalances();
   const approveKycMutation = useApproveKyc();
   const rejectKycMutation = useRejectKyc();
 
@@ -113,6 +164,8 @@ export default function MerchantDetailPage({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedCrypto, setSelectedCrypto] = useState<string[]>([]);
   const [selectedFiat, setSelectedFiat] = useState<string[]>([]);
+  const [kunBalances, setKunBalances] = useState<KUNWalletBalance[]>([]);
+  const [kunSyncedAt, setKunSyncedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!merchant) return;
@@ -187,6 +240,19 @@ export default function MerchantDetailPage({
     );
   };
 
+  const handleSyncKUNBalances = () => {
+    syncKUNBalancesMutation.mutate(id, {
+      onSuccess: (data) => {
+        setKunBalances(data.kun_balances);
+        setKunSyncedAt(data.synced_at);
+        toast({ title: "KUN 余额已同步" });
+      },
+      onError: (error) => {
+        toast({ title: "同步失败", description: error.message, variant: "destructive" });
+      },
+    });
+  };
+
   const handleApproveKyc = () => {
     approveKycMutation.mutate(id, {
       onSuccess: () => {
@@ -240,6 +306,8 @@ export default function MerchantDetailPage({
     );
   }
 
+  const mergedWalletRows = buildMergedWalletRows(merchant.wallets, kunBalances);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -290,43 +358,76 @@ export default function MerchantDetailPage({
         </CardContent>
       </Card>
 
-      {/* Wallets */}
+      {/* Platform + KUN Wallets */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">钱包余额</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">平台余额</CardTitle>
+            {kunSyncedAt && (
+              <p className="mt-1 text-xs text-slate-500">
+                KUN 最近同步：{new Date(kunSyncedAt).toLocaleString("zh-CN")}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncKUNBalances}
+            disabled={syncKUNBalancesMutation.isPending || !merchant.kun_sub_customer_no}
+          >
+            <RefreshCw className={`mr-2 size-4 ${syncKUNBalancesMutation.isPending ? "animate-spin" : ""}`} />
+            {syncKUNBalancesMutation.isPending ? "同步中..." : "同步 KUN 余额"}
+          </Button>
         </CardHeader>
         <CardContent>
-          {merchant.wallets && merchant.wallets.length > 0 ? (
+          {mergedWalletRows.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>账户类型</TableHead>
                   <TableHead>币种</TableHead>
-                  <TableHead className="text-right">余额</TableHead>
+                  <TableHead className="text-right">平台余额</TableHead>
                   <TableHead className="text-right">冻结金额</TableHead>
                   <TableHead className="text-right">可用余额</TableHead>
+                  <TableHead className="text-right">KUN 余额</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {merchant.wallets.map((wallet, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{wallet.account_type}</TableCell>
-                    <TableCell>{wallet.currency}</TableCell>
+                {mergedWalletRows.map((row) => (
+                  <TableRow key={walletRowKey(row.account_type, row.currency)}>
+                    <TableCell className="font-medium">{row.account_type}</TableCell>
+                    <TableCell>{row.currency}</TableCell>
                     <TableCell className="text-right">
-                      {formatAmount(wallet.balance, wallet.currency)}
+                      {row.balance != null
+                        ? formatAmount(row.balance, row.currency)
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatAmount(wallet.frozen_balance, wallet.currency)}
+                      {row.frozen_balance != null
+                        ? formatAmount(row.frozen_balance, row.currency)
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatAmount(wallet.available_balance, wallet.currency)}
+                      {row.available_balance != null
+                        ? formatAmount(row.available_balance, row.currency)
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {row.kun_balance != null
+                        ? formatAmount(row.kun_balance, row.currency)
+                        : "—"}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
-            <p className="py-4 text-center text-sm text-slate-400">暂无钱包数据</p>
+            <p className="py-4 text-center text-sm text-slate-400">暂无余额数据</p>
+          )}
+          {!merchant.kun_sub_customer_no && (
+            <p className="mt-3 text-center text-xs text-slate-400">
+              商户尚未完成 KUN 入网，无法同步 KUN 余额
+            </p>
           )}
         </CardContent>
       </Card>

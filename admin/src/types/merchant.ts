@@ -6,6 +6,17 @@ export interface MerchantWallet {
   available_balance: string;
 }
 
+export interface KUNWalletBalance {
+  account_type: string;
+  currency: string;
+  balance: string;
+}
+
+export interface SyncKUNBalancesResponse {
+  kun_balances: KUNWalletBalance[];
+  synced_at: string;
+}
+
 export interface AdminMerchant {
   id: number;
   email: string;
@@ -13,6 +24,7 @@ export interface AdminMerchant {
   kyc_status: string;
   fee_template_id?: number;
   fee_template_name?: string;
+  kun_sub_customer_no?: string;
   kyc_submitted_at?: string;
   kyc_completed_at?: string;
   agreement_signed_at?: string;

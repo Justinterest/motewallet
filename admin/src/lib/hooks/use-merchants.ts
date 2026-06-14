@@ -66,3 +66,9 @@ export function useUpdateMerchantSupportedCurrencies() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["merchants"] }),
   });
 }
+
+export function useSyncKUNBalances() {
+  return useMutation({
+    mutationFn: (id: number) => merchantApi.syncKUNBalances(id),
+  });
+}
