@@ -50,7 +50,7 @@ func (s *MerchantManagementService) SyncKUNBalances(ctx context.Context, adminID
 	var fundingItems []kundto.AccountBalanceItem
 	err = s.kunClient.PostAsCustomer(ctx, subCustomerNo, kunRegionBalancePath, &kundto.RegionBalanceQueryReq{
 		RequestNo:  kun.GenerateRequestNo(),
-		RegionCode: s.kunClient.GetRegionCode(),
+		RegionCode: kun.AccountHK,
 	}, &fundingItems)
 	if err != nil {
 		slog.Error("KUN query regional account balance failed", slog.Any("error", err), slog.Uint64("merchant_id", merchantID))

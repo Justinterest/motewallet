@@ -103,16 +103,17 @@ type InnerMatchQueryResp struct {
 	ExchangeRate string `json:"exchangeRate"`
 }
 
+// FundTransferReq is the body for POST /rest/v2.0/user/fund/transfer.
+// See: https://opendocs.kun.global/docs/api/create-transfer
 type FundTransferReq struct {
-	SubCustomerNo   string `json:"subCustomerNo"`
-	RequestNo       string `json:"requestNo"`
-	Currency        string `json:"currency"`
-	Amount          string `json:"amount"`
-	FromAccountType string `json:"fromAccountType"`
-	ToAccountType   string `json:"toAccountType"`
-	RegionCode      string `json:"regionCode"`
+	RequestNo string `json:"requestNo"`
+	FromAcc   string `json:"fromAcc"`
+	ToAcc     string `json:"toAcc"`
+	Currency  string `json:"currency"`
+	Amount    string `json:"amount"`
 }
 
 type FundTransferResp struct {
-	OrderId string `json:"orderId"`
+	OrderId     string `json:"orderId"`
+	OrderStatus string `json:"orderStatus"`
 }

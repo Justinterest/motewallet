@@ -73,16 +73,23 @@ func (s *TransferService) Transfer(ctx context.Context, merchantID uint64, req *
 		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid amount")
 	}
 
+	fromAcc, err := kun.PlatformAccountToKUN(req.FromAccountType)
+	if err != nil {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid from account type")
+	}
+	toAcc, err := kun.PlatformAccountToKUN(req.ToAccountType)
+	if err != nil {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid to account type")
+	}
+
 	requestNo := kun.GenerateRequestNo()
 	var kunResp kundto.FundTransferResp
-	err = s.kunClient.Post(ctx, "/rest/v2.0/user/fund/transfer", &kundto.FundTransferReq{
-		SubCustomerNo:   *merchant.KunSubCustomerNo,
-		RequestNo:       requestNo,
-		Currency:        req.Currency,
-		Amount:          req.Amount,
-		FromAccountType: req.FromAccountType,
-		ToAccountType:   req.ToAccountType,
-		RegionCode:      s.kunClient.GetRegionCode(),
+	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, "/rest/v2.0/user/fund/transfer", &kundto.FundTransferReq{
+		RequestNo: requestNo,
+		FromAcc:   fromAcc,
+		ToAcc:     toAcc,
+		Currency:  req.Currency,
+		Amount:    req.Amount,
 	}, &kunResp)
 	if err != nil {
 		slog.Error("KUN fund transfer failed", slog.Any("error", err))

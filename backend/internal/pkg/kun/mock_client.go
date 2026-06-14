@@ -113,6 +113,8 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 			{"currency":"USDC","balance":"300.00000000","regionCode":"KUN_PL"},
 			{"currency":"BTC","balance":"0.50000000","regionCode":"KUN_PL"}
 		]`)
+	case "/rest/v2.0/user/fund/transfer":
+		mockData = []byte(`{"orderId":"MOCK_TRANSFER_001","orderStatus":"SUCCESS"}`)
 	case "/rest/v2.0/trade/account/outAccount/query":
 		currencyCode := "USDT"
 		if reqBody != nil {
