@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"gorm.io/gorm"
 	dtoreq "motewallet/internal/dto/request"
@@ -133,18 +134,37 @@ func (s *AddressService) AddBankAccount(ctx context.Context, merchantID uint64, 
 		return nil, bizerrors.ErrMerchantNotRegisteredE
 	}
 
+	if err := validateBankAccountBindReq(req); err != nil {
+		return nil, err
+	}
+
+	payeeCountryCode := strings.TrimSpace(req.PayeeCountryCode)
+	if payeeCountryCode == "" {
+		payeeCountryCode = strings.TrimSpace(req.BankCountry)
+	}
+
+	kunReq := &kundto.FiatAddressAddReq{
+		RequestNo:          kun.GenerateRequestNo(),
+		AccountCategory:    "2",
+		AccountTypes:       "2",
+		CurrencyList:       []string{req.Currency},
+		Area:               req.BankCountry,
+		TransferType:       req.TransferType,
+		AccountNo:          req.AccountNo,
+		AccountName:        req.AccountName,
+		SwiftCode:          req.SwiftCode,
+		PayeeCountryCode:   payeeCountryCode,
+		Address:            req.PayeeAddress,
+		PayeeAddressSecond: req.PayeeAddressSecond,
+		MiddleSwiftCode:    req.MiddleSwiftCode,
+		BankName:           req.BankName,
+		BankCode:           req.BankCode,
+		BankAddress:        req.BankAddress,
+		AccountType:        req.AccountType,
+	}
+
 	var kunResp kundto.FiatAddressAddResp
-	err = s.kunClient.Post(ctx, "/rest/v2.0/customer/fiat/address/add", &kundto.FiatAddressAddReq{
-		SubCustomerNo: *merchant.KunSubCustomerNo,
-		Currency:      req.Currency,
-		BankName:      req.BankName,
-		BankCountry:   req.BankCountry,
-		SwiftCode:     req.SwiftCode,
-		AccountName:   req.AccountName,
-		AccountNo:     req.AccountNo,
-		TransferType:  req.TransferType,
-		RequestNo:     kun.GenerateRequestNo(),
-	}, &kunResp)
+	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.FiatAddressAddPath, kunReq, &kunResp)
 	if err != nil {
 		slog.Error("KUN add bank account failed", slog.Any("error", err))
 		return nil, bizerrors.ErrKUNAPIFailedE
@@ -158,8 +178,11 @@ func (s *AddressService) AddBankAccount(ctx context.Context, merchantID uint64, 
 		AccountNo:        req.AccountNo,
 		AccountName:      req.AccountName,
 		BankName:         &req.BankName,
-		SwiftCode:        &req.SwiftCode,
-		PayeeCountryCode: &req.BankCountry,
+		SwiftCode:        stringPtr(strings.TrimSpace(req.SwiftCode)),
+		BankCode:         stringPtr(strings.TrimSpace(req.BankCode)),
+		PayeeCountryCode: &payeeCountryCode,
+		PayeeAddress:     stringPtr(strings.TrimSpace(req.PayeeAddress)),
+		MiddleSwiftCode:  stringPtr(strings.TrimSpace(req.MiddleSwiftCode)),
 		Area:             req.BankCountry,
 		Status:           "ACTIVE",
 	}
@@ -168,14 +191,15 @@ func (s *AddressService) AddBankAccount(ctx context.Context, merchantID uint64, 
 	}
 
 	return &dtoresp.BankAccountResp{
-		ID:           account.ID,
-		Currency:     account.CurrencyList,
-		BankName:     req.BankName,
-		BankCountry:  req.BankCountry,
-		SwiftCode:    req.SwiftCode,
-		AccountName:  account.AccountName,
-		TransferType: account.TransferType,
-		Status:       account.Status,
+		ID:              account.ID,
+		Currency:        account.CurrencyList,
+		BankName:        req.BankName,
+		BankCountry:     req.BankCountry,
+		SwiftCode:       req.SwiftCode,
+		AccountName:     account.AccountName,
+		AccountNoMasked: maskAccountNo(account.AccountNo),
+		TransferType:    account.TransferType,
+		Status:          account.Status,
 	}, nil
 }
 
@@ -185,7 +209,7 @@ func (s *AddressService) ListBankAccounts(ctx context.Context, merchantID uint64
 		return nil, bizerrors.ErrInternalError
 	}
 
-	var resp []dtoresp.BankAccountResp
+	var resp = make([]dtoresp.BankAccountResp, 0)
 	for _, a := range accounts {
 		bankName := ""
 		if a.BankName != nil {
@@ -200,14 +224,15 @@ func (s *AddressService) ListBankAccounts(ctx context.Context, merchantID uint64
 			bankCountry = *a.PayeeCountryCode
 		}
 		resp = append(resp, dtoresp.BankAccountResp{
-			ID:           a.ID,
-			Currency:     a.CurrencyList,
-			BankName:     bankName,
-			BankCountry:  bankCountry,
-			SwiftCode:    swiftCode,
-			AccountName:  a.AccountName,
-			TransferType: a.TransferType,
-			Status:       a.Status,
+			ID:              a.ID,
+			Currency:        a.CurrencyList,
+			BankName:        bankName,
+			BankCountry:     bankCountry,
+			SwiftCode:       swiftCode,
+			AccountName:     a.AccountName,
+			AccountNoMasked: maskAccountNo(a.AccountNo),
+			TransferType:    a.TransferType,
+			Status:          a.Status,
 		})
 	}
 	return resp, nil
@@ -224,5 +249,48 @@ func (s *AddressService) DeleteBankAccount(ctx context.Context, merchantID uint6
 	if account.MerchantID != merchantID {
 		return bizerrors.ErrForbiddenError
 	}
+	if account.KunAccountID == nil || strings.TrimSpace(*account.KunAccountID) == "" {
+		return bizerrors.ErrKUNAPIFailedE
+	}
+
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerrors.ErrNotFoundError
+		}
+		return bizerrors.ErrInternalError
+	}
+	if merchant.KunSubCustomerNo == nil {
+		return bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.FiatAddressDelPath, &kundto.FiatAddressDelReq{
+		RequestNo: kun.GenerateRequestNo(),
+		AccountId: *account.KunAccountID,
+		Currency:  account.CurrencyList,
+	}, &struct{}{})
+	if err != nil {
+		slog.Error("KUN unbind bank account failed", slog.Any("error", err))
+		return bizerrors.ErrKUNAPIFailedE
+	}
+
 	return s.bankAccountRepo.Delete(ctx, accountID)
+}
+
+func stringPtr(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func maskAccountNo(accountNo string) string {
+	accountNo = strings.TrimSpace(accountNo)
+	if accountNo == "" {
+		return ""
+	}
+	if len(accountNo) <= 4 {
+		return strings.Repeat("*", len(accountNo))
+	}
+	return strings.Repeat("*", len(accountNo)-4) + accountNo[len(accountNo)-4:]
 }

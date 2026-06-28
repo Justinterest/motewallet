@@ -14,13 +14,17 @@ type CryptoWithdrawalResp struct {
 	OrderId string `json:"orderId"`
 }
 
+// FiatWithdrawalReq is the body for POST /rest/v2.0/trade/fiat/withdrawal.
+// See: https://opendocs.kun.global/docs/api/fiat-withdrawal
 type FiatWithdrawalReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	RequestNo     string `json:"requestNo"`
-	Currency      string `json:"currency"`
-	Amount        string `json:"amount"`
-	BankAccountId string `json:"bankAccountId"`
-	RegionCode    string `json:"regionCode"`
+	RequestNo  string `json:"requestNo"`
+	AccountId  string `json:"accountId"`
+	Amount     string `json:"amount"`
+	Currency   string `json:"currency"`
+	FeeMethod  string `json:"feeMethod"`
+	PoboType   string `json:"poboType"`
+	Postscript string `json:"postscript"`
+	Purpose    string `json:"purpose"`
 }
 
 type FiatWithdrawalResp struct {

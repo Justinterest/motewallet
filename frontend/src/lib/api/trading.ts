@@ -22,7 +22,13 @@ export const tradingApi = {
   // Withdrawal
   submitCryptoWithdrawal: (data: { currency: string; chain: string; amount: string; to_address: string }) =>
     apiClient.post<never, { order_id: number }>("/api/v1/withdraw/crypto", data),
-  submitFiatWithdrawal: (data: { currency: string; amount: string; bank_account_id: number }) =>
+  submitFiatWithdrawal: (data: {
+    currency: string;
+    amount: string;
+    bank_account_id: number;
+    purpose: string;
+    postscript: string;
+  }) =>
     apiClient.post<never, { order_id: number }>("/api/v1/withdraw/fiat", data),
   listWithdrawalOrders: (page = 1, pageSize = 20) =>
     apiClient.get<never, WithdrawalOrderListResponse>("/api/v1/withdraw/orders", { params: { page, page_size: pageSize } }),

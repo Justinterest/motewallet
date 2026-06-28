@@ -2,6 +2,7 @@ package dto
 
 // CountriesReq is the body for POST /rest/v2.0/customer/fiat/withdrawal/countries.
 // See: https://opendocs.kun.global/docs/api/get-countries-and-regions
+// Currency is required when scene is WITHDRAWAL (USD/HKD/EUR).
 type CountriesReq struct {
 	RequestNo string `json:"requestNo"`
 	Scene     string `json:"scene"`

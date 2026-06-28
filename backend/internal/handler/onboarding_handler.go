@@ -175,8 +175,9 @@ func (h *OnboardingHandler) ListKycCountries(c *gin.Context) {
 
 	scene := c.DefaultQuery("scene", "REGISTER_ADDRESS")
 	language := c.DefaultQuery("language", "ZH_CN")
+	currency := c.Query("currency")
 
-	result, err := h.onboardingService.ListKycCountries(c.Request.Context(), scene, language)
+	result, err := h.onboardingService.ListKycCountries(c.Request.Context(), scene, language, currency)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)

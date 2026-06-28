@@ -48,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useMerchant,
   useUpdateMerchantStatus,
@@ -344,15 +345,33 @@ export default function MerchantDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/merchants">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold text-slate-900">商户详情</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-2xl font-bold text-slate-900">{merchant.email}</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {getStatusBadge(merchant.status)}
+            {getKycBadge(merchant.kyc_status)}
+            {merchant.fee_template_name && (
+              <Badge variant="outline">{merchant.fee_template_name}</Badge>
+            )}
+          </div>
+        </div>
       </div>
 
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">概览</TabsTrigger>
+          <TabsTrigger value="funds">资金</TabsTrigger>
+          <TabsTrigger value="transactions">交易记录</TabsTrigger>
+          <TabsTrigger value="settings">配置</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
       {/* Basic Info */}
       <Card>
         <CardHeader>
@@ -392,6 +411,120 @@ export default function MerchantDetailPage({
         </CardContent>
       </Card>
 
+      {/* Timeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">时间线</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-500">协议签署时间</span>
+              <span className="text-sm font-medium">
+                {merchant.agreement_signed_at
+                  ? new Date(merchant.agreement_signed_at).toLocaleString("zh-CN")
+                  : "未签署"}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-500">KYC 提交时间</span>
+              <span className="text-sm font-medium">
+                {merchant.kyc_submitted_at
+                  ? new Date(merchant.kyc_submitted_at).toLocaleString("zh-CN")
+                  : "未提交"}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-500">KYC 完成时间</span>
+              <span className="text-sm font-medium">
+                {merchant.kyc_completed_at
+                  ? new Date(merchant.kyc_completed_at).toLocaleString("zh-CN")
+                  : "未完成"}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-500">冻结时间</span>
+              <span className="text-sm font-medium">
+                {merchant.frozen_at
+                  ? new Date(merchant.frozen_at).toLocaleString("zh-CN")
+                  : "未冻结"}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">操作</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">
+                {merchant.status === "FROZEN" ? "解冻商户" : "冻结商户"}
+              </p>
+              <p className="text-sm text-slate-500">
+                {merchant.status === "FROZEN"
+                  ? "解冻后商户可正常使用系统"
+                  : "冻结后商户将无法进行任何操作"}
+              </p>
+            </div>
+            <Button
+              variant={merchant.status === "FROZEN" ? "default" : "destructive"}
+              onClick={() => setFreezeDialogOpen(true)}
+            >
+              {merchant.status === "FROZEN" ? (
+                <>
+                  <Shield className="size-4" />
+                  解冻
+                </>
+              ) : (
+                <>
+                  <ShieldOff className="size-4" />
+                  冻结
+                </>
+              )}
+            </Button>
+          </div>
+
+          {merchant.kyc_status === "PENDING" && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">KYC 审核</p>
+                  <p className="text-sm text-slate-500">商户已提交 KYC 材料，等待审核</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => setKycApproveDialogOpen(true)}
+                  >
+                    <CheckCircle className="size-4" />
+                    通过
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setKycRejectDialogOpen(true)}
+                  >
+                    <XCircle className="size-4" />
+                    拒绝
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+        </TabsContent>
+
+        <TabsContent value="funds" className="space-y-6">
       {/* Platform + KUN Wallets */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -465,75 +598,113 @@ export default function MerchantDetailPage({
           )}
         </CardContent>
       </Card>
+        </TabsContent>
 
-      {/* Deposit Records */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-base">充值记录</CardTitle>
-            {depositsSyncedAt && (
-              <p className="mt-1 text-xs text-slate-500">
-                最近同步：{new Date(depositsSyncedAt).toLocaleString("zh-CN")}
-              </p>
-            )}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSyncDeposits}
-            disabled={syncDepositsMutation.isPending || !merchant.kun_sub_customer_no}
-          >
-            <RefreshCw className={`mr-2 size-4 ${syncDepositsMutation.isPending ? "animate-spin" : ""}`} />
-            {syncDepositsMutation.isPending ? "同步中..." : "同步充值记录"}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {depositsLoading ? (
-            <Skeleton className="h-24 w-full" />
-          ) : (depositsData?.deposits?.length ?? 0) > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>时间</TableHead>
-                  <TableHead>币种</TableHead>
-                  <TableHead>网络</TableHead>
-                  <TableHead className="text-right">金额</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>交易哈希</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {depositsData?.deposits.map((deposit) => (
-                  <TableRow key={deposit.id}>
-                    <TableCell className="whitespace-nowrap text-sm">
-                      {new Date(deposit.created_at).toLocaleString("zh-CN")}
-                    </TableCell>
-                    <TableCell>{deposit.currency}</TableCell>
-                    <TableCell>{deposit.network}</TableCell>
-                    <TableCell className="text-right">
-                      {formatAmount(deposit.amount, deposit.currency)}
-                    </TableCell>
-                    <TableCell>{getDepositStatusBadge(deposit.status)}</TableCell>
-                    <TableCell className="max-w-[180px] truncate font-mono text-xs text-slate-500">
-                      {deposit.tx_hash || "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="py-4 text-center text-sm text-slate-400">
-              暂无充值记录，点击「同步充值记录」从 KUN 拉取
-            </p>
-          )}
-          {!merchant.kun_sub_customer_no && (
-            <p className="mt-3 text-center text-xs text-slate-400">
-              商户尚未完成 KUN 入网，无法同步充值记录
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="transactions" className="space-y-4">
+          <Tabs defaultValue="deposit">
+            <TabsList>
+              <TabsTrigger value="deposit">充值</TabsTrigger>
+              <TabsTrigger value="withdrawal">提现</TabsTrigger>
+              <TabsTrigger value="exchange">兑换</TabsTrigger>
+              <TabsTrigger value="transfer">划转</TabsTrigger>
+            </TabsList>
 
+            <TabsContent value="deposit" className="mt-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <div>
+                    <CardTitle className="text-base">充值记录</CardTitle>
+                    {depositsSyncedAt && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        最近同步：{new Date(depositsSyncedAt).toLocaleString("zh-CN")}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSyncDeposits}
+                    disabled={syncDepositsMutation.isPending || !merchant.kun_sub_customer_no}
+                  >
+                    <RefreshCw className={`mr-2 size-4 ${syncDepositsMutation.isPending ? "animate-spin" : ""}`} />
+                    {syncDepositsMutation.isPending ? "同步中..." : "同步充值记录"}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {depositsLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : (depositsData?.deposits?.length ?? 0) > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>时间</TableHead>
+                          <TableHead>币种</TableHead>
+                          <TableHead>网络</TableHead>
+                          <TableHead className="text-right">金额</TableHead>
+                          <TableHead>状态</TableHead>
+                          <TableHead>交易哈希</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {depositsData?.deposits.map((deposit) => (
+                          <TableRow key={deposit.id}>
+                            <TableCell className="whitespace-nowrap text-sm">
+                              {new Date(deposit.created_at).toLocaleString("zh-CN")}
+                            </TableCell>
+                            <TableCell>{deposit.currency}</TableCell>
+                            <TableCell>{deposit.network}</TableCell>
+                            <TableCell className="text-right">
+                              {formatAmount(deposit.amount, deposit.currency)}
+                            </TableCell>
+                            <TableCell>{getDepositStatusBadge(deposit.status)}</TableCell>
+                            <TableCell className="max-w-[180px] truncate font-mono text-xs text-slate-500">
+                              {deposit.tx_hash || "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="py-4 text-center text-sm text-slate-400">
+                      暂无充值记录，点击「同步充值记录」从 KUN 拉取
+                    </p>
+                  )}
+                  {!merchant.kun_sub_customer_no && (
+                    <p className="mt-3 text-center text-xs text-slate-400">
+                      商户尚未完成 KUN 入网，无法同步充值记录
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="withdrawal" className="mt-4">
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-slate-400">
+                  提现记录即将上线
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="exchange" className="mt-4">
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-slate-400">
+                  兑换记录即将上线
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="transfer" className="mt-4">
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-slate-400">
+                  划转记录即将上线
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
       {/* Supported Currencies */}
       <Card>
         <CardHeader>
@@ -583,97 +754,16 @@ export default function MerchantDetailPage({
         </CardContent>
       </Card>
 
-      {/* Timeline */}
+      {/* Fee template */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">时间线</CardTitle>
+          <CardTitle className="text-base">手续费模板</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">协议签署时间</span>
-              <span className="text-sm font-medium">
-                {merchant.agreement_signed_at
-                  ? new Date(merchant.agreement_signed_at).toLocaleString("zh-CN")
-                  : "未签署"}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">KYC 提交时间</span>
-              <span className="text-sm font-medium">
-                {merchant.kyc_submitted_at
-                  ? new Date(merchant.kyc_submitted_at).toLocaleString("zh-CN")
-                  : "未提交"}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">KYC 完成时间</span>
-              <span className="text-sm font-medium">
-                {merchant.kyc_completed_at
-                  ? new Date(merchant.kyc_completed_at).toLocaleString("zh-CN")
-                  : "未完成"}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">冻结时间</span>
-              <span className="text-sm font-medium">
-                {merchant.frozen_at
-                  ? new Date(merchant.frozen_at).toLocaleString("zh-CN")
-                  : "未冻结"}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">操作</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Freeze / Unfreeze */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="font-medium">
-                {merchant.status === "FROZEN" ? "解冻商户" : "冻结商户"}
-              </p>
-              <p className="text-sm text-slate-500">
-                {merchant.status === "FROZEN"
-                  ? "解冻后商户可正常使用系统"
-                  : "冻结后商户将无法进行任何操作"}
-              </p>
-            </div>
-            <Button
-              variant={merchant.status === "FROZEN" ? "default" : "destructive"}
-              onClick={() => setFreezeDialogOpen(true)}
-            >
-              {merchant.status === "FROZEN" ? (
-                <>
-                  <Shield className="size-4" />
-                  解冻
-                </>
-              ) : (
-                <>
-                  <ShieldOff className="size-4" />
-                  冻结
-                </>
-              )}
-            </Button>
-          </div>
-
-          <Separator />
-
-          {/* Assign fee template */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="font-medium">分配手续费模板</p>
-              <p className="text-sm text-slate-500">
-                当前模板: {merchant.fee_template_name || "未分配"}
-              </p>
+              <p className="text-sm text-slate-500">当前模板</p>
+              <p className="font-medium">{merchant.fee_template_name || "未分配"}</p>
             </div>
             <div className="flex items-center gap-2">
               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
@@ -697,38 +787,10 @@ export default function MerchantDetailPage({
               </Button>
             </div>
           </div>
-
-          {/* KYC Actions */}
-          {merchant.kyc_status === "PENDING" && (
-            <>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">KYC 审核</p>
-                  <p className="text-sm text-slate-500">商户已提交 KYC 材料，等待审核</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="default"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => setKycApproveDialogOpen(true)}
-                  >
-                    <CheckCircle className="size-4" />
-                    通过
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => setKycRejectDialogOpen(true)}
-                  >
-                    <XCircle className="size-4" />
-                    拒绝
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Freeze/Unfreeze Dialog */}
       <AlertDialog open={freezeDialogOpen} onOpenChange={setFreezeDialogOpen}>

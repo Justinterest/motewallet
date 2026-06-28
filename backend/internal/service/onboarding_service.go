@@ -296,8 +296,8 @@ var allowedKycCountryScenes = map[string]bool{
 }
 
 // ListKycCountries returns countries/regions for KYC fields.
-// REGISTER_ADDRESS: address-related fields; REGISTER: nationality and related fields; WITHDRAWAL: fiat withdrawal.
-func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, language string) (*dtoresp.CountryListResp, error) {
+// REGISTER_ADDRESS: address-related fields; REGISTER: nationality and related fields; WITHDRAWAL: fiat withdrawal (currency required).
+func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, language, currency string) (*dtoresp.CountryListResp, error) {
 	if scene == "" {
 		scene = kycCountrySceneAddress
 	}
@@ -312,10 +312,18 @@ func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, languag
 		language = kycCountryLanguage
 	}
 
+	currency = strings.TrimSpace(strings.ToUpper(currency))
+	if scene == kycCountrySceneWithdrawal {
+		if currency == "" {
+			return nil, bizerrors.NewBusinessError(http.StatusBadRequest, bizerrors.ErrValidation, "currency is required when scene is WITHDRAWAL")
+		}
+	}
+
 	var items []kundto.CountryItem
 	if err := s.kunClient.Post(ctx, kunCountriesPath, &kundto.CountriesReq{
 		RequestNo: kun.GenerateRequestNo(),
 		Scene:     scene,
+		Currency:  currency,
 		Language:  language,
 	}, &items); err != nil {
 		slog.Error("KUN list countries failed", slog.Any("error", err), slog.String("scene", scene))

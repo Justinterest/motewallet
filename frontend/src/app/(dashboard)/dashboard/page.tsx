@@ -10,11 +10,12 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { CurrencyIcon } from "@/components/currency-icon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWalletBalances } from "@/lib/hooks/use-wallet";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
-import { formatAmount, getCurrencySymbol } from "@/lib/utils/format";
+import { formatAmount } from "@/lib/utils/format";
 import { getAllSupportedCurrencies } from "@/lib/utils/currency";
 import type { WalletBalance } from "@/types/wallet";
 import type { LucideIcon } from "lucide-react";
@@ -64,9 +65,7 @@ function BalanceRows({
           className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
         >
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">
-              {wallet.currency.slice(0, 1)}
-            </span>
+            <CurrencyIcon currency={wallet.currency} />
             <div>
               <p className="text-sm font-medium text-foreground">
                 {wallet.currency}

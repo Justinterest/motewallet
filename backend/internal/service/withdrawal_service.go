@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -159,6 +160,20 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 	if bankAccount.MerchantID != merchantID {
 		return 0, bizerrors.ErrForbiddenError
 	}
+	if bankAccount.Status != "ACTIVE" {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank account is not active")
+	}
+	if bankAccount.CurrencyList != req.Currency {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank account currency does not match withdrawal currency")
+	}
+
+	if err := validateFiatWithdrawalPurpose(req.Purpose); err != nil {
+		return 0, err
+	}
+	postscript := strings.TrimSpace(req.Postscript)
+	if postscript == "" {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "postscript is required")
+	}
 
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
@@ -167,6 +182,7 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 
 	platformFee := s.calculateFiatFee(ctx, merchant.FeeTemplateID, req.Currency, bankAccount.TransferType, amount)
 	totalDeduction := amount.Add(platformFee)
+	purpose := strings.ToUpper(strings.TrimSpace(req.Purpose))
 
 	subType := "FIAT"
 	var orderID uint64
@@ -185,6 +201,7 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 			Amount:          amount,
 			Currency:        req.Currency,
 			PlatformFee:     platformFee,
+			Remark:          &postscript,
 			Status:          "PENDING",
 		}
 		if err := tx.WithContext(ctx).Create(txRecord).Error; err != nil {
@@ -198,6 +215,7 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 			WithdrawalType:      "FIAT",
 			BankAccountID:       &bankAccountID,
 			TransferType:        &bankAccount.TransferType,
+			Purpose:             &purpose,
 			ReviewStatus:        "PENDING_REVIEW",
 		}
 		if err := tx.WithContext(ctx).Create(withdrawalOrder).Error; err != nil {
@@ -273,14 +291,27 @@ func (s *WithdrawalService) ApproveWithdrawal(ctx context.Context, adminID uint6
 		if bankAccount.KunAccountID == nil {
 			return bizerrors.ErrKUNAPIFailedE
 		}
+		purpose := "OTHER"
+		if order.Purpose != nil && strings.TrimSpace(*order.Purpose) != "" {
+			purpose = strings.ToUpper(strings.TrimSpace(*order.Purpose))
+		}
+		postscript := ""
+		if txRecord.Remark != nil {
+			postscript = strings.TrimSpace(*txRecord.Remark)
+		}
+		if postscript == "" {
+			postscript = "Withdrawal"
+		}
 		var resp kundto.FiatWithdrawalResp
-		err = s.kunClient.Post(ctx, "/rest/v2.0/customer/fiat/withdrawal", &kundto.FiatWithdrawalReq{
-			SubCustomerNo: *merchant.KunSubCustomerNo,
-			RequestNo:     requestNo,
-			Currency:      txRecord.Currency,
-			Amount:        txRecord.Amount.String(),
-			BankAccountId: *bankAccount.KunAccountID,
-			RegionCode:    s.kunClient.GetRegionCode(),
+		err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.FiatWithdrawalPath, &kundto.FiatWithdrawalReq{
+			RequestNo:  requestNo,
+			AccountId:  *bankAccount.KunAccountID,
+			Amount:     txRecord.Amount.String(),
+			Currency:   txRecord.Currency,
+			FeeMethod:  "SHA",
+			PoboType:   "NO",
+			Postscript: postscript,
+			Purpose:    purpose,
 		}, &resp)
 		if err != nil {
 			slog.Error("KUN fiat withdrawal failed", slog.Any("error", err))

@@ -101,20 +101,38 @@ type CryptoAddressAddResp struct {
 	AccountId string `json:"accountId"`
 }
 
+// FiatAddressAddReq is the body for POST /rest/v2.0/customer/fiat/address/add.
+// See: https://opendocs.kun.global/docs/api/bind-fiat-withdrawal-account
 type FiatAddressAddReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	Currency      string `json:"currency"`
-	BankName      string `json:"bankName"`
-	BankCountry   string `json:"bankCountry"`
-	SwiftCode     string `json:"swiftCode"`
-	AccountName   string `json:"accountName"`
-	AccountNo     string `json:"accountNo"`
-	TransferType  string `json:"transferType"`
-	RequestNo     string `json:"requestNo"`
+	RequestNo          string   `json:"requestNo"`
+	AccountCategory    string   `json:"accountCategory"`
+	CurrencyList       []string `json:"currencyList"`
+	Area               string   `json:"area"`
+	TransferType       string   `json:"transferType"`
+	AccountNo          string   `json:"accountNo"`
+	AccountName        string   `json:"accountName"`
+	AccountType        string   `json:"accountType,omitempty"`
+	SwiftCode          string   `json:"swiftCode,omitempty"`
+	PayeeCountryCode   string   `json:"payeeCountryCode,omitempty"`
+	Address            string   `json:"address,omitempty"`
+	PayeeAddressSecond string   `json:"payeeAddressSecond,omitempty"`
+	MiddleSwiftCode    string   `json:"middleSwiftCode,omitempty"`
+	BankName           string   `json:"bankName,omitempty"`
+	BankCode           string   `json:"bankCode,omitempty"`
+	BankAddress        string   `json:"bankAddress,omitempty"`
+	AccountTypes       string   `json:"accountTypes,omitempty"`
 }
 
 type FiatAddressAddResp struct {
 	AccountId string `json:"accountId"`
+}
+
+// FiatAddressDelReq is the body for POST /rest/v2.0/customer/fiat/withdrawal/del.
+// See: https://opendocs.kun.global/docs/api/unbind-fiat-withdrawal-account
+type FiatAddressDelReq struct {
+	RequestNo string `json:"requestNo"`
+	AccountId string `json:"accountId"`
+	Currency  string `json:"currency"`
 }
 
 type RegionBalanceQueryReq struct {

@@ -10,6 +10,7 @@ import type { KycCountryScene } from "@/types/kyc-reference";
 
 interface KycCountrySelectProps {
   scene?: KycCountryScene;
+  currency?: string;
   value?: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -20,6 +21,7 @@ interface KycCountrySelectProps {
 
 export function KycCountrySelect({
   scene = KYC_COUNTRY_SCENE_ADDRESS,
+  currency,
   value,
   onChange,
   onBlur,
@@ -28,7 +30,7 @@ export function KycCountrySelect({
   className,
 }: KycCountrySelectProps) {
   const { data: countryOptions = [], isLoading, isError } = useQuery({
-    ...kycCountriesQueryOptions(scene),
+    ...kycCountriesQueryOptions(scene, currency),
     select: (response) =>
       response.items.map((item) => ({
         value: item.country_code,
