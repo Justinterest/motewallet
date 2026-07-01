@@ -16,28 +16,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useSubmitCryptoWithdrawal,
   useSubmitFiatWithdrawal,
+  useWithdrawalFeePreview,
   useWithdrawalOrders,
 } from "@/lib/hooks/use-trading";
-import { useBankAccounts } from "@/lib/hooks/use-addresses";
+import { WithdrawalFeeSummary } from "@/components/withdrawal/fee-summary";
+import { useBankAccounts, useCryptoAddresses } from "@/lib/hooks/use-addresses";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
 import { toCurrencyOptions } from "@/lib/utils/currency";
 import { TRANSFER_TYPE_LABELS } from "@/lib/utils/bank-account";
 import { FIAT_WITHDRAWAL_PURPOSES } from "@/lib/utils/fiat-withdrawal";
+import { formatChainLabel, getWithdrawalNetworks } from "@/lib/utils/network";
 import { toast } from "@/hooks/use-toast";
-import type { BankAccount } from "@/types/address";
-
-const chains: Record<string, { value: string; label: string }[]> = {
-  USDT: [
-    { value: "TRC20", label: "TRC20 (Tron)" },
-    { value: "ERC20", label: "ERC20 (Ethereum)" },
-  ],
-  USDC: [
-    { value: "ERC20", label: "ERC20 (Ethereum)" },
-    { value: "TRC20", label: "TRC20 (Tron)" },
-  ],
-  BTC: [{ value: "BTC", label: "Bitcoin" }],
-};
+import type { BankAccount, CryptoAddress } from "@/types/address";
 
 const statusLabels: Record<string, string> = {
   PENDING: "待审核",
@@ -54,6 +45,28 @@ const reviewLabels: Record<string, string> = {
 
 type WithdrawTab = "crypto" | "fiat";
 
+function isPositiveAmount(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const parsed = parseFloat(trimmed);
+  return !Number.isNaN(parsed) && parsed > 0;
+}
+
+function isWithdrawalFeeReady(options: {
+  amount: string;
+  debouncedAmount: string;
+  previewRequired: boolean;
+  isSuccess: boolean;
+  isFetching: boolean;
+  preview?: { amount: string };
+}) {
+  if (!options.previewRequired) return false;
+  if (options.amount.trim() !== options.debouncedAmount.trim()) return false;
+  if (!options.isSuccess || options.isFetching || !options.preview) return false;
+  if (options.preview.amount.trim() !== options.debouncedAmount.trim()) return false;
+  return true;
+}
+
 export default function WithdrawPage() {
   const [activeTab, setActiveTab] = useState<WithdrawTab>("crypto");
   const { data: supportedCurrencies } = useSupportedCurrencies();
@@ -63,7 +76,7 @@ export default function WithdrawPage() {
   const [currency, setCurrency] = useState("");
   const [chain, setChain] = useState("");
   const [amount, setAmount] = useState("");
-  const [toAddress, setToAddress] = useState("");
+  const [cryptoAddressId, setCryptoAddressId] = useState("");
 
   const [fiatCurrency, setFiatCurrency] = useState("");
   const [fiatAmount, setFiatAmount] = useState("");
@@ -71,12 +84,25 @@ export default function WithdrawPage() {
   const [purpose, setPurpose] = useState("OTHER");
   const [postscript, setPostscript] = useState("");
 
+  const [debouncedCryptoAmount, setDebouncedCryptoAmount] = useState("");
+  const [debouncedFiatAmount, setDebouncedFiatAmount] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedCryptoAmount(amount), 300);
+    return () => clearTimeout(timer);
+  }, [amount]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedFiatAmount(fiatAmount), 300);
+    return () => clearTimeout(timer);
+  }, [fiatAmount]);
+
   useEffect(() => {
     const nextCurrency = supportedCurrencies?.crypto_currencies?.[0];
     if (!nextCurrency) return;
     if (!currency || !supportedCurrencies.crypto_currencies.includes(currency)) {
       setCurrency(nextCurrency);
-      setChain(chains[nextCurrency]?.[0]?.value || "");
+      setChain(getWithdrawalNetworks(nextCurrency)[0]?.value || "");
     }
   }, [supportedCurrencies, currency]);
 
@@ -87,6 +113,39 @@ export default function WithdrawPage() {
       setFiatCurrency(nextCurrency);
     }
   }, [supportedCurrencies, fiatCurrency]);
+
+  const { data: cryptoAddressesData, isLoading: cryptoAddressesLoading } = useCryptoAddresses();
+  const cryptoAddresses = cryptoAddressesData ?? [];
+
+  const cryptoAddressesForSelection = useMemo(
+    () =>
+      cryptoAddresses.filter(
+        (a) => a.currency === currency && a.chain === chain && a.status === "ACTIVE"
+      ),
+    [cryptoAddresses, currency, chain]
+  );
+
+  const cryptoAddressOptions = useMemo(
+    () =>
+      cryptoAddressesForSelection.map((account) => ({
+        value: String(account.id),
+        label: formatCryptoAddressLabel(account),
+      })),
+    [cryptoAddressesForSelection]
+  );
+
+  useEffect(() => {
+    if (cryptoAddressesForSelection.length === 0) {
+      setCryptoAddressId("");
+      return;
+    }
+    if (
+      !cryptoAddressId ||
+      !cryptoAddressesForSelection.some((a) => String(a.id) === cryptoAddressId)
+    ) {
+      setCryptoAddressId(String(cryptoAddressesForSelection[0].id));
+    }
+  }, [cryptoAddressesForSelection, cryptoAddressId]);
 
   const { data: bankAccountsData, isLoading: bankAccountsLoading } = useBankAccounts();
   const bankAccounts = bankAccountsData ?? [];
@@ -118,19 +177,80 @@ export default function WithdrawPage() {
   const submitCryptoMutation = useSubmitCryptoWithdrawal();
   const submitFiatMutation = useSubmitFiatWithdrawal();
   const { data: ordersData, isLoading: ordersLoading } = useWithdrawalOrders();
+
+  const {
+    data: cryptoFeePreview,
+    isLoading: cryptoFeeLoading,
+    isFetching: cryptoFeeFetching,
+    isSuccess: cryptoFeeSuccess,
+    isError: cryptoFeeError,
+  } = useWithdrawalFeePreview({
+    type: "CRYPTO",
+    currency,
+    amount: debouncedCryptoAmount,
+    cryptoAddressId: cryptoAddressId,
+  });
+
+  const {
+    data: fiatFeePreview,
+    isLoading: fiatFeeLoading,
+    isFetching: fiatFeeFetching,
+    isSuccess: fiatFeeSuccess,
+    isError: fiatFeeError,
+  } = useWithdrawalFeePreview({
+    type: "FIAT",
+    currency: fiatCurrency,
+    amount: debouncedFiatAmount,
+    bankAccountId: bankAccountId,
+  });
+
   const orders = ordersData?.orders || [];
+
+  const cryptoFeePreviewRequired =
+    isPositiveAmount(amount) &&
+    Boolean(cryptoAddressId) &&
+    cryptoAddressesForSelection.length > 0;
+
+  const fiatFeePreviewRequired =
+    isPositiveAmount(fiatAmount) &&
+    Boolean(bankAccountId) &&
+    accountsForCurrency.length > 0;
+
+  const cryptoFeeReady = isWithdrawalFeeReady({
+    amount,
+    debouncedAmount: debouncedCryptoAmount,
+    previewRequired: cryptoFeePreviewRequired,
+    isSuccess: cryptoFeeSuccess,
+    isFetching: cryptoFeeFetching,
+    preview: cryptoFeePreview,
+  });
+
+  const fiatFeeReady = isWithdrawalFeeReady({
+    amount: fiatAmount,
+    debouncedAmount: debouncedFiatAmount,
+    previewRequired: fiatFeePreviewRequired,
+    isSuccess: fiatFeeSuccess,
+    isFetching: fiatFeeFetching,
+    preview: fiatFeePreview,
+  });
 
   function handleCryptoSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!amount || !toAddress) return;
+    if (!amount || !cryptoAddressId || !cryptoFeeReady) {
+      toast({
+        variant: "destructive",
+        title: "无法提交",
+        description: cryptoFeeError ? "手续费计算失败，请检查金额后重试" : "请等待手续费计算完成",
+      });
+      return;
+    }
 
     submitCryptoMutation.mutate(
-      { currency, chain, amount, to_address: toAddress },
+      { currency, crypto_address_id: Number(cryptoAddressId), amount },
       {
         onSuccess: () => {
           toast({ title: "提交成功", description: "提现申请已提交，等待审核。" });
           setAmount("");
-          setToAddress("");
         },
         onError: (err) => {
           toast({ variant: "destructive", title: "提交失败", description: err.message });
@@ -141,7 +261,14 @@ export default function WithdrawPage() {
 
   function handleFiatSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!fiatAmount || !bankAccountId || !postscript) return;
+    if (!fiatAmount || !bankAccountId || !postscript || !fiatFeeReady) {
+      toast({
+        variant: "destructive",
+        title: "无法提交",
+        description: fiatFeeError ? "手续费计算失败，请检查金额后重试" : "请等待手续费计算完成",
+      });
+      return;
+    }
 
     submitFiatMutation.mutate(
       {
@@ -196,53 +323,97 @@ export default function WithdrawPage() {
               <CardTitle className="text-base">加密货币提现</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCryptoSubmit} className="space-y-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">币种</label>
-                  <SimpleSelect
-                    value={currency}
-                    onValueChange={(value) => {
-                      setCurrency(value);
-                      setChain(chains[value]?.[0]?.value || "");
-                    }}
-                    options={cryptoCurrencies}
+              {cryptoCurrencies.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">暂不支持数币提现</p>
+              ) : (
+                <form onSubmit={handleCryptoSubmit} className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">币种</label>
+                    <SimpleSelect
+                      value={currency}
+                      onValueChange={(value) => {
+                        setCurrency(value);
+                        setChain(getWithdrawalNetworks(value)[0]?.value || "");
+                      }}
+                      options={cryptoCurrencies}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">网络</label>
+                    <SimpleSelect
+                      value={chain}
+                      onValueChange={setChain}
+                      options={getWithdrawalNetworks(currency)}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700">收款地址</label>
+                      <Link href="/crypto-addresses" className="text-xs text-blue-700 hover:underline">
+                        管理地址
+                      </Link>
+                    </div>
+                    {cryptoAddressesLoading ? (
+                      <Skeleton className="h-9 w-full" />
+                    ) : cryptoAddressesForSelection.length === 0 ? (
+                      <div className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-slate-500">
+                        <p>
+                          请先绑定 {currency} · {formatChainLabel(currency, chain)} 白名单地址
+                        </p>
+                        <Link
+                          href="/crypto-addresses"
+                          className="mt-2 inline-block text-blue-700 hover:underline"
+                        >
+                          前往提现地址管理
+                        </Link>
+                      </div>
+                    ) : (
+                      <SimpleSelect
+                        value={cryptoAddressId}
+                        onValueChange={setCryptoAddressId}
+                        options={cryptoAddressOptions}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">提现金额</label>
+                    <Input
+                      type="text"
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                  </div>
+
+                  <WithdrawalFeeSummary
+                    preview={cryptoFeePreview}
+                    isLoading={
+                      cryptoFeePreviewRequired &&
+                      (cryptoFeeLoading || cryptoFeeFetching || amount.trim() !== debouncedCryptoAmount.trim())
+                    }
+                    isError={cryptoFeePreviewRequired && cryptoFeeError}
+                    showCryptoNetworkNote
                   />
-                </div>
 
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">链/网络</label>
-                  <SimpleSelect value={chain} onValueChange={setChain} options={chains[currency] || []} />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">提现金额</label>
-                  <Input
-                    type="text"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">收款地址</label>
-                  <Input
-                    type="text"
-                    placeholder="请输入收款地址"
-                    value={toAddress}
-                    onChange={(e) => setToAddress(e.target.value)}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-blue-700 hover:bg-blue-800 text-white"
-                  disabled={submitCryptoMutation.isPending || !amount || !toAddress}
-                >
-                  {submitCryptoMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  提交提现
-                </Button>
-              </form>
+                  <Button
+                    type="submit"
+                    className="w-full bg-blue-700 hover:bg-blue-800 text-white"
+                    disabled={
+                      submitCryptoMutation.isPending ||
+                      !amount ||
+                      !cryptoAddressId ||
+                      cryptoAddressesForSelection.length === 0 ||
+                      !cryptoFeeReady
+                    }
+                  >
+                    {submitCryptoMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    提交提现
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -323,6 +494,15 @@ export default function WithdrawPage() {
                     />
                   </div>
 
+                  <WithdrawalFeeSummary
+                    preview={fiatFeePreview}
+                    isLoading={
+                      fiatFeePreviewRequired &&
+                      (fiatFeeLoading || fiatFeeFetching || fiatAmount.trim() !== debouncedFiatAmount.trim())
+                    }
+                    isError={fiatFeePreviewRequired && fiatFeeError}
+                  />
+
                   <Button
                     type="submit"
                     className="w-full bg-blue-700 hover:bg-blue-800 text-white"
@@ -331,7 +511,8 @@ export default function WithdrawPage() {
                       !fiatAmount ||
                       !bankAccountId ||
                       !postscript ||
-                      accountsForCurrency.length === 0
+                      accountsForCurrency.length === 0 ||
+                      !fiatFeeReady
                     }
                   >
                     {submitFiatMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -401,4 +582,12 @@ export default function WithdrawPage() {
 function formatBankAccountLabel(account: BankAccount) {
   const transfer = TRANSFER_TYPE_LABELS[account.transfer_type] || account.transfer_type;
   return `${account.bank_name} · ${account.account_no_masked} · ${transfer}`;
+}
+
+function formatCryptoAddressLabel(account: CryptoAddress) {
+  const masked =
+    account.address.length <= 12
+      ? account.address
+      : `${account.address.slice(0, 6)}...${account.address.slice(-6)}`;
+  return `${account.alias} · ${masked}`;
 }

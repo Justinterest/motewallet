@@ -38,6 +38,14 @@ export interface WithdrawalOrderListResponse {
   total: number;
 }
 
+export interface WithdrawalFeePreview {
+  currency: string;
+  amount: string;
+  platform_fee: string;
+  total_deduction: string;
+  net_amount: string;
+}
+
 export interface ExchangeQuote {
   quote_id: string;
   from_currency: string;

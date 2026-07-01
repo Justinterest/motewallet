@@ -134,10 +134,16 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 		b := make([]byte, 4)
 		_, _ = rand.Read(b)
 		mockData = []byte(fmt.Sprintf(`{"orderId":"MOCK_FIAT_WD_%s"}`, hex.EncodeToString(b)))
-	case "/rest/v2.0/customer/crypto/withdrawal":
+	case "/rest/v2.0/customer/crypto/address/add":
 		b := make([]byte, 4)
 		_, _ = rand.Read(b)
-		mockData = []byte(fmt.Sprintf(`{"orderId":"MOCK_CRYPTO_WD_%s"}`, hex.EncodeToString(b)))
+		mockData = []byte(fmt.Sprintf(`{"accountId":"MOCK_CRYPTO_ADDR_%s"}`, hex.EncodeToString(b)))
+	case "/rest/v2.0/customer/crypto/address/del":
+		mockData = []byte(`{}`)
+	case "/rest/v2.0/trade/crypto/withdrawal":
+		b := make([]byte, 4)
+		_, _ = rand.Read(b)
+		mockData = []byte(fmt.Sprintf(`"MOCK_CRYPTO_WD_%s"`, hex.EncodeToString(b)))
 	default:
 		mockData = []byte(`{}`)
 	}

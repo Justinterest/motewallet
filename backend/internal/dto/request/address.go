@@ -4,7 +4,7 @@ type AddCryptoAddressReq struct {
 	Currency string `json:"currency" binding:"required"`
 	Chain    string `json:"chain" binding:"required"`
 	Address  string `json:"address" binding:"required"`
-	Alias    string `json:"alias"`
+	Alias    string `json:"alias" binding:"required"`
 }
 
 type AddBankAccountReq struct {

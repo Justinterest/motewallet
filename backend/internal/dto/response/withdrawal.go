@@ -20,3 +20,11 @@ type WithdrawalOrderListResp struct {
 	Orders []WithdrawalOrderResp `json:"orders"`
 	Total  int64                 `json:"total"`
 }
+
+type WithdrawalFeePreviewResp struct {
+	Currency       string `json:"currency"`
+	Amount         string `json:"amount"`
+	PlatformFee    string `json:"platform_fee"`
+	TotalDeduction string `json:"total_deduction"`
+	NetAmount      string `json:"net_amount"`
+}

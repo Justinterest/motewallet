@@ -115,7 +115,7 @@ func main() {
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
 	depositService := service.NewDepositService(kunClient, merchantRepo, currencyConfigService)
 	adminDepositService := service.NewAdminDepositService(depositOrderRepo)
-	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, kunClient, currencyConfigService)
+	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, cryptoAddressRepo, kunClient, currencyConfigService)
 	exchangeService := service.NewExchangeService(db, merchantRepo, walletService, exchangeOrderRepo, transactionRecordRepo, exchangeItemRepo, kunClient, currencyConfigService)
 	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient, currencyConfigService)
 	webhookService := service.NewWebhookService(db, webhookLogRepo, merchantRepo, walletService, transactionRecordRepo, depositOrderRepo, withdrawalOrderRepo, exchangeOrderRepo, transferOrderRepo)

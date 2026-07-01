@@ -1,10 +1,9 @@
 package request
 
 type SubmitCryptoWithdrawalReq struct {
-	Currency  string `json:"currency" binding:"required"`
-	Chain     string `json:"chain" binding:"required"`
-	Amount    string `json:"amount" binding:"required"`
-	ToAddress string `json:"to_address" binding:"required"`
+	Currency        string `json:"currency" binding:"required"`
+	CryptoAddressID uint64 `json:"crypto_address_id" binding:"required"`
+	Amount          string `json:"amount" binding:"required"`
 }
 
 type SubmitFiatWithdrawalReq struct {
@@ -17,4 +16,12 @@ type SubmitFiatWithdrawalReq struct {
 
 type ReviewWithdrawalReq struct {
 	Reason string `json:"reason"`
+}
+
+type WithdrawalFeePreviewReq struct {
+	Type            string `json:"type" binding:"required,oneof=CRYPTO FIAT"`
+	Currency        string `json:"currency" binding:"required"`
+	Amount          string `json:"amount" binding:"required"`
+	CryptoAddressID uint64 `json:"crypto_address_id"`
+	BankAccountID   uint64 `json:"bank_account_id"`
 }

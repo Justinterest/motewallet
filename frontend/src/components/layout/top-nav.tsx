@@ -11,6 +11,7 @@ const navItems = [
   { label: "概览", href: "/dashboard" },
   { label: "充值", href: "/deposit" },
   { label: "提现", href: "/withdraw" },
+  { label: "提现地址", href: "/crypto-addresses" },
   { label: "银行账户", href: "/bank-accounts" },
   { label: "兑换", href: "/exchange" },
   { label: "划转", href: "/transfer" },

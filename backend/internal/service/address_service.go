@@ -51,13 +51,12 @@ func (s *AddressService) AddCryptoAddress(ctx context.Context, merchantID uint64
 	}
 
 	var kunResp kundto.CryptoAddressAddResp
-	err = s.kunClient.Post(ctx, "/rest/v2.0/customer/crypto/address/add", &kundto.CryptoAddressAddReq{
-		SubCustomerNo: *merchant.KunSubCustomerNo,
-		Currency:      req.Currency,
-		Chain:         req.Chain,
-		Address:       req.Address,
-		Alias:         req.Alias,
-		RequestNo:     kun.GenerateRequestNo(),
+	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.CryptoAddressAddPath, &kundto.CryptoAddressAddReq{
+		RequestNo:    kun.GenerateRequestNo(),
+		Currency:     req.Currency,
+		ChainType:    req.Chain,
+		Address:      req.Address,
+		AddressAlias: req.Alias,
 	}, &kunResp)
 	if err != nil {
 		slog.Error("KUN add crypto address failed", slog.Any("error", err))
@@ -118,6 +117,30 @@ func (s *AddressService) DeleteCryptoAddress(ctx context.Context, merchantID uin
 	if addr.MerchantID != merchantID {
 		return bizerrors.ErrForbiddenError
 	}
+
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerrors.ErrNotFoundError
+		}
+		return bizerrors.ErrInternalError
+	}
+	if merchant.KunSubCustomerNo == nil {
+		return bizerrors.ErrMerchantNotRegisteredE
+	}
+	if addr.KunAccountID == nil || strings.TrimSpace(*addr.KunAccountID) == "" {
+		return bizerrors.ErrKUNAPIFailedE
+	}
+
+	if err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.CryptoAddressDelPath, &kundto.CryptoAddressDelReq{
+		RequestNo: kun.GenerateRequestNo(),
+		AccountId: *addr.KunAccountID,
+		Currency:  addr.Currency,
+	}, &struct{}{}); err != nil {
+		slog.Error("KUN delete crypto address failed", slog.Any("error", err))
+		return bizerrors.ErrKUNAPIFailedE
+	}
+
 	return s.cryptoAddrRepo.Delete(ctx, addressID)
 }
 

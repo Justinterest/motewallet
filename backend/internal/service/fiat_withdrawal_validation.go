@@ -17,36 +17,28 @@ func validateBankAccountBindReq(req *dtoreq.AddBankAccountReq) error {
 	transferType := strings.ToUpper(strings.TrimSpace(req.TransferType))
 	req.TransferType = transferType
 
-	switch transferType {
-	case "TT", "CHATS":
-		if strings.TrimSpace(req.SwiftCode) == "" {
-			return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "swift_code is required for this transfer type")
-		}
-		payeeCountry := strings.TrimSpace(req.PayeeCountryCode)
-		if payeeCountry == "" {
-			payeeCountry = strings.TrimSpace(req.BankCountry)
-		}
-		if payeeCountry == "" {
-			return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "payee_country_code is required for this transfer type")
-		}
-		if strings.TrimSpace(req.PayeeAddress) == "" {
-			return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "payee_address is required for this transfer type")
-		}
-		if strings.TrimSpace(req.PayeeAddressSecond) == "" {
-			return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "payee_address_second is required for this transfer type")
-		}
-	case "LOCAL":
-	default:
-		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid transfer_type")
+	if transferType != "TT" {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "only TT transfer type is supported")
 	}
 
-	if transferType == "CHATS" && strings.TrimSpace(req.BankCode) == "" {
-		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank_code is required for CHATS transfer type")
+	if strings.TrimSpace(req.SwiftCode) == "" {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "swift_code is required for TT transfer type")
+	}
+	payeeCountry := strings.TrimSpace(req.PayeeCountryCode)
+	if payeeCountry == "" {
+		payeeCountry = strings.TrimSpace(req.BankCountry)
+	}
+	if payeeCountry == "" {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "payee_country_code is required for TT transfer type")
+	}
+	if strings.TrimSpace(req.PayeeAddress) == "" {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "payee_address is required for TT transfer type")
+	}
+	if strings.TrimSpace(req.PayeeAddressSecond) == "" {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "payee_address_second is required for TT transfer type")
 	}
 
-	if transferType == "TT" && strings.TrimSpace(req.AccountType) == "" {
-		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "account_type is required for TT transfer type")
-	}
+	req.AccountType = "ENTERPRISE"
 
 	return nil
 }

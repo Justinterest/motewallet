@@ -28,6 +28,7 @@ type WithdrawalService struct {
 	cryptoWithdrawalItemRepo repository.FeeTemplateCryptoWithdrawalItemRepository
 	fiatWithdrawalItemRepo   repository.FeeTemplateFiatWithdrawalItemRepository
 	bankAccountRepo          repository.BankAccountRepository
+	cryptoAddressRepo        repository.CryptoAddressRepository
 	kunClient                kun.KUNClient
 	currencyConfigSvc        *CurrencyConfigService
 }
@@ -41,6 +42,7 @@ func NewWithdrawalService(
 	cryptoWithdrawalItemRepo repository.FeeTemplateCryptoWithdrawalItemRepository,
 	fiatWithdrawalItemRepo repository.FeeTemplateFiatWithdrawalItemRepository,
 	bankAccountRepo repository.BankAccountRepository,
+	cryptoAddressRepo repository.CryptoAddressRepository,
 	kunClient kun.KUNClient,
 	currencyConfigSvc *CurrencyConfigService,
 ) *WithdrawalService {
@@ -53,6 +55,7 @@ func NewWithdrawalService(
 		cryptoWithdrawalItemRepo: cryptoWithdrawalItemRepo,
 		fiatWithdrawalItemRepo:   fiatWithdrawalItemRepo,
 		bankAccountRepo:          bankAccountRepo,
+		cryptoAddressRepo:        cryptoAddressRepo,
 		kunClient:                kunClient,
 		currencyConfigSvc:        currencyConfigSvc,
 	}
@@ -75,12 +78,29 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 		return 0, err
 	}
 
+	cryptoAddress, err := s.cryptoAddressRepo.FindByID(ctx, req.CryptoAddressID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, bizerrors.ErrNotFoundError
+		}
+		return 0, bizerrors.ErrInternalError
+	}
+	if cryptoAddress.MerchantID != merchantID {
+		return 0, bizerrors.ErrForbiddenError
+	}
+	if cryptoAddress.Status != "ACTIVE" {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto address is not active")
+	}
+	if cryptoAddress.Currency != req.Currency {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto address currency does not match withdrawal currency")
+	}
+
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
 		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid amount")
 	}
 
-	platformFee := s.calculateCryptoFee(ctx, merchant.FeeTemplateID, req.Currency, req.Chain, amount)
+	platformFee := s.calculateCryptoFee(ctx, merchant.FeeTemplateID, cryptoAddress.Currency, cryptoAddress.Chain, amount)
 	totalDeduction := amount.Add(platformFee)
 
 	subType := "CRYPTO"
@@ -110,8 +130,9 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 			TransactionRecordID: txRecord.ID,
 			MerchantID:          merchantID,
 			WithdrawalType:      "CRYPTO",
-			ToAddress:           &req.ToAddress,
-			Chain:               &req.Chain,
+			CryptoAddressID:     &req.CryptoAddressID,
+			ToAddress:           &cryptoAddress.Address,
+			Chain:               &cryptoAddress.Chain,
 			ReviewStatus:        "PENDING_REVIEW",
 		}
 		if err := tx.WithContext(ctx).Create(withdrawalOrder).Error; err != nil {
@@ -131,6 +152,84 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 	}
 
 	return orderID, nil
+}
+
+func (s *WithdrawalService) PreviewWithdrawalFee(ctx context.Context, merchantID uint64, req *dtoreq.WithdrawalFeePreviewReq) (*dtoresp.WithdrawalFeePreviewResp, error) {
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerrors.ErrNotFoundError
+		}
+		return nil, bizerrors.ErrInternalError
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.Currency); err != nil {
+		return nil, err
+	}
+
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil || amount.LessThanOrEqual(decimal.Zero) {
+		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid amount")
+	}
+
+	var platformFee decimal.Decimal
+
+	switch strings.ToUpper(req.Type) {
+	case "CRYPTO":
+		if req.CryptoAddressID == 0 {
+			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto_address_id is required")
+		}
+		cryptoAddress, err := s.cryptoAddressRepo.FindByID(ctx, req.CryptoAddressID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, bizerrors.ErrNotFoundError
+			}
+			return nil, bizerrors.ErrInternalError
+		}
+		if cryptoAddress.MerchantID != merchantID {
+			return nil, bizerrors.ErrForbiddenError
+		}
+		if cryptoAddress.Status != "ACTIVE" {
+			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto address is not active")
+		}
+		if cryptoAddress.Currency != req.Currency {
+			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto address currency does not match withdrawal currency")
+		}
+		platformFee = s.calculateCryptoFee(ctx, merchant.FeeTemplateID, cryptoAddress.Currency, cryptoAddress.Chain, amount)
+	case "FIAT":
+		if req.BankAccountID == 0 {
+			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank_account_id is required")
+		}
+		bankAccount, err := s.bankAccountRepo.FindByID(ctx, req.BankAccountID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, bizerrors.ErrNotFoundError
+			}
+			return nil, bizerrors.ErrInternalError
+		}
+		if bankAccount.MerchantID != merchantID {
+			return nil, bizerrors.ErrForbiddenError
+		}
+		if bankAccount.Status != "ACTIVE" {
+			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank account is not active")
+		}
+		if bankAccount.CurrencyList != req.Currency {
+			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank account currency does not match withdrawal currency")
+		}
+		platformFee = s.calculateFiatFee(ctx, merchant.FeeTemplateID, req.Currency, bankAccount.TransferType, amount)
+	default:
+		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid withdrawal type")
+	}
+
+	totalDeduction := amount.Add(platformFee)
+
+	return &dtoresp.WithdrawalFeePreviewResp{
+		Currency:       req.Currency,
+		Amount:         amount.String(),
+		PlatformFee:    platformFee.String(),
+		TotalDeduction: totalDeduction.String(),
+		NetAmount:      amount.String(),
+	}, nil
 }
 
 func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID uint64, req *dtoreq.SubmitFiatWithdrawalReq) (uint64, error) {
@@ -268,21 +367,23 @@ func (s *WithdrawalService) ApproveWithdrawal(ctx context.Context, adminID uint6
 
 	switch order.WithdrawalType {
 	case "CRYPTO":
-		var resp kundto.CryptoWithdrawalResp
-		err = s.kunClient.Post(ctx, "/rest/v2.0/customer/crypto/withdrawal", &kundto.CryptoWithdrawalReq{
-			SubCustomerNo: *merchant.KunSubCustomerNo,
-			RequestNo:     requestNo,
-			Currency:      txRecord.Currency,
-			Chain:         *order.Chain,
-			Amount:        txRecord.Amount.String(),
-			ToAddress:     *order.ToAddress,
-			RegionCode:    s.kunClient.GetRegionCode(),
-		}, &resp)
+		if order.ToAddress == nil || order.Chain == nil {
+			return bizerrors.ErrInternalError
+		}
+		var kunOrderResp kundto.CryptoWithdrawalResp
+		err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.CryptoWithdrawalPath, &kundto.CryptoWithdrawalReq{
+			RequestNo:  requestNo,
+			Amount:     txRecord.Amount.String(),
+			Chain:      *order.Chain,
+			Currency:   txRecord.Currency,
+			Address:    *order.ToAddress,
+			RegionCode: s.kunClient.GetRegionCode(),
+		}, &kunOrderResp)
 		if err != nil {
 			slog.Error("KUN crypto withdrawal failed", slog.Any("error", err))
 			return bizerrors.ErrKUNAPIFailedE
 		}
-		kunOrderID = resp.OrderId
+		kunOrderID = string(kunOrderResp)
 	case "FIAT":
 		bankAccount, err := s.bankAccountRepo.FindByID(ctx, *order.BankAccountID)
 		if err != nil {

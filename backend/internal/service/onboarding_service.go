@@ -286,17 +286,25 @@ const (
 	kycCountrySceneAddress      = "REGISTER_ADDRESS"
 	kycCountrySceneRegister     = "REGISTER"
 	kycCountrySceneWithdrawal   = "WITHDRAWAL"
+	kycCountrySceneBindAccount  = "BIND_ACCOUNT"
 	kycCountryLanguage          = "ZH_CN"
 )
 
 var allowedKycCountryScenes = map[string]bool{
-	kycCountrySceneAddress:    true,
-	kycCountrySceneRegister:   true,
-	kycCountrySceneWithdrawal: true,
+	kycCountrySceneAddress:     true,
+	kycCountrySceneRegister:    true,
+	kycCountrySceneWithdrawal:  true,
+	kycCountrySceneBindAccount: true,
+}
+
+var kycCountryScenesRequiringCurrency = map[string]bool{
+	kycCountrySceneWithdrawal:  true,
+	kycCountrySceneBindAccount: true,
 }
 
 // ListKycCountries returns countries/regions for KYC fields.
-// REGISTER_ADDRESS: address-related fields; REGISTER: nationality and related fields; WITHDRAWAL: fiat withdrawal (currency required).
+// REGISTER_ADDRESS: address-related fields; REGISTER: nationality and related fields;
+// WITHDRAWAL / BIND_ACCOUNT: fiat withdrawal or bind account (currency required).
 func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, language, currency string) (*dtoresp.CountryListResp, error) {
 	if scene == "" {
 		scene = kycCountrySceneAddress
@@ -305,7 +313,7 @@ func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, languag
 		return nil, bizerrors.NewBusinessError(
 			http.StatusBadRequest,
 			bizerrors.ErrValidation,
-			"invalid scene; allowed: REGISTER_ADDRESS, REGISTER, WITHDRAWAL",
+			"invalid scene; allowed: REGISTER_ADDRESS, REGISTER, WITHDRAWAL, BIND_ACCOUNT",
 		)
 	}
 	if language == "" {
@@ -313,10 +321,12 @@ func (s *OnboardingService) ListKycCountries(ctx context.Context, scene, languag
 	}
 
 	currency = strings.TrimSpace(strings.ToUpper(currency))
-	if scene == kycCountrySceneWithdrawal {
-		if currency == "" {
-			return nil, bizerrors.NewBusinessError(http.StatusBadRequest, bizerrors.ErrValidation, "currency is required when scene is WITHDRAWAL")
-		}
+	if kycCountryScenesRequiringCurrency[scene] && currency == "" {
+		return nil, bizerrors.NewBusinessError(
+			http.StatusBadRequest,
+			bizerrors.ErrValidation,
+			"currency is required when scene is "+scene,
+		)
 	}
 
 	var items []kundto.CountryItem

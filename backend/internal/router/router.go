@@ -117,6 +117,7 @@ func Setup(
 	{
 		withdraw.POST("/crypto", withdrawalHandler.SubmitCryptoWithdrawal)
 		withdraw.POST("/fiat", withdrawalHandler.SubmitFiatWithdrawal)
+		withdraw.POST("/fee-preview", withdrawalHandler.PreviewWithdrawalFee)
 		withdraw.GET("/orders", withdrawalHandler.ListWithdrawals)
 		withdraw.GET("/orders/:id", withdrawalHandler.GetWithdrawalDetail)
 	}

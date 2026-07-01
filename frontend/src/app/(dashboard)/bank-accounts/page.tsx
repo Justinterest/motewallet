@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KycCountrySelect } from "@/components/kyc/kyc-country-select";
+import { KYC_COUNTRY_SCENE_BIND_ACCOUNT } from "@/lib/kyc/reference-queries";
 import {
   useAddBankAccount,
   useBankAccounts,
@@ -29,7 +30,7 @@ import {
 } from "@/lib/hooks/use-addresses";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { toCurrencyOptions } from "@/lib/utils/currency";
-import { getTransferTypesForCurrency, TRANSFER_TYPE_LABELS } from "@/lib/utils/bank-account";
+import { BANK_ACCOUNT_TRANSFER_TYPE, BANK_ACCOUNT_TYPE, TRANSFER_TYPE_LABELS } from "@/lib/utils/bank-account";
 import { toast } from "@/hooks/use-toast";
 
 const emptyBankForm = {
@@ -38,20 +39,15 @@ const emptyBankForm = {
   swift_code: "",
   account_name: "",
   account_no: "",
-  transfer_type: "LOCAL",
-  account_type: "",
+  transfer_type: BANK_ACCOUNT_TRANSFER_TYPE,
   payee_address: "",
   payee_address_second: "",
-  bank_code: "",
   bank_address: "",
   middle_swift_code: "",
 };
 
-function createEmptyBankForm(currency: string) {
-  return {
-    ...emptyBankForm,
-    transfer_type: getTransferTypesForCurrency(currency)[0]?.value || "LOCAL",
-  };
+function createEmptyBankForm() {
+  return { ...emptyBankForm };
 }
 
 export default function BankAccountsPage() {
@@ -61,6 +57,10 @@ export default function BankAccountsPage() {
   const [currency, setCurrency] = useState("");
   const [bindDialogOpen, setBindDialogOpen] = useState(false);
   const [bankForm, setBankForm] = useState(emptyBankForm);
+  const [bindDialogContainer, setBindDialogContainer] = useState<HTMLElement | null>(null);
+  const bindDialogContentRef = useCallback((node: HTMLDivElement | null) => {
+    setBindDialogContainer(node);
+  }, []);
 
   useEffect(() => {
     const nextCurrency = supportedCurrencies?.fiat_currencies?.[0];
@@ -75,30 +75,23 @@ export default function BankAccountsPage() {
   const addBankMutation = useAddBankAccount();
   const deleteBankMutation = useDeleteBankAccount();
 
-  const transferTypeOptions = getTransferTypesForCurrency(currency);
-  const needsSwiftCode = bankForm.transfer_type === "TT" || bankForm.transfer_type === "CHATS";
-  const needsWireFields = needsSwiftCode;
-  const needsBankCode = bankForm.transfer_type === "CHATS";
-  const needsAccountType = bankForm.transfer_type === "TT";
-
   const canSubmitBind =
     bankForm.account_no &&
     bankForm.account_name &&
     bankForm.bank_name &&
     bankForm.bank_country &&
-    (!needsSwiftCode || bankForm.swift_code) &&
-    (!needsWireFields || (bankForm.payee_address && bankForm.payee_address_second)) &&
-    (!needsBankCode || bankForm.bank_code) &&
-    (!needsAccountType || bankForm.account_type);
+    bankForm.swift_code &&
+    bankForm.payee_address &&
+    bankForm.payee_address_second;
 
   function openBindDialog() {
-    setBankForm(createEmptyBankForm(currency));
+    setBankForm(createEmptyBankForm());
     setBindDialogOpen(true);
   }
 
   function closeBindDialog() {
     setBindDialogOpen(false);
-    setBankForm(createEmptyBankForm(currency));
+    setBankForm(createEmptyBankForm());
   }
 
   function handleBindBankAccount(e: React.FormEvent) {
@@ -106,7 +99,7 @@ export default function BankAccountsPage() {
     if (!canSubmitBind) return;
 
     addBankMutation.mutate(
-      { currency, ...bankForm, payee_country_code: bankForm.bank_country },
+      { currency, ...bankForm, account_type: BANK_ACCOUNT_TYPE, payee_country_code: bankForm.bank_country },
       {
         onSuccess: () => {
           toast({ title: "绑定成功", description: "银行账户已添加。" });
@@ -152,10 +145,13 @@ export default function BankAccountsPage() {
           else closeBindDialog();
         }}
       >
-        <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogContent
+          ref={bindDialogContentRef}
+          className="flex max-h-[90vh] flex-col gap-0 overflow-visible p-0 sm:max-w-2xl"
+        >
           <DialogHeader className="border-b px-6 py-4">
             <DialogTitle>绑定银行账户</DialogTitle>
-            <DialogDescription>填写银行信息并提交绑定，绑定后可于法币提现页选择该账户。</DialogDescription>
+            <DialogDescription>填写电汇（TT）收款银行信息，绑定后可于法币提现页选择该账户。</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleBindBankAccount} className="flex min-h-0 flex-1 flex-col">
@@ -168,20 +164,10 @@ export default function BankAccountsPage() {
                     setCurrency(value);
                     setBankForm((prev) => ({
                       ...prev,
-                      transfer_type: getTransferTypesForCurrency(value)[0]?.value || "LOCAL",
                       bank_country: "",
                     }));
                   }}
                   options={fiatCurrencies}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">转账类型</label>
-                <SimpleSelect
-                  value={bankForm.transfer_type}
-                  onValueChange={(value) => setBankForm((prev) => ({ ...prev, transfer_type: value }))}
-                  options={transferTypeOptions}
                 />
               </div>
 
@@ -197,82 +183,55 @@ export default function BankAccountsPage() {
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">银行所在国家/地区</label>
                 <KycCountrySelect
-                  scene="WITHDRAWAL"
+                  scene={KYC_COUNTRY_SCENE_BIND_ACCOUNT}
                   currency={currency}
                   value={bankForm.bank_country}
                   onChange={(value) => setBankForm((prev) => ({ ...prev, bank_country: value }))}
+                  popoverContainer={bindDialogContainer}
                 />
               </div>
 
-              {needsSwiftCode && (
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">SWIFT Code</label>
-                  <Input
-                    value={bankForm.swift_code}
-                    onChange={(e) => setBankForm((prev) => ({ ...prev, swift_code: e.target.value }))}
-                    placeholder="请输入 SWIFT Code"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">SWIFT Code</label>
+                <Input
+                  value={bankForm.swift_code}
+                  onChange={(e) => setBankForm((prev) => ({ ...prev, swift_code: e.target.value }))}
+                  placeholder="请输入 SWIFT Code"
+                />
+              </div>
 
-              {needsAccountType && (
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">账户类型</label>
-                  <Input
-                    value={bankForm.account_type}
-                    onChange={(e) => setBankForm((prev) => ({ ...prev, account_type: e.target.value }))}
-                    placeholder="TT 电汇必填"
-                  />
-                </div>
-              )}
-
-              {needsBankCode && (
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">银行代码</label>
-                  <Input
-                    value={bankForm.bank_code}
-                    onChange={(e) => setBankForm((prev) => ({ ...prev, bank_code: e.target.value }))}
-                    placeholder="CHATS 必填"
-                  />
-                </div>
-              )}
-
-              {needsWireFields && (
-                <>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">收款方地址 1</label>
-                    <Input
-                      value={bankForm.payee_address}
-                      onChange={(e) => setBankForm((prev) => ({ ...prev, payee_address: e.target.value }))}
-                      placeholder="不支持中文"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">收款方地址 2</label>
-                    <Input
-                      value={bankForm.payee_address_second}
-                      onChange={(e) => setBankForm((prev) => ({ ...prev, payee_address_second: e.target.value }))}
-                      placeholder="不支持中文"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">银行地址</label>
-                    <Input
-                      value={bankForm.bank_address}
-                      onChange={(e) => setBankForm((prev) => ({ ...prev, bank_address: e.target.value }))}
-                      placeholder="选填"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">中间行 SWIFT Code</label>
-                    <Input
-                      value={bankForm.middle_swift_code}
-                      onChange={(e) => setBankForm((prev) => ({ ...prev, middle_swift_code: e.target.value }))}
-                      placeholder="选填"
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">收款方地址 1</label>
+                <Input
+                  value={bankForm.payee_address}
+                  onChange={(e) => setBankForm((prev) => ({ ...prev, payee_address: e.target.value }))}
+                  placeholder="不支持中文"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">收款方地址 2</label>
+                <Input
+                  value={bankForm.payee_address_second}
+                  onChange={(e) => setBankForm((prev) => ({ ...prev, payee_address_second: e.target.value }))}
+                  placeholder="不支持中文"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">银行地址</label>
+                <Input
+                  value={bankForm.bank_address}
+                  onChange={(e) => setBankForm((prev) => ({ ...prev, bank_address: e.target.value }))}
+                  placeholder="选填"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">中间行 SWIFT Code</label>
+                <Input
+                  value={bankForm.middle_swift_code}
+                  onChange={(e) => setBankForm((prev) => ({ ...prev, middle_swift_code: e.target.value }))}
+                  placeholder="选填"
+                />
+              </div>
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">账户名</label>

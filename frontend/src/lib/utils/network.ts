@@ -15,6 +15,29 @@ export const DEPOSIT_NETWORKS: Record<string, { value: string; label: string }[]
   BTC: [{ value: "BTC_Bitcoin", label: "Bitcoin" }],
 };
 
+const KUN_WITHDRAWAL_CHAIN_TYPES = new Set([
+  "ETH_ERC20",
+  "TRX_TRC20",
+  "SOL_Solana",
+  "BSC_BEP20",
+  "BTC",
+]);
+
+export const WITHDRAWAL_NETWORKS: Record<string, { value: string; label: string }[]> = {
+  USDT: (DEPOSIT_NETWORKS.USDT ?? []).filter((item) => KUN_WITHDRAWAL_CHAIN_TYPES.has(item.value)),
+  USDC: (DEPOSIT_NETWORKS.USDC ?? []).filter((item) => KUN_WITHDRAWAL_CHAIN_TYPES.has(item.value)),
+  BTC: [{ value: "BTC", label: "Bitcoin" }],
+};
+
+export function getWithdrawalNetworks(currency: string) {
+  return WITHDRAWAL_NETWORKS[currency] ?? [];
+}
+
+export function formatChainLabel(currency: string, chain: string) {
+  const networks = [...(DEPOSIT_NETWORKS[currency] ?? []), ...(WITHDRAWAL_NETWORKS[currency] ?? [])];
+  return networks.find((item) => item.value === chain)?.label ?? chain;
+}
+
 const DEPOSIT_STATUS_LABELS: Record<string, string> = {
   COMPLETED: "已到账",
   PROCESSING: "确认中",

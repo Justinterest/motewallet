@@ -40,6 +40,47 @@ export function useWithdrawalOrders(page = 1) {
   });
 }
 
+export function useWithdrawalFeePreview(params: {
+  type: "CRYPTO" | "FIAT";
+  currency: string;
+  amount: string;
+  cryptoAddressId?: string;
+  bankAccountId?: string;
+}) {
+  const amount = params.amount.trim();
+  const enabled =
+    Boolean(params.currency) &&
+    Boolean(amount) &&
+    !Number.isNaN(parseFloat(amount)) &&
+    parseFloat(amount) > 0 &&
+    (params.type === "CRYPTO"
+      ? Boolean(params.cryptoAddressId)
+      : Boolean(params.bankAccountId));
+
+  return useQuery({
+    queryKey: [
+      "withdrawal",
+      "fee-preview",
+      params.type,
+      params.currency,
+      amount,
+      params.cryptoAddressId ?? "",
+      params.bankAccountId ?? "",
+    ],
+    queryFn: () =>
+      tradingApi.previewWithdrawalFee({
+        type: params.type,
+        currency: params.currency,
+        amount,
+        ...(params.type === "CRYPTO"
+          ? { crypto_address_id: Number(params.cryptoAddressId) }
+          : { bank_account_id: Number(params.bankAccountId) }),
+      }),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
 export function useExchangeQuote() {
   return useMutation({
     mutationFn: tradingApi.getQuote,

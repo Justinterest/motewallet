@@ -89,16 +89,23 @@ type BalanceQueryResp struct {
 }
 
 type CryptoAddressAddReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	Currency      string `json:"currency"`
-	Chain         string `json:"chain"`
-	Address       string `json:"address"`
-	Alias         string `json:"alias,omitempty"`
-	RequestNo     string `json:"requestNo"`
+	RequestNo    string `json:"requestNo"`
+	Currency     string `json:"currency"`
+	ChainType    string `json:"chainType"`
+	Address      string `json:"address"`
+	AddressAlias string `json:"addressAlias"`
 }
 
 type CryptoAddressAddResp struct {
 	AccountId string `json:"accountId"`
+}
+
+// CryptoAddressDelReq is the body for POST /rest/v2.0/customer/crypto/address/del.
+// See: https://opendocs.kun.global/docs/api/delete-crypto-whitelist
+type CryptoAddressDelReq struct {
+	RequestNo string `json:"requestNo"`
+	AccountId string `json:"accountId"`
+	Currency  string `json:"currency,omitempty"`
 }
 
 // FiatAddressAddReq is the body for POST /rest/v2.0/customer/fiat/address/add.

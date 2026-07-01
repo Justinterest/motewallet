@@ -10,6 +10,22 @@ export interface BankAccount {
   status: string;
 }
 
+export interface CryptoAddress {
+  id: number;
+  currency: string;
+  chain: string;
+  address: string;
+  alias: string;
+  status: string;
+}
+
+export interface AddCryptoAddressRequest {
+  currency: string;
+  chain: string;
+  address: string;
+  alias: string;
+}
+
 export interface AddBankAccountRequest {
   currency: string;
   bank_name: string;

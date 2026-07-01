@@ -45,6 +45,32 @@ func (h *WithdrawalHandler) SubmitCryptoWithdrawal(c *gin.Context) {
 	response.Success(c, gin.H{"order_id": orderID})
 }
 
+func (h *WithdrawalHandler) PreviewWithdrawalFee(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	var req dtoreq.WithdrawalFeePreviewReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	result, err := h.withdrawalService.PreviewWithdrawalFee(c.Request.Context(), userID.(uint64), &req)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}
+
 func (h *WithdrawalHandler) SubmitFiatWithdrawal(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {

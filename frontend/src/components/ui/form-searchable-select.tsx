@@ -22,6 +22,8 @@ interface FormSearchableSelectProps {
   emptyText?: string;
   disabled?: boolean;
   className?: string;
+  /** Portal target; set to a dialog content element when used inside modals. */
+  popoverContainer?: HTMLElement | null;
 }
 
 function filterOptions(
@@ -47,6 +49,7 @@ function FormSearchableSelect({
   emptyText = "无匹配结果",
   disabled,
   className,
+  popoverContainer,
 }: FormSearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -61,6 +64,7 @@ function FormSearchableSelect({
 
   return (
     <Popover
+      modal={false}
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
@@ -90,7 +94,8 @@ function FormSearchableSelect({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        container={popoverContainer}
+        className="z-[100] w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
       >
         <div className="border-b p-2">

@@ -4,8 +4,18 @@ import type { KycCountryScene } from "@/types/kyc-reference";
 export const KYC_COUNTRY_SCENE_NATIONALITY: KycCountryScene = "REGISTER";
 export const KYC_COUNTRY_SCENE_ADDRESS: KycCountryScene = "REGISTER_ADDRESS";
 export const KYC_COUNTRY_SCENE_WITHDRAWAL: KycCountryScene = "WITHDRAWAL";
+export const KYC_COUNTRY_SCENE_BIND_ACCOUNT: KycCountryScene = "BIND_ACCOUNT";
 /** Default scene for address-related country fields. */
 export const KYC_COUNTRY_SCENE: KycCountryScene = KYC_COUNTRY_SCENE_ADDRESS;
+
+const KYC_COUNTRY_SCENES_REQUIRING_CURRENCY: KycCountryScene[] = [
+  KYC_COUNTRY_SCENE_WITHDRAWAL,
+  KYC_COUNTRY_SCENE_BIND_ACCOUNT,
+];
+
+function kycCountrySceneRequiresCurrency(scene: KycCountryScene) {
+  return KYC_COUNTRY_SCENES_REQUIRING_CURRENCY.includes(scene);
+}
 
 /** Shared React Query keys for KYC reference data (countries / auth types). */
 export const kycReferenceKeys = {
@@ -28,13 +38,13 @@ export function kycCountriesQueryOptions(
       onboardingApi.getCountries({
         scene,
         language: "ZH_CN",
-        ...(scene === KYC_COUNTRY_SCENE_WITHDRAWAL ? { currency: normalizedCurrency } : {}),
+        ...(kycCountrySceneRequiresCurrency(scene) ? { currency: normalizedCurrency } : {}),
       }),
     staleTime: REFERENCE_STALE_MS,
     gcTime: REFERENCE_STALE_MS,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    enabled: scene !== KYC_COUNTRY_SCENE_WITHDRAWAL || Boolean(normalizedCurrency),
+    enabled: !kycCountrySceneRequiresCurrency(scene) || Boolean(normalizedCurrency),
   } as const;
 }
 

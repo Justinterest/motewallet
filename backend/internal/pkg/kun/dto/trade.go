@@ -1,18 +1,16 @@
 package dto
 
 type CryptoWithdrawalReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	RequestNo     string `json:"requestNo"`
-	Currency      string `json:"currency"`
-	Chain         string `json:"chain"`
-	Amount        string `json:"amount"`
-	ToAddress     string `json:"toAddress"`
-	RegionCode    string `json:"regionCode"`
+	RequestNo  string `json:"requestNo"`
+	Amount     string `json:"amount"`
+	Chain      string `json:"chain"`
+	Currency   string `json:"currency"`
+	Address    string `json:"address"`
+	RegionCode string `json:"regionCode"`
 }
 
-type CryptoWithdrawalResp struct {
-	OrderId string `json:"orderId"`
-}
+// CryptoWithdrawalResp order id is returned as a plain string in data.
+type CryptoWithdrawalResp string
 
 // FiatWithdrawalReq is the body for POST /rest/v2.0/trade/fiat/withdrawal.
 // See: https://opendocs.kun.global/docs/api/fiat-withdrawal

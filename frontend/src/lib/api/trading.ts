@@ -2,6 +2,7 @@ import apiClient from "./client";
 import type {
   DepositAddress,
   DepositOrderListResponse,
+  WithdrawalFeePreview,
   WithdrawalOrderListResponse,
   ExchangeQuote,
   ExchangeOrderListResponse,
@@ -20,7 +21,7 @@ export const tradingApi = {
   },
 
   // Withdrawal
-  submitCryptoWithdrawal: (data: { currency: string; chain: string; amount: string; to_address: string }) =>
+  submitCryptoWithdrawal: (data: { currency: string; crypto_address_id: number; amount: string }) =>
     apiClient.post<never, { order_id: number }>("/api/v1/withdraw/crypto", data),
   submitFiatWithdrawal: (data: {
     currency: string;
@@ -30,6 +31,13 @@ export const tradingApi = {
     postscript: string;
   }) =>
     apiClient.post<never, { order_id: number }>("/api/v1/withdraw/fiat", data),
+  previewWithdrawalFee: (data: {
+    type: "CRYPTO" | "FIAT";
+    currency: string;
+    amount: string;
+    crypto_address_id?: number;
+    bank_account_id?: number;
+  }) => apiClient.post<never, WithdrawalFeePreview>("/api/v1/withdraw/fee-preview", data),
   listWithdrawalOrders: (page = 1, pageSize = 20) =>
     apiClient.get<never, WithdrawalOrderListResponse>("/api/v1/withdraw/orders", { params: { page, page_size: pageSize } }),
 

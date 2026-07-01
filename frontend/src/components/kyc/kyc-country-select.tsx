@@ -17,6 +17,7 @@ interface KycCountrySelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  popoverContainer?: HTMLElement | null;
 }
 
 export function KycCountrySelect({
@@ -28,6 +29,7 @@ export function KycCountrySelect({
   placeholder = "请选择国家/地区",
   disabled,
   className,
+  popoverContainer,
 }: KycCountrySelectProps) {
   const { data: countryOptions = [], isLoading, isError } = useQuery({
     ...kycCountriesQueryOptions(scene, currency),
@@ -59,6 +61,7 @@ export function KycCountrySelect({
         countryOptions.length === 0
       }
       className={className}
+      popoverContainer={popoverContainer}
     />
   );
 }
