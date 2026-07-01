@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 	dtoresp "motewallet/internal/dto/response"
 	"motewallet/internal/model"
-	bizerrors 	"motewallet/internal/pkg/errors"
+	bizerrors "motewallet/internal/pkg/errors"
 	"motewallet/internal/repository"
+
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 var (

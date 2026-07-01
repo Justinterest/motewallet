@@ -71,7 +71,7 @@ export default function TransactionsPage() {
           <TxRow
             key={o.id}
             title={`${formatAmount(o.from_amount, o.from_currency)} ${o.from_currency} → ${o.to_amount ? formatAmount(o.to_amount, o.to_currency) : "—"} ${o.to_currency}`}
-            sub={`${o.exchange_type} · ${new Date(o.created_at).toLocaleString("zh-CN")}`}
+            sub={`${o.exchange_type} · ${new Date(o.created_at).toLocaleString("zh-CN")}${o.status === "FAILED" && o.fail_reason ? ` · 失败原因：${o.fail_reason}` : ""}`}
             status={o.status}
           />
         ));

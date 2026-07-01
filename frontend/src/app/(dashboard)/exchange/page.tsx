@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,56 +12,128 @@ import {
 } from "@/components/ui/card";
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useExchangeQuote, useCreateExchangeOrder, useExchangeOrders } from "@/lib/hooks/use-trading";
+import { ExchangePreviewSummary } from "@/components/exchange/exchange-preview-summary";
+import {
+  useCreateExchangeOrder,
+  useExchangeOrders,
+  useExchangePreview,
+} from "@/lib/hooks/use-trading";
+import { useWalletBalances } from "@/lib/hooks/use-wallet";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
 import { getAllSupportedCurrencies } from "@/lib/utils/currency";
+import {
+  getExchangeFromOptions,
+  getExchangeToOptions,
+  isSupportedExchangePair,
+} from "@/lib/utils/exchange";
 import { toast } from "@/hooks/use-toast";
-import type { ExchangeQuote } from "@/types/trading";
+
+function isPositiveAmount(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const parsed = parseFloat(trimmed);
+  return !Number.isNaN(parsed) && parsed > 0;
+}
 
 export default function ExchangePage() {
   const { data: supportedCurrencies } = useSupportedCurrencies();
   const allCurrencies = getAllSupportedCurrencies(supportedCurrencies);
+  const exchangeCurrencies = useMemo(
+    () => getExchangeFromOptions(allCurrencies),
+    [allCurrencies],
+  );
   const [fromCurrency, setFromCurrency] = useState("");
   const [toCurrency, setToCurrency] = useState("");
   const [fromAmount, setFromAmount] = useState("");
-  const [quote, setQuote] = useState<ExchangeQuote | null>(null);
+  const [debouncedFromAmount, setDebouncedFromAmount] = useState("");
 
   useEffect(() => {
-    if (allCurrencies.length === 0) return;
-    if (!fromCurrency || !allCurrencies.includes(fromCurrency)) {
-      setFromCurrency(allCurrencies[0]);
-    }
-    if (!toCurrency || !allCurrencies.includes(toCurrency)) {
-      const fallback = allCurrencies.find((item) => item !== allCurrencies[0]) ?? allCurrencies[0];
-      setToCurrency(fallback);
-    }
-  }, [allCurrencies, fromCurrency, toCurrency]);
+    const timer = setTimeout(() => setDebouncedFromAmount(fromAmount), 300);
+    return () => clearTimeout(timer);
+  }, [fromAmount]);
 
-  const quoteMutation = useExchangeQuote();
-  const orderMutation = useCreateExchangeOrder();
-  const { data: ordersData, isLoading: ordersLoading } = useExchangeOrders();
-  const orders = ordersData?.orders || [];
+  useEffect(() => {
+    if (exchangeCurrencies.length === 0) return;
 
-  function handleGetQuote() {
-    if (!fromAmount || fromCurrency === toCurrency) return;
-    quoteMutation.mutate(
-      { from_currency: fromCurrency, to_currency: toCurrency, from_amount: fromAmount },
-      {
-        onSuccess: (data) => setQuote(data),
-        onError: (err) => {
-          toast({ variant: "destructive", title: "询价失败", description: err.message });
-          setQuote(null);
-        },
-      }
-    );
+    let nextFrom = fromCurrency;
+    let nextTo = toCurrency;
+
+    if (!nextFrom || !exchangeCurrencies.includes(nextFrom)) {
+      nextFrom = exchangeCurrencies[0];
+    }
+
+    const toOptions = getExchangeToOptions(nextFrom, allCurrencies);
+    if (!nextTo || !toOptions.includes(nextTo)) {
+      nextTo = toOptions[0] ?? "";
+    }
+
+    if (nextFrom !== fromCurrency) setFromCurrency(nextFrom);
+    if (nextTo !== toCurrency) setToCurrency(nextTo);
+  }, [allCurrencies, exchangeCurrencies, fromCurrency, toCurrency]);
+
+  const toOptions = useMemo(
+    () => getExchangeToOptions(fromCurrency, allCurrencies),
+    [fromCurrency, allCurrencies],
+  );
+
+  function handleFromCurrencyChange(value: string) {
+    const nextToOptions = getExchangeToOptions(value, allCurrencies);
+    setFromCurrency(value);
+    if (toCurrency === value || !nextToOptions.includes(toCurrency)) {
+      setToCurrency(nextToOptions[0] ?? "");
+    }
   }
 
+  function handleToCurrencyChange(value: string) {
+    setToCurrency(value);
+  }
+
+  function handleSwapCurrencies() {
+    if (!isSupportedExchangePair(toCurrency, fromCurrency)) return;
+    setFromCurrency(toCurrency);
+    setToCurrency(fromCurrency);
+  }
+
+  const previewRequired =
+    isSupportedExchangePair(fromCurrency, toCurrency) && isPositiveAmount(fromAmount);
+
+  const {
+    data: preview,
+    isLoading: previewLoading,
+    isFetching: previewFetching,
+    isSuccess: previewSuccess,
+    isError: previewError,
+  } = useExchangePreview({
+    from_currency: fromCurrency,
+    to_currency: toCurrency,
+    from_amount: debouncedFromAmount,
+  });
+
+  const previewReady =
+    previewRequired &&
+    fromAmount.trim() === debouncedFromAmount.trim() &&
+    previewSuccess &&
+    !previewFetching &&
+    preview != null &&
+    preview.from_amount.trim() === debouncedFromAmount.trim();
+
+  const orderMutation = useCreateExchangeOrder();
+  const { data: ordersData, isLoading: ordersLoading } = useExchangeOrders();
+  const { data: walletData } = useWalletBalances();
+  const orders = ordersData?.orders || [];
+
+  const fundingAvailable = useMemo(() => {
+    const wallet = walletData?.wallets.find(
+      (item) => item.account_type === "FUNDING" && item.currency === fromCurrency,
+    );
+    return wallet?.available_balance ?? "0";
+  }, [walletData, fromCurrency]);
+
   function handleConfirmOrder() {
-    if (!quote) return;
+    if (!previewReady) return;
     orderMutation.mutate(
       {
-        quote_id: quote.quote_id,
         from_currency: fromCurrency,
         to_currency: toCurrency,
         from_amount: fromAmount,
@@ -70,7 +142,7 @@ export default function ExchangePage() {
         onSuccess: () => {
           toast({ title: "下单成功", description: "兑换订单已创建。" });
           setFromAmount("");
-          setQuote(null);
+          setDebouncedFromAmount("");
         },
         onError: (err) => {
           toast({ variant: "destructive", title: "下单失败", description: err.message });
@@ -83,6 +155,10 @@ export default function ExchangePage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
 
+      <p className="text-sm text-slate-600">
+        1:1 兑换，从资金账户扣款，完成后到账至交易账户。支持 USDT/USD、USD/USDT、USD/USDC、USDC/USD。
+      </p>
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -94,71 +170,76 @@ export default function ExchangePage() {
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">卖出</label>
                 <SimpleSelect
                   value={fromCurrency}
-                  onValueChange={(value) => {
-                    setFromCurrency(value);
-                    setQuote(null);
-                  }}
-                  options={allCurrencies.filter((c) => c !== toCurrency)}
+                  onValueChange={handleFromCurrencyChange}
+                  options={exchangeCurrencies}
                 />
               </div>
-              <ArrowRightLeft className="mb-2 h-5 w-5 text-slate-400" />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="mb-0.5 shrink-0 text-slate-500 hover:text-slate-900"
+                onClick={handleSwapCurrencies}
+                disabled={!isSupportedExchangePair(toCurrency, fromCurrency)}
+                aria-label="交换买入卖出币种"
+              >
+                <ArrowRightLeft className="h-5 w-5" />
+              </Button>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">买入</label>
                 <SimpleSelect
                   value={toCurrency}
-                  onValueChange={(value) => {
-                    setToCurrency(value);
-                    setQuote(null);
-                  }}
-                  options={allCurrencies.filter((c) => c !== fromCurrency)}
+                  onValueChange={handleToCurrencyChange}
+                  options={toOptions}
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">卖出金额</label>
-              <Input
-                type="text"
-                placeholder="0.00"
-                value={fromAmount}
-                onChange={(e) => { setFromAmount(e.target.value); setQuote(null); }}
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleGetQuote}
-              disabled={quoteMutation.isPending || !fromAmount}
-            >
-              {quoteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              获取报价
-            </Button>
-
-            {quote && (
-              <div className="rounded-lg border bg-blue-50 p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">汇率</span>
-                  <span className="font-medium text-slate-900">1 {fromCurrency} = {quote.exchange_rate} {toCurrency}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">预计获得</span>
-                  <span className="font-medium text-slate-900">{quote.to_amount} {toCurrency}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">手续费</span>
-                  <span className="text-slate-900">{quote.platform_fee} {quote.fee_currency}</span>
-                </div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-sm font-medium text-slate-700">卖出金额</label>
+                <span className="text-xs text-slate-500">
+                  资金账户可用 {formatAmount(fundingAvailable, fromCurrency)} {fromCurrency}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="0.00"
+                  value={fromAmount}
+                  onChange={(e) => setFromAmount(e.target.value)}
+                  className="flex-1"
+                />
                 <Button
-                  className="mt-2 w-full bg-blue-700 hover:bg-blue-800 text-white"
-                  onClick={handleConfirmOrder}
-                  disabled={orderMutation.isPending}
+                  type="button"
+                  variant="outline"
+                  onClick={() => setFromAmount(fundingAvailable)}
+                  disabled={parseFloat(fundingAvailable) <= 0}
                 >
-                  {orderMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  确认兑换
+                  全部
                 </Button>
               </div>
+            </div>
+
+            {previewRequired && (
+              <ExchangePreviewSummary
+                preview={preview}
+                fromCurrency={fromCurrency}
+                toCurrency={toCurrency}
+                isLoading={previewLoading}
+                isFetching={previewFetching}
+                isError={previewError}
+              />
             )}
+
+            <Button
+              className="w-full bg-blue-700 hover:bg-blue-800 text-white"
+              onClick={handleConfirmOrder}
+              disabled={orderMutation.isPending || !previewReady}
+            >
+              {orderMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              确认兑换
+            </Button>
           </CardContent>
         </Card>
 
@@ -190,6 +271,9 @@ export default function ExchangePage() {
                       <span>{order.exchange_rate ? `汇率 ${order.exchange_rate}` : order.exchange_type}</span>
                       <span>{new Date(order.created_at).toLocaleString("zh-CN")}</span>
                     </div>
+                    {order.status === "FAILED" && order.fail_reason && (
+                      <p className="mt-2 text-xs text-red-600">失败原因：{order.fail_reason}</p>
+                    )}
                   </div>
                 ))}
               </div>

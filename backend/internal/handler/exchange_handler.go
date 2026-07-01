@@ -19,20 +19,20 @@ func NewExchangeHandler(exchangeService *service.ExchangeService) *ExchangeHandl
 	return &ExchangeHandler{exchangeService: exchangeService}
 }
 
-func (h *ExchangeHandler) GetQuote(c *gin.Context) {
+func (h *ExchangeHandler) PreviewExchange(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
 		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
 		return
 	}
 
-	var req dtoreq.GetExchangeQuoteReq
+	var req dtoreq.ExchangePreviewReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
 		return
 	}
 
-	result, err := h.exchangeService.GetQuote(c.Request.Context(), userID.(uint64), &req)
+	result, err := h.exchangeService.PreviewExchange(c.Request.Context(), userID.(uint64), &req)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
@@ -59,32 +59,6 @@ func (h *ExchangeHandler) CreateExchangeOrder(c *gin.Context) {
 	}
 
 	orderID, err := h.exchangeService.CreateExchangeOrder(c.Request.Context(), userID.(uint64), &req)
-	if err != nil {
-		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
-			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
-			return
-		}
-		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
-		return
-	}
-
-	response.Success(c, gin.H{"order_id": orderID})
-}
-
-func (h *ExchangeHandler) Create1to1Order(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
-		return
-	}
-
-	var req dtoreq.Create1to1OrderReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
-		return
-	}
-
-	orderID, err := h.exchangeService.Create1to1Order(c.Request.Context(), userID.(uint64), &req)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)

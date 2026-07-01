@@ -4,7 +4,7 @@ import type {
   DepositOrderListResponse,
   WithdrawalFeePreview,
   WithdrawalOrderListResponse,
-  ExchangeQuote,
+  ExchangePreview,
   ExchangeOrderListResponse,
   TransferOrderListResponse,
 } from "@/types/trading";
@@ -41,13 +41,11 @@ export const tradingApi = {
   listWithdrawalOrders: (page = 1, pageSize = 20) =>
     apiClient.get<never, WithdrawalOrderListResponse>("/api/v1/withdraw/orders", { params: { page, page_size: pageSize } }),
 
-  // Exchange
-  getQuote: (data: { from_currency: string; to_currency: string; from_amount: string }) =>
-    apiClient.post<never, ExchangeQuote>("/api/v1/exchange/quote", data),
-  createExchangeOrder: (data: { quote_id: string; from_currency: string; to_currency: string; from_amount: string }) =>
+  // Exchange (1:1)
+  previewExchange: (data: { from_currency: string; to_currency: string; from_amount: string }) =>
+    apiClient.post<never, ExchangePreview>("/api/v1/exchange/preview", data),
+  createExchangeOrder: (data: { from_currency: string; to_currency: string; from_amount: string }) =>
     apiClient.post<never, { order_id: number }>("/api/v1/exchange/order", data),
-  create1to1Order: (data: { from_currency: string; to_currency: string; from_amount: string }) =>
-    apiClient.post<never, { order_id: number }>("/api/v1/exchange/1to1", data),
   listExchangeOrders: (page = 1, pageSize = 20) =>
     apiClient.get<never, ExchangeOrderListResponse>("/api/v1/exchange/orders", { params: { page, page_size: pageSize } }),
 

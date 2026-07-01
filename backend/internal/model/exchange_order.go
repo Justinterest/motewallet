@@ -23,6 +23,7 @@ type ExchangeOrder struct {
 	KunFee              *decimal.Decimal `gorm:"column:kun_fee;type:decimal(28,8);default:0" json:"kun_fee,omitempty"`
 	KunFeeCurrency      *string          `gorm:"column:kun_fee_currency;type:varchar(10)" json:"kun_fee_currency,omitempty"`
 	CompletedAt         *time.Time       `gorm:"column:completed_at;type:datetime(3)" json:"completed_at,omitempty"`
+	FailReason          *string          `gorm:"column:fail_reason;type:text" json:"fail_reason,omitempty"`
 }
 
 func (ExchangeOrder) TableName() string {

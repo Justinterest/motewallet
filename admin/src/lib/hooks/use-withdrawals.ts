@@ -1,5 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { withdrawalApi } from "@/lib/api/withdrawals";
+import { withdrawalApi, type ListWithdrawalsParams } from "@/lib/api/withdrawals";
+
+export function useAdminWithdrawals(params: ListWithdrawalsParams) {
+  return useQuery({
+    queryKey: ["admin", "withdrawals", params],
+    queryFn: () => withdrawalApi.list(params),
+  });
+}
+
+export function useMerchantWithdrawals(merchantId: number, page = 1, pageSize = 10) {
+  return useQuery({
+    queryKey: ["admin", "withdrawals", merchantId, page, pageSize],
+    queryFn: () => withdrawalApi.list({ merchantId, page, pageSize }),
+    enabled: !!merchantId,
+  });
+}
 
 export function usePendingWithdrawals(page = 1) {
   return useQuery({

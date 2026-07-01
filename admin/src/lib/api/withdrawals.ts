@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import type { AdminWithdrawalListResponse } from "@/types/withdrawal";
 
 export interface WithdrawalOrder {
   id: number;
@@ -19,7 +20,42 @@ export interface WithdrawalListResponse {
   total: number;
 }
 
+export interface ListWithdrawalsParams {
+  page?: number;
+  pageSize?: number;
+  merchantId?: number;
+  merchantEmail?: string;
+  currency?: string;
+  status?: string;
+  reviewStatus?: string;
+  type?: string;
+}
+
 export const withdrawalApi = {
+  list: (params: ListWithdrawalsParams = {}) => {
+    const {
+      page = 1,
+      pageSize = 20,
+      merchantId,
+      merchantEmail,
+      currency,
+      status,
+      reviewStatus,
+      type,
+    } = params;
+    return apiClient.get<never, AdminWithdrawalListResponse>("/api/v1/admin/withdrawals", {
+      params: {
+        page,
+        page_size: pageSize,
+        merchant_id: merchantId || undefined,
+        merchant_email: merchantEmail || undefined,
+        currency: currency && currency !== "ALL" ? currency : undefined,
+        status: status && status !== "ALL" ? status : undefined,
+        review_status: reviewStatus && reviewStatus !== "ALL" ? reviewStatus : undefined,
+        type: type && type !== "ALL" ? type : undefined,
+      },
+    });
+  },
   listPending: (page = 1, pageSize = 20) =>
     apiClient.get<never, WithdrawalListResponse>("/api/v1/admin/withdrawals/pending", {
       params: { page, page_size: pageSize },

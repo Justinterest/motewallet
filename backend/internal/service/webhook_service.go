@@ -20,6 +20,7 @@ type WebhookService struct {
 	webhookLogRepo        repository.WebhookLogRepository
 	merchantRepo          repository.MerchantRepository
 	walletSvc             *WalletService
+	exchangeSvc           *ExchangeService
 	transactionRecordRepo repository.TransactionRecordRepository
 	depositOrderRepo      repository.DepositOrderRepository
 	withdrawalOrderRepo   repository.WithdrawalOrderRepository
@@ -32,6 +33,7 @@ func NewWebhookService(
 	webhookLogRepo repository.WebhookLogRepository,
 	merchantRepo repository.MerchantRepository,
 	walletSvc *WalletService,
+	exchangeSvc *ExchangeService,
 	transactionRecordRepo repository.TransactionRecordRepository,
 	depositOrderRepo repository.DepositOrderRepository,
 	withdrawalOrderRepo repository.WithdrawalOrderRepository,
@@ -43,6 +45,7 @@ func NewWebhookService(
 		webhookLogRepo:        webhookLogRepo,
 		merchantRepo:          merchantRepo,
 		walletSvc:             walletSvc,
+		exchangeSvc:           exchangeSvc,
 		transactionRecordRepo: transactionRecordRepo,
 		depositOrderRepo:      depositOrderRepo,
 		withdrawalOrderRepo:   withdrawalOrderRepo,
@@ -330,41 +333,7 @@ func (s *WebhookService) handleExchange(ctx context.Context, event *kundto.Webho
 		return err
 	}
 
-	order, err := s.exchangeOrderRepo.FindByKunRequestNo(ctx, data.RequestNo)
-	if err != nil {
-		return err
-	}
-
-	txRecord, err := s.transactionRecordRepo.FindByID(ctx, order.TransactionRecordID)
-	if err != nil {
-		return err
-	}
-
-	if txRecord.Status == "COMPLETED" || txRecord.Status == "FAILED" {
-		return nil
-	}
-
-	toAmount, _ := decimal.NewFromString(data.ToAmount)
-	exchangeRate, _ := decimal.NewFromString(data.ExchangeRate)
-	kunFee, _ := decimal.NewFromString(data.TradeFee)
-
-	switch data.OrderStatus {
-	case "SUCCESS":
-		if err := s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "COMPLETED"); err != nil {
-			return err
-		}
-		return s.exchangeOrderRepo.UpdateFields(ctx, order.ID, map[string]interface{}{
-			"to_amount":     toAmount,
-			"exchange_rate": exchangeRate,
-			"kun_fee":       kunFee,
-		})
-	case "FAIL":
-		return s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "FAILED")
-	default:
-		slog.Info("exchange status update", slog.String("status", data.OrderStatus), slog.String("topic", event.EventTopic))
-	}
-
-	return nil
+	return s.exchangeSvc.SettleFromWebhook(ctx, &data)
 }
 
 func (s *WebhookService) handleFundTransfer(ctx context.Context, event *kundto.WebhookEvent) error {

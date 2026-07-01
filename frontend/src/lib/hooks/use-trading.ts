@@ -81,9 +81,30 @@ export function useWithdrawalFeePreview(params: {
   });
 }
 
-export function useExchangeQuote() {
-  return useMutation({
-    mutationFn: tradingApi.getQuote,
+export function useExchangePreview(params: {
+  from_currency: string;
+  to_currency: string;
+  from_amount: string;
+}) {
+  const amount = params.from_amount.trim();
+  const enabled =
+    Boolean(params.from_currency) &&
+    Boolean(params.to_currency) &&
+    params.from_currency !== params.to_currency &&
+    Boolean(amount) &&
+    !Number.isNaN(parseFloat(amount)) &&
+    parseFloat(amount) > 0;
+
+  return useQuery({
+    queryKey: ["exchange", "preview", params.from_currency, params.to_currency, amount],
+    queryFn: () =>
+      tradingApi.previewExchange({
+        from_currency: params.from_currency,
+        to_currency: params.to_currency,
+        from_amount: amount,
+      }),
+    enabled,
+    staleTime: 30_000,
   });
 }
 
@@ -91,15 +112,10 @@ export function useCreateExchangeOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: tradingApi.createExchangeOrder,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["exchange"] }); qc.invalidateQueries({ queryKey: ["wallet"] }); },
-  });
-}
-
-export function useCreate1to1Order() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: tradingApi.create1to1Order,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["exchange"] }); qc.invalidateQueries({ queryKey: ["wallet"] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["exchange"] });
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+    },
   });
 }
 

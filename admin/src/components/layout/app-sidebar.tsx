@@ -9,6 +9,8 @@ import {
   Activity,
   ClipboardCheck,
   ArrowDownToLine,
+  ArrowUpFromLine,
+  ArrowRightLeft,
   Settings,
   Users,
   FileText,
@@ -56,6 +58,16 @@ const operationNavItems = [
     title: "数币充值记录",
     href: "/deposits",
     icon: ArrowDownToLine,
+  },
+  {
+    title: "提现记录",
+    href: "/withdrawal-records",
+    icon: ArrowUpFromLine,
+  },
+  {
+    title: "兑换记录",
+    href: "/exchanges",
+    icon: ArrowRightLeft,
   },
   {
     title: "提现审核",

@@ -8,4 +8,6 @@ const (
 	CryptoAddressDelPath    = "/rest/v2.0/customer/crypto/address/del"
 	CryptoWhitelistListPath = "/rest/v2.0/customer/crypto/whitelist/addresses"
 	CryptoWithdrawalPath    = "/rest/v2.0/trade/crypto/withdrawal"
+	InnerMatchCreatePath    = "/rest/v2.0/trade/inner/match/create"
+	InnerMatchQueryPath     = "/rest/v2.0/trade/inner/match/query"
 )

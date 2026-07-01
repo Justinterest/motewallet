@@ -181,6 +181,7 @@ export default function DashboardPage() {
           actions={[
             { label: "充值", href: "/deposit", icon: ArrowDownToLine },
             { label: "提现", href: "/withdraw", icon: Wallet },
+            { label: "兑换", href: "/exchange", icon: RefreshCw },
             { label: "划转", href: "/transfer", icon: ArrowRightLeft },
           ]}
         />
@@ -190,7 +191,6 @@ export default function DashboardPage() {
           balances={tradingBalances}
           isLoading={isLoading}
           actions={[
-            { label: "兑换", href: "/exchange", icon: RefreshCw },
             { label: "划转", href: "/transfer", icon: ArrowRightLeft },
           ]}
         />

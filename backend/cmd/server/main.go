@@ -115,10 +115,12 @@ func main() {
 	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
 	depositService := service.NewDepositService(kunClient, merchantRepo, currencyConfigService)
 	adminDepositService := service.NewAdminDepositService(depositOrderRepo)
-	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, cryptoAddressRepo, kunClient, currencyConfigService)
+	adminWithdrawalService := service.NewAdminWithdrawalService(withdrawalOrderRepo)
 	exchangeService := service.NewExchangeService(db, merchantRepo, walletService, exchangeOrderRepo, transactionRecordRepo, exchangeItemRepo, kunClient, currencyConfigService)
+	adminExchangeService := service.NewAdminExchangeService(exchangeOrderRepo, exchangeService)
+	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, cryptoAddressRepo, kunClient, currencyConfigService)
 	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient, currencyConfigService)
-	webhookService := service.NewWebhookService(db, webhookLogRepo, merchantRepo, walletService, transactionRecordRepo, depositOrderRepo, withdrawalOrderRepo, exchangeOrderRepo, transferOrderRepo)
+	webhookService := service.NewWebhookService(db, webhookLogRepo, merchantRepo, walletService, exchangeService, transactionRecordRepo, depositOrderRepo, withdrawalOrderRepo, exchangeOrderRepo, transferOrderRepo)
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler()
@@ -132,6 +134,8 @@ func main() {
 	addressHandler := handler.NewAddressHandler(addressService)
 	depositHandler := handler.NewDepositHandler(depositService)
 	adminDepositHandler := handler.NewAdminDepositHandler(adminDepositService)
+	adminWithdrawalHandler := handler.NewAdminWithdrawalHandler(adminWithdrawalService)
+	adminExchangeHandler := handler.NewAdminExchangeHandler(adminExchangeService)
 	withdrawalHandler := handler.NewWithdrawalHandler(withdrawalService)
 	exchangeHandler := handler.NewExchangeHandler(exchangeService)
 	transferHandler := handler.NewTransferHandler(transferService)
@@ -151,6 +155,8 @@ func main() {
 		addressHandler,
 		depositHandler,
 		adminDepositHandler,
+		adminWithdrawalHandler,
+		adminExchangeHandler,
 		withdrawalHandler,
 		exchangeHandler,
 		transferHandler,

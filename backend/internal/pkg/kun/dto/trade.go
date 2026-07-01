@@ -79,11 +79,11 @@ type ExchangeOrderQueryResp struct {
 }
 
 type InnerMatchCreateReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	RequestNo     string `json:"requestNo"`
-	FromCurrency  string `json:"fromCurrency"`
-	ToCurrency    string `json:"toCurrency"`
-	FromAmount    string `json:"fromAmount"`
+	RequestNo    string `json:"requestNo"`
+	FromCurrency string `json:"fromCurrency"`
+	OrderAmount  string `json:"orderAmount"`
+	ToCurrency   string `json:"toCurrency"`
+	AutoTransfer string `json:"autoTransfer,omitempty"`
 }
 
 type InnerMatchCreateResp struct {
@@ -91,18 +91,24 @@ type InnerMatchCreateResp struct {
 }
 
 type InnerMatchQueryReq struct {
-	SubCustomerNo string `json:"subCustomerNo"`
-	OrderId       string `json:"orderId"`
+	RequestNo string `json:"requestNo"`
+	OrderId   string `json:"orderId"`
 }
 
 type InnerMatchQueryResp struct {
-	OrderId      string `json:"orderId"`
-	OrderStatus  string `json:"orderStatus"`
-	FromCurrency string `json:"fromCurrency"`
-	ToCurrency   string `json:"toCurrency"`
-	FromAmount   string `json:"fromAmount"`
-	ToAmount     string `json:"toAmount"`
-	ExchangeRate string `json:"exchangeRate"`
+	OrderId           string `json:"orderId"`
+	OrderStatus       string `json:"orderStatus"`
+	FromCurrency      string `json:"fromCurrency"`
+	ToCurrency        string `json:"toCurrency"`
+	OrderAmount       string `json:"orderAmount"`
+	OrderCurrency     string `json:"orderCurrency"`
+	ReceiveAmount     string `json:"receiveAmount"`
+	ReceiveCurrency   string `json:"receiveCurrency"`
+	TradeFee          string `json:"tradeFee"`
+	TradeFeeCurrency  string `json:"tradeFeeCurrency"`
+	ExchangeRate      string `json:"exchangeRate"`
+	RejectReason      string `json:"rejectReason"`
+	CompleteTime        string `json:"completeTime"`
 }
 
 // FundTransferReq is the body for POST /rest/v2.0/user/fund/transfer.

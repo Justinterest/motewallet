@@ -164,7 +164,7 @@ func (h *WithdrawalHandler) AdminListPendingReviews(c *gin.Context) {
 }
 
 func (h *WithdrawalHandler) AdminApproveWithdrawal(c *gin.Context) {
-	adminID, exists := c.Get("user_id")
+	adminID, exists := c.Get("admin_id")
 	if !exists {
 		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
 		return
@@ -189,7 +189,7 @@ func (h *WithdrawalHandler) AdminApproveWithdrawal(c *gin.Context) {
 }
 
 func (h *WithdrawalHandler) AdminRejectWithdrawal(c *gin.Context) {
-	adminID, exists := c.Get("user_id")
+	adminID, exists := c.Get("admin_id")
 	if !exists {
 		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
 		return

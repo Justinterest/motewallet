@@ -61,6 +61,8 @@ import {
 } from "@/lib/hooks/use-merchants";
 import { useFeeTemplates } from "@/lib/hooks/use-fee-templates";
 import { useMerchantDeposits } from "@/lib/hooks/use-deposits";
+import { useMerchantWithdrawals } from "@/lib/hooks/use-withdrawals";
+import { useAdminExchanges, useSyncExchangeStatus } from "@/lib/hooks/use-exchanges";
 import { formatAmount } from "@/lib/utils/format";
 import { toast } from "@/hooks/use-toast";
 import type { KUNWalletBalance, MerchantWallet } from "@/types/merchant";
@@ -143,6 +145,41 @@ function getDepositStatusBadge(status: string) {
   }
 }
 
+function getWithdrawalStatusBadge(status: string) {
+  switch (status) {
+    case "COMPLETED":
+      return <Badge className="bg-green-100 text-green-700 border-green-200">已完成</Badge>;
+    case "PROCESSING":
+    case "PENDING":
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200">处理中</Badge>;
+    case "FAILED":
+      return <Badge className="bg-red-100 text-red-700 border-red-200">失败</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
+
+function getExchangeStatusBadge(status: string) {
+  return getWithdrawalStatusBadge(status);
+}
+
+function canSyncExchange(status: string) {
+  return status === "PROCESSING" || status === "PENDING" || status === "FAILED";
+}
+
+function getReviewStatusBadge(status: string) {
+  switch (status) {
+    case "PENDING_REVIEW":
+      return <Badge className="bg-amber-100 text-amber-700 border-amber-200">待审核</Badge>;
+    case "APPROVED":
+      return <Badge className="bg-green-100 text-green-700 border-green-200">已通过</Badge>;
+    case "REJECTED":
+      return <Badge className="bg-red-100 text-red-700 border-red-200">已拒绝</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
+
 function getKycBadge(kycStatus: string) {
   switch (kycStatus) {
     case "AUTH_SUC":
@@ -173,6 +210,9 @@ export default function MerchantDetailPage({
   const syncKUNBalancesMutation = useSyncKUNBalances();
   const syncDepositsMutation = useSyncDeposits();
   const { data: depositsData, isLoading: depositsLoading } = useMerchantDeposits(id);
+  const { data: withdrawalsData, isLoading: withdrawalsLoading } = useMerchantWithdrawals(id);
+  const { data: exchangesData, isLoading: exchangesLoading } = useAdminExchanges({ merchantId: id });
+  const syncExchangeMutation = useSyncExchangeStatus();
   const approveKycMutation = useApproveKyc();
   const rejectKycMutation = useRejectKyc();
 
@@ -186,6 +226,7 @@ export default function MerchantDetailPage({
   const [kunBalances, setKunBalances] = useState<KUNWalletBalance[]>([]);
   const [kunSyncedAt, setKunSyncedAt] = useState<string | null>(null);
   const [depositsSyncedAt, setDepositsSyncedAt] = useState<string | null>(null);
+  const [syncingExchangeId, setSyncingExchangeId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!merchant) return;
@@ -285,6 +326,26 @@ export default function MerchantDetailPage({
       onError: (error) => {
         toast({ title: "同步失败", description: error.message, variant: "destructive" });
       },
+    });
+  };
+
+  const handleSyncExchange = (orderId: number) => {
+    setSyncingExchangeId(orderId);
+    syncExchangeMutation.mutate(orderId, {
+      onSuccess: (result) => {
+        toast({
+          title: result.updated ? "兑换状态已同步" : "状态未变化",
+          description: result.updated
+            ? result.status === "FAILED" && result.fail_reason
+              ? `订单 #${orderId} 失败原因已更新：${result.fail_reason}`
+              : `订单 #${orderId} 已更新为 ${result.status}${result.status === "FAILED" && result.fail_reason ? `：${result.fail_reason}` : ""}`
+            : `KUN 状态：${result.kun_status || "—"}`,
+        });
+      },
+      onError: (error) => {
+        toast({ title: "同步失败", description: error.message, variant: "destructive" });
+      },
+      onSettled: () => setSyncingExchangeId(null),
     });
   };
 
@@ -680,16 +741,120 @@ export default function MerchantDetailPage({
 
             <TabsContent value="withdrawal" className="mt-4">
               <Card>
-                <CardContent className="py-10 text-center text-sm text-slate-400">
-                  提现记录即将上线
+                <CardHeader>
+                  <CardTitle className="text-base">提现记录</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {withdrawalsLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : (withdrawalsData?.withdrawals?.length ?? 0) > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>时间</TableHead>
+                          <TableHead>类型</TableHead>
+                          <TableHead>币种</TableHead>
+                          <TableHead className="text-right">金额</TableHead>
+                          <TableHead>审核</TableHead>
+                          <TableHead>状态</TableHead>
+                          <TableHead>收款信息</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {withdrawalsData?.withdrawals.map((withdrawal) => (
+                          <TableRow key={withdrawal.id}>
+                            <TableCell className="whitespace-nowrap text-sm">
+                              {new Date(withdrawal.created_at).toLocaleString("zh-CN")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {withdrawal.type === "CRYPTO" ? "数币" : "法币"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{withdrawal.currency}</TableCell>
+                            <TableCell className="text-right">
+                              {formatAmount(withdrawal.amount, withdrawal.currency)}
+                            </TableCell>
+                            <TableCell>{getReviewStatusBadge(withdrawal.review_status)}</TableCell>
+                            <TableCell>{getWithdrawalStatusBadge(withdrawal.status)}</TableCell>
+                            <TableCell className="max-w-[180px] truncate font-mono text-xs text-slate-500">
+                              {withdrawal.to_address || "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="py-4 text-center text-sm text-slate-400">暂无提现记录</p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="exchange" className="mt-4">
               <Card>
-                <CardContent className="py-10 text-center text-sm text-slate-400">
-                  兑换记录即将上线
+                <CardHeader>
+                  <CardTitle className="text-base">兑换记录</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {exchangesLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : (exchangesData?.exchanges?.length ?? 0) > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>时间</TableHead>
+                          <TableHead>卖出</TableHead>
+                          <TableHead>买入</TableHead>
+                          <TableHead className="text-right">手续费</TableHead>
+                          <TableHead>状态</TableHead>
+                          <TableHead>失败原因</TableHead>
+                          <TableHead className="text-right">操作</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {exchangesData?.exchanges.map((exchange) => (
+                          <TableRow key={exchange.id}>
+                            <TableCell className="whitespace-nowrap text-sm">
+                              {new Date(exchange.created_at).toLocaleString("zh-CN")}
+                            </TableCell>
+                            <TableCell>
+                              {formatAmount(exchange.from_amount, exchange.from_currency)} {exchange.from_currency}
+                            </TableCell>
+                            <TableCell>
+                              {exchange.to_amount
+                                ? `${formatAmount(exchange.to_amount, exchange.to_currency)} ${exchange.to_currency}`
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right text-slate-500">
+                              {formatAmount(exchange.platform_fee, exchange.from_currency)}
+                            </TableCell>
+                            <TableCell>{getExchangeStatusBadge(exchange.status)}</TableCell>
+                            <TableCell className="max-w-[180px] text-xs text-red-600">
+                              {exchange.status === "FAILED" && exchange.fail_reason ? exchange.fail_reason : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {canSyncExchange(exchange.status) ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={syncingExchangeId === exchange.id}
+                                  onClick={() => handleSyncExchange(exchange.id)}
+                                >
+                                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${syncingExchangeId === exchange.id ? "animate-spin" : ""}`} />
+                                  同步
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="py-4 text-center text-sm text-slate-400">暂无兑换记录</p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

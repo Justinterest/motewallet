@@ -66,4 +66,6 @@ type ExchangeData struct {
 	OrderStatus   string `json:"orderStatus"`
 	TradeFee      string `json:"tradeFee"`
 	FeeCurrency   string `json:"feeCurrency"`
+	RejectReason  string `json:"rejectReason,omitempty"`
+	FailReason    string `json:"failReason,omitempty"`
 }

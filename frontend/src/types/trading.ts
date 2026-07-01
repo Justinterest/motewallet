@@ -46,8 +46,7 @@ export interface WithdrawalFeePreview {
   net_amount: string;
 }
 
-export interface ExchangeQuote {
-  quote_id: string;
+export interface ExchangePreview {
   from_currency: string;
   to_currency: string;
   from_amount: string;
@@ -55,7 +54,8 @@ export interface ExchangeQuote {
   exchange_rate: string;
   platform_fee: string;
   fee_currency: string;
-  expire_time: string;
+  net_to_amount: string;
+  total_deduction: string;
 }
 
 export interface ExchangeOrder {
@@ -68,6 +68,7 @@ export interface ExchangeOrder {
   exchange_rate: string;
   platform_fee: string;
   status: string;
+  fail_reason?: string;
   created_at: string;
 }
 

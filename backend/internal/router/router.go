@@ -20,6 +20,8 @@ func Setup(
 	addressHandler *handler.AddressHandler,
 	depositHandler *handler.DepositHandler,
 	adminDepositHandler *handler.AdminDepositHandler,
+	adminWithdrawalHandler *handler.AdminWithdrawalHandler,
+	adminExchangeHandler *handler.AdminExchangeHandler,
 	withdrawalHandler *handler.WithdrawalHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	transferHandler *handler.TransferHandler,
@@ -126,9 +128,8 @@ func Setup(
 	exchange := v1.Group("/exchange")
 	exchange.Use(middleware.JWTAuth(cfg.JWT.Secret))
 	{
-		exchange.POST("/quote", exchangeHandler.GetQuote)
+		exchange.POST("/preview", exchangeHandler.PreviewExchange)
 		exchange.POST("/order", exchangeHandler.CreateExchangeOrder)
-		exchange.POST("/1to1", exchangeHandler.Create1to1Order)
 		exchange.GET("/orders", exchangeHandler.ListExchangeOrders)
 	}
 
@@ -165,10 +166,19 @@ func Setup(
 		adminDeposits.GET("", adminDepositHandler.List)
 	}
 
+	// --- Admin protected: exchange records ---
+	adminExchanges := v1.Group("/admin/exchanges")
+	adminExchanges.Use(middleware.AdminAuth(cfg.JWT.Secret))
+	{
+		adminExchanges.GET("", adminExchangeHandler.List)
+		adminExchanges.POST("/:id/sync", adminExchangeHandler.SyncStatus)
+	}
+
 	// --- Admin protected: withdrawal review ---
 	adminWithdrawals := v1.Group("/admin/withdrawals")
 	adminWithdrawals.Use(middleware.AdminAuth(cfg.JWT.Secret))
 	{
+		adminWithdrawals.GET("", adminWithdrawalHandler.List)
 		adminWithdrawals.GET("/pending", withdrawalHandler.AdminListPendingReviews)
 		adminWithdrawals.POST("/:id/approve", withdrawalHandler.AdminApproveWithdrawal)
 		adminWithdrawals.POST("/:id/reject", withdrawalHandler.AdminRejectWithdrawal)
