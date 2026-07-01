@@ -182,7 +182,7 @@ export default function DashboardPage() {
             { label: "充值", href: "/deposit", icon: ArrowDownToLine },
             { label: "提现", href: "/withdraw", icon: Wallet },
             { label: "兑换", href: "/exchange", icon: RefreshCw },
-            { label: "划转", href: "/transfer", icon: ArrowRightLeft },
+            { label: "划转到交易账户", href: "/transfer?from=FUNDING&to=TRADING", icon: ArrowRightLeft },
           ]}
         />
         <AccountPanel
@@ -191,7 +191,8 @@ export default function DashboardPage() {
           balances={tradingBalances}
           isLoading={isLoading}
           actions={[
-            { label: "划转", href: "/transfer", icon: ArrowRightLeft },
+            { label: "去兑换", href: "/exchange", icon: RefreshCw },
+            { label: "划转回资金账户", href: "/transfer?from=TRADING&to=FUNDING", icon: ArrowRightLeft },
           ]}
         />
       </div>

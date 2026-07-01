@@ -120,7 +120,8 @@ func main() {
 	adminExchangeService := service.NewAdminExchangeService(exchangeOrderRepo, exchangeService)
 	withdrawalService := service.NewWithdrawalService(db, merchantRepo, walletService, withdrawalOrderRepo, transactionRecordRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, bankAccountRepo, cryptoAddressRepo, kunClient, currencyConfigService)
 	transferService := service.NewTransferService(db, merchantRepo, walletService, transferOrderRepo, transactionRecordRepo, kunClient, currencyConfigService)
-	webhookService := service.NewWebhookService(db, webhookLogRepo, merchantRepo, walletService, exchangeService, transactionRecordRepo, depositOrderRepo, withdrawalOrderRepo, exchangeOrderRepo, transferOrderRepo)
+	adminTransferService := service.NewAdminTransferService(transferOrderRepo, transferService)
+	webhookService := service.NewWebhookService(db, webhookLogRepo, merchantRepo, walletService, exchangeService, transactionRecordRepo, depositOrderRepo, withdrawalOrderRepo, exchangeOrderRepo, transferService)
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler()
@@ -136,6 +137,7 @@ func main() {
 	adminDepositHandler := handler.NewAdminDepositHandler(adminDepositService)
 	adminWithdrawalHandler := handler.NewAdminWithdrawalHandler(adminWithdrawalService)
 	adminExchangeHandler := handler.NewAdminExchangeHandler(adminExchangeService)
+	adminTransferHandler := handler.NewAdminTransferHandler(adminTransferService)
 	withdrawalHandler := handler.NewWithdrawalHandler(withdrawalService)
 	exchangeHandler := handler.NewExchangeHandler(exchangeService)
 	transferHandler := handler.NewTransferHandler(transferService)
@@ -157,6 +159,7 @@ func main() {
 		adminDepositHandler,
 		adminWithdrawalHandler,
 		adminExchangeHandler,
+		adminTransferHandler,
 		withdrawalHandler,
 		exchangeHandler,
 		transferHandler,

@@ -24,8 +24,8 @@ type WebhookService struct {
 	transactionRecordRepo repository.TransactionRecordRepository
 	depositOrderRepo      repository.DepositOrderRepository
 	withdrawalOrderRepo   repository.WithdrawalOrderRepository
-	exchangeOrderRepo     repository.ExchangeOrderRepository
-	transferOrderRepo     repository.TransferOrderRepository
+	exchangeOrderRepo repository.ExchangeOrderRepository
+	transferSvc       *TransferService
 }
 
 func NewWebhookService(
@@ -38,7 +38,7 @@ func NewWebhookService(
 	depositOrderRepo repository.DepositOrderRepository,
 	withdrawalOrderRepo repository.WithdrawalOrderRepository,
 	exchangeOrderRepo repository.ExchangeOrderRepository,
-	transferOrderRepo repository.TransferOrderRepository,
+	transferSvc *TransferService,
 ) *WebhookService {
 	return &WebhookService{
 		db:                    db,
@@ -50,7 +50,7 @@ func NewWebhookService(
 		depositOrderRepo:      depositOrderRepo,
 		withdrawalOrderRepo:   withdrawalOrderRepo,
 		exchangeOrderRepo:     exchangeOrderRepo,
-		transferOrderRepo:     transferOrderRepo,
+		transferSvc:           transferSvc,
 	}
 }
 
@@ -342,29 +342,5 @@ func (s *WebhookService) handleFundTransfer(ctx context.Context, event *kundto.W
 		return nil
 	}
 	orderStatus, _ := event.Data["orderStatus"].(string)
-
-	order, err := s.transferOrderRepo.FindByKunRequestNo(ctx, requestNo)
-	if err != nil {
-		return err
-	}
-
-	txRecord, err := s.transactionRecordRepo.FindByID(ctx, order.TransactionRecordID)
-	if err != nil {
-		return err
-	}
-
-	if txRecord.Status == "COMPLETED" || txRecord.Status == "FAILED" {
-		return nil
-	}
-
-	switch orderStatus {
-	case "SUCCESS":
-		return s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "COMPLETED")
-	case "FAIL":
-		return s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "FAILED")
-	default:
-		slog.Info("fund transfer status update", slog.String("status", orderStatus))
-	}
-
-	return nil
+	return s.transferSvc.SettleFromWebhook(ctx, requestNo, orderStatus)
 }

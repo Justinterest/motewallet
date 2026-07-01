@@ -124,4 +124,46 @@ type FundTransferReq struct {
 type FundTransferResp struct {
 	OrderId     string `json:"orderId"`
 	OrderStatus string `json:"orderStatus"`
+	Status      string `json:"status"`
+}
+
+func (r FundTransferResp) ResolvedStatus() string {
+	if r.OrderStatus != "" {
+		return r.OrderStatus
+	}
+	return r.Status
+}
+
+// FundTransferListReq is the body for POST /rest/v2.0/query/fund/transfer/list.
+// See: https://opendocs.kun.global/docs/api/list-transfer-records
+type FundTransferListReq struct {
+	RequestNo         string `json:"requestNo"`
+	OriginalRequestNo string `json:"originalRequestNo,omitempty"`
+	OrderId           string `json:"orderId,omitempty"`
+	StartTime         string `json:"startTime,omitempty"`
+	EndTime           string `json:"endTime,omitempty"`
+	RegionCode        string `json:"regionCode,omitempty"`
+	PageNo            int    `json:"pageNo,omitempty"`
+	PageSize          int    `json:"pageSize,omitempty"`
+}
+
+type FundTransferListItem struct {
+	OrderId      string `json:"orderId"`
+	UserId       string `json:"userId"`
+	UserName     string `json:"userName"`
+	FromAcc      string `json:"fromAcc"`
+	ToAcc        string `json:"toAcc"`
+	Currency     string `json:"currency"`
+	Amount       string `json:"amount"`
+	Status       string `json:"status"`
+	TransferTime string `json:"transferTime"`
+	RegionCode   string `json:"regionCode"`
+}
+
+type FundTransferListResp struct {
+	PageCount   string                 `json:"pageCount"`
+	PageNo      string                 `json:"pageNo"`
+	PageSize    string                 `json:"pageSize"`
+	RecordCount string                 `json:"recordCount"`
+	Records     []FundTransferListItem `json:"records"`
 }

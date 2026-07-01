@@ -10,4 +10,6 @@ const (
 	CryptoWithdrawalPath    = "/rest/v2.0/trade/crypto/withdrawal"
 	InnerMatchCreatePath    = "/rest/v2.0/trade/inner/match/create"
 	InnerMatchQueryPath     = "/rest/v2.0/trade/inner/match/query"
+	FundTransferPath        = "/rest/v2.0/user/fund/transfer"
+	FundTransferListPath    = "/rest/v2.0/query/fund/transfer/list"
 )

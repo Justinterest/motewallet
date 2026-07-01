@@ -114,7 +114,36 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 			{"currency":"BTC","balance":"0.50000000","regionCode":"KUN_PL"}
 		]`)
 	case "/rest/v2.0/user/fund/transfer":
-		mockData = []byte(`{"orderId":"MOCK_TRANSFER_001","orderStatus":"SUCCESS"}`)
+		mockData = []byte(`{"orderId":"MOCK_TRANSFER_001","status":"SUCCESS"}`)
+	case "/rest/v2.0/query/fund/transfer/list":
+		orderID := "MOCK_TRANSFER_001"
+		originalRequestNo := ""
+		if reqBody != nil {
+			var req kundto.FundTransferListReq
+			if err := json.Unmarshal(reqJSON, &req); err == nil {
+				if req.OrderId != "" {
+					orderID = req.OrderId
+				}
+				originalRequestNo = req.OriginalRequestNo
+			}
+		}
+		mockData = []byte(fmt.Sprintf(`{
+			"pageCount": "1",
+			"pageNo": "1",
+			"pageSize": "20",
+			"recordCount": "1",
+			"records": [{
+				"orderId": "%s",
+				"fromAcc": "KUN_HK",
+				"toAcc": "KUN_PL",
+				"currency": "USDT",
+				"amount": "100.00000000",
+				"status": "SUCCESS",
+				"transferTime": "2025-11-18 10:07:41",
+				"regionCode": "KUN_HK"
+			}]
+		}`, orderID))
+		_ = originalRequestNo
 	case "/rest/v2.0/trade/account/outAccount/query":
 		currencyCode := "USDT"
 		if reqBody != nil {

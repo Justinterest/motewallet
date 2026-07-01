@@ -22,6 +22,7 @@ func Setup(
 	adminDepositHandler *handler.AdminDepositHandler,
 	adminWithdrawalHandler *handler.AdminWithdrawalHandler,
 	adminExchangeHandler *handler.AdminExchangeHandler,
+	adminTransferHandler *handler.AdminTransferHandler,
 	withdrawalHandler *handler.WithdrawalHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	transferHandler *handler.TransferHandler,
@@ -172,6 +173,14 @@ func Setup(
 	{
 		adminExchanges.GET("", adminExchangeHandler.List)
 		adminExchanges.POST("/:id/sync", adminExchangeHandler.SyncStatus)
+	}
+
+	// --- Admin protected: transfer records ---
+	adminTransfers := v1.Group("/admin/transfers")
+	adminTransfers.Use(middleware.AdminAuth(cfg.JWT.Secret))
+	{
+		adminTransfers.GET("", adminTransferHandler.List)
+		adminTransfers.POST("/:id/sync", adminTransferHandler.SyncStatus)
 	}
 
 	// --- Admin protected: withdrawal review ---

@@ -70,6 +70,11 @@ const operationNavItems = [
     icon: ArrowRightLeft,
   },
   {
+    title: "划转记录",
+    href: "/transfers",
+    icon: ArrowRightLeft,
+  },
+  {
     title: "提现审核",
     href: "/withdrawals",
     icon: ClipboardCheck,
