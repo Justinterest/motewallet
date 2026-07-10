@@ -29,6 +29,8 @@ type FiatWithdrawalResp struct {
 	OrderId string `json:"orderId"`
 }
 
+// ExchangeQuoteReq is the body for POST /rest/v2.0/trade/exchange/quote/request.
+// See: https://opendocs.kun.global/docs/api/quote-request
 type ExchangeQuoteReq struct {
 	RequestNo      string `json:"requestNo"`
 	Amount         string `json:"amount"`
@@ -48,6 +50,7 @@ type ExchangeQuoteResp struct {
 	ExpireTime   int64  `json:"expireTime"`
 }
 
+// ExchangeOrderReq is the body for POST /rest/v2.0/trade/exchange/order.
 type ExchangeOrderReq struct {
 	SubCustomerNo string `json:"subCustomerNo"`
 	RequestNo     string `json:"requestNo"`
@@ -66,6 +69,7 @@ type ExchangeOrderQueryReq struct {
 	OrderId       string `json:"orderId"`
 }
 
+// ExchangeOrderQueryResp is the response for POST /rest/v2.0/trade/exchange/order/query.
 type ExchangeOrderQueryResp struct {
 	OrderId      string `json:"orderId"`
 	OrderStatus  string `json:"orderStatus"`

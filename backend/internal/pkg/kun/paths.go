@@ -10,6 +10,10 @@ const (
 	CryptoWithdrawalPath    = "/rest/v2.0/trade/crypto/withdrawal"
 	InnerMatchCreatePath    = "/rest/v2.0/trade/inner/match/create"
 	InnerMatchQueryPath     = "/rest/v2.0/trade/inner/match/query"
+	// See: https://opendocs.kun.global/docs/api/quote-request
+	ExchangeQuoteRequestPath = "/rest/v2.0/trade/exchange/quote/request"
+	ExchangeOrderPath        = "/rest/v2.0/trade/exchange/order"
+	ExchangeOrderQueryPath   = "/rest/v2.0/trade/exchange/order/query"
 	FundTransferPath        = "/rest/v2.0/user/fund/transfer"
 	FundTransferListPath    = "/rest/v2.0/query/fund/transfer/list"
 )

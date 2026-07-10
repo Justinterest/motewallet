@@ -116,7 +116,8 @@ export default function ExchangePage() {
     previewSuccess &&
     !previewFetching &&
     preview != null &&
-    preview.from_amount.trim() === debouncedFromAmount.trim();
+    preview.from_amount.trim() === debouncedFromAmount.trim() &&
+    Boolean(preview.quote_id);
 
   const orderMutation = useCreateExchangeOrder();
   const { data: ordersData, isLoading: ordersLoading } = useExchangeOrders();
@@ -131,12 +132,13 @@ export default function ExchangePage() {
   }, [walletData, fromCurrency]);
 
   function handleConfirmOrder() {
-    if (!previewReady) return;
+    if (!previewReady || !preview?.quote_id) return;
     orderMutation.mutate(
       {
         from_currency: fromCurrency,
         to_currency: toCurrency,
         from_amount: fromAmount,
+        quote_id: preview.quote_id,
       },
       {
         onSuccess: () => {
@@ -156,7 +158,7 @@ export default function ExchangePage() {
       <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
 
       <p className="text-sm text-slate-600">
-        1:1 兑换，从资金账户扣款，完成后到账至交易账户。支持 USDT/USD、USD/USDT、USD/USDC、USDC/USD。
+        实时询价兑换，从资金账户扣款，完成后到账至交易账户。支持 USDT/USD、USD/USDT、USD/USDC、USDC/USD。
       </p>
 
       <div className="grid gap-6 md:grid-cols-2">

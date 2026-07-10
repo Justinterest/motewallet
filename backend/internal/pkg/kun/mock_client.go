@@ -191,6 +191,53 @@ func (m *MockClient) PostAsCustomer(ctx context.Context, customerNo, path string
 			"tradeFee":"0",
 			"tradeFeeCurrency":"USDT"
 		}`)
+	case "/rest/v2.0/trade/exchange/quote/request":
+		fromCurrency := "USDT"
+		toCurrency := "USD"
+		amount := "100"
+		if reqBody != nil {
+			var req kundto.ExchangeQuoteReq
+			if err := json.Unmarshal(reqJSON, &req); err == nil {
+				if req.QuoteCurrency != "" {
+					fromCurrency = req.QuoteCurrency
+				}
+				if req.QuotedCurrency != "" {
+					toCurrency = req.QuotedCurrency
+				}
+				if req.Amount != "" {
+					amount = req.Amount
+				}
+			}
+		}
+		b := make([]byte, 4)
+		_, _ = rand.Read(b)
+		mockData = []byte(fmt.Sprintf(`{
+			"quoteId":"MOCK_QUOTE_%s",
+			"fromCurrency":"%s",
+			"toCurrency":"%s",
+			"fromAmount":"%s",
+			"toAmount":"%s",
+			"exchangeRate":"0.99980000",
+			"tradeFee":"0.50000000",
+			"feeCurrency":"%s",
+			"expireTime":%d
+		}`, hex.EncodeToString(b), fromCurrency, toCurrency, amount, amount, fromCurrency, 4102444800000))
+	case "/rest/v2.0/trade/exchange/order":
+		b := make([]byte, 4)
+		_, _ = rand.Read(b)
+		mockData = []byte(fmt.Sprintf(`{"orderId":"MOCK_SPOT_%s"}`, hex.EncodeToString(b)))
+	case "/rest/v2.0/trade/exchange/order/query":
+		mockData = []byte(`{
+			"orderId":"MOCK_SPOT_001",
+			"orderStatus":"SUCCESS",
+			"fromCurrency":"USDT",
+			"toCurrency":"USD",
+			"fromAmount":"100.00000000",
+			"toAmount":"99.98000000",
+			"exchangeRate":"0.99980000",
+			"tradeFee":"0.50000000",
+			"feeCurrency":"USDT"
+		}`)
 	default:
 		mockData = []byte(`{}`)
 	}

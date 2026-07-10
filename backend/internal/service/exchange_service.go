@@ -74,15 +74,35 @@ func (s *ExchangeService) PreviewExchange(ctx context.Context, merchantID uint64
 	fromAmount, _ := decimal.NewFromString(req.FromAmount)
 	platformFee := s.calculateExchangeFee(ctx, merchant.FeeTemplateID, req.FromCurrency, req.ToCurrency, fromAmount)
 
+	quote, err := s.requestKUNQuote(ctx, *merchant.KunSubCustomerNo, req.FromCurrency, req.ToCurrency, req.FromAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	toAmount, err := decimal.NewFromString(quote.ToAmount)
+	if err != nil || toAmount.LessThanOrEqual(decimal.Zero) {
+		slog.Error("invalid KUN quote to amount", slog.String("to_amount", quote.ToAmount))
+		return nil, bizerrors.ErrKUNAPIFailedE
+	}
+
+	exchangeRate := quote.ExchangeRate
+	if strings.TrimSpace(exchangeRate) == "" {
+		exchangeRate = toAmount.Div(fromAmount).String()
+	}
+
 	return &dtoresp.ExchangePreviewResp{
 		FromCurrency:   req.FromCurrency,
 		ToCurrency:     req.ToCurrency,
 		FromAmount:     fromAmount.String(),
-		ToAmount:       fromAmount.String(),
-		ExchangeRate:   "1",
+		ToAmount:       toAmount.String(),
+		ExchangeRate:   exchangeRate,
+		QuoteID:        quote.QuoteId,
+		ExpireTime:     quote.ExpireTime,
+		KunTradeFee:    quote.TradeFee,
+		KunFeeCurrency: quote.FeeCurrency,
 		PlatformFee:    platformFee.String(),
 		FeeCurrency:    req.FromCurrency,
-		NetToAmount:    fromAmount.String(),
+		NetToAmount:    toAmount.String(),
 		TotalDeduction: fromAmount.Add(platformFee).String(),
 	}, nil
 }
@@ -104,14 +124,18 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 		return 0, err
 	}
 
+	if strings.TrimSpace(req.QuoteID) == "" {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "quote_id is required")
+	}
+
 	fromAmount, _ := decimal.NewFromString(req.FromAmount)
 	platformFee := s.calculateExchangeFee(ctx, merchant.FeeTemplateID, req.FromCurrency, req.ToCurrency, fromAmount)
 	totalFreeze := fromAmount.Add(platformFee)
 
 	requestNo := kun.GenerateRequestNo()
-	autoTransfer := "YES"
-	subType := "1TO1"
-	exchangeRate := decimal.NewFromInt(1)
+	subType := "SPOT_EXCHANGE"
+	exchangeType := "SPOT_EXCHANGE"
+	quoteID := strings.TrimSpace(req.QuoteID)
 	var orderID uint64
 	var txRecordID uint64
 
@@ -138,13 +162,11 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 		exchangeOrder := &model.ExchangeOrder{
 			TransactionRecordID: txRecord.ID,
 			MerchantID:          merchantID,
-			ExchangeType:        "1TO1",
+			ExchangeType:        exchangeType,
 			FromCurrency:        req.FromCurrency,
 			FromAmount:          fromAmount,
 			ToCurrency:          req.ToCurrency,
-			ToAmount:            &fromAmount,
-			ExchangeRate:        &exchangeRate,
-			AutoTransfer:        &autoTransfer,
+			QuoteID:             &quoteID,
 			KunRequestNo:        &requestNo,
 		}
 		if err := tx.WithContext(ctx).Create(exchangeOrder).Error; err != nil {
@@ -160,16 +182,17 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 		return 0, err
 	}
 
-	var kunResp kundto.InnerMatchCreateResp
-	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.InnerMatchCreatePath, &kundto.InnerMatchCreateReq{
-		RequestNo:    requestNo,
-		FromCurrency: req.FromCurrency,
-		OrderAmount:  req.FromAmount,
-		ToCurrency:   req.ToCurrency,
-		AutoTransfer: autoTransfer,
+	var kunResp kundto.ExchangeOrderResp
+	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.ExchangeOrderPath, &kundto.ExchangeOrderReq{
+		SubCustomerNo: *merchant.KunSubCustomerNo,
+		RequestNo:     requestNo,
+		QuoteId:       quoteID,
+		FromCurrency:  req.FromCurrency,
+		ToCurrency:    req.ToCurrency,
+		FromAmount:    req.FromAmount,
 	}, &kunResp)
 	if err != nil {
-		slog.Error("KUN 1:1 exchange order failed", slog.Any("error", err))
+		slog.Error("KUN spot exchange order failed", slog.Any("error", err))
 		s.rollbackExchangeOrder(ctx, txRecordID, merchantID, req.FromCurrency, totalFreeze)
 		return 0, bizerrors.ErrKUNAPIFailedE
 	}
@@ -183,7 +206,7 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 	return orderID, nil
 }
 
-func (s *ExchangeService) QueryKUNExchangeOrder(ctx context.Context, merchantID, orderID uint64) (*kundto.InnerMatchQueryResp, error) {
+func (s *ExchangeService) QueryKUNExchangeOrder(ctx context.Context, merchantID, orderID uint64) (*kundto.ExchangeOrderQueryResp, error) {
 	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -210,17 +233,12 @@ func (s *ExchangeService) QueryKUNExchangeOrder(ctx context.Context, merchantID,
 		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "exchange order has no kun order id")
 	}
 
-	var kunResp kundto.InnerMatchQueryResp
-	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.InnerMatchQueryPath, &kundto.InnerMatchQueryReq{
-		RequestNo: kun.GenerateRequestNo(),
-		OrderId:   *order.KunOrderID,
-	}, &kunResp)
+	kunResp, err := s.queryKUNExchangeOrder(ctx, merchant, order)
 	if err != nil {
-		slog.Error("KUN 1:1 exchange query failed", slog.Any("error", err))
-		return nil, bizerrors.ErrKUNAPIFailedE
+		return nil, err
 	}
 
-	return &kunResp, nil
+	return kunResp, nil
 }
 
 func (s *ExchangeService) SettleFromWebhook(ctx context.Context, data *kundto.ExchangeData) error {
@@ -286,21 +304,14 @@ func (s *ExchangeService) SyncOrderStatus(ctx context.Context, orderID uint64) (
 		return nil, bizerrors.ErrMerchantNotRegisteredE
 	}
 
-	var kunResp kundto.InnerMatchQueryResp
-	err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.InnerMatchQueryPath, &kundto.InnerMatchQueryReq{
-		RequestNo: kun.GenerateRequestNo(),
-		OrderId:   *order.KunOrderID,
-	}, &kunResp)
+	var kunResp kundto.ExchangeOrderQueryResp
+	err = s.queryKUNExchangeOrderInto(ctx, merchant, order, &kunResp)
 	if err != nil {
-		slog.Error("KUN 1:1 exchange query failed", slog.Any("error", err), slog.Uint64("order_id", orderID))
-		return nil, bizerrors.ErrKUNAPIFailedE
+		return nil, err
 	}
 
 	resp.KunStatus = kunResp.OrderStatus
-	toAmount := kunResp.ReceiveAmount
-	if strings.TrimSpace(toAmount) == "" {
-		toAmount = kunResp.OrderAmount
-	}
+	toAmount := kunResp.ToAmount
 	exchangeRate := kunResp.ExchangeRate
 	if strings.TrimSpace(exchangeRate) == "" {
 		exchangeRate = "1"
@@ -311,7 +322,7 @@ func (s *ExchangeService) SyncOrderStatus(ctx context.Context, orderID uint64) (
 	if order.FailReason != nil {
 		beforeFailReason = *order.FailReason
 	}
-	if err := s.applyKUNExchangeStatus(ctx, order, txRecord, kunResp.OrderStatus, toAmount, exchangeRate, kunResp.TradeFee, kunResp.RejectReason); err != nil {
+	if err := s.applyKUNExchangeStatus(ctx, order, txRecord, kunResp.OrderStatus, toAmount, exchangeRate, kunResp.TradeFee, ""); err != nil {
 		return nil, err
 	}
 
@@ -523,6 +534,97 @@ func (s *ExchangeService) calculateExchangeFee(ctx context.Context, feeTemplateI
 	}
 
 	return decimal.Zero
+}
+
+func (s *ExchangeService) requestKUNQuote(
+	ctx context.Context,
+	subCustomerNo, fromCurrency, toCurrency, fromAmount string,
+) (*kundto.ExchangeQuoteResp, error) {
+	var quote kundto.ExchangeQuoteResp
+	err := s.kunClient.PostAsCustomer(ctx, subCustomerNo, kun.ExchangeQuoteRequestPath, &kundto.ExchangeQuoteReq{
+		RequestNo:      kun.GenerateRequestNo(),
+		Amount:         fromAmount,
+		QuoteCurrency:  fromCurrency,
+		QuotedCurrency: toCurrency,
+	}, &quote)
+	if err != nil {
+		slog.Error("KUN exchange quote failed", slog.Any("error", err))
+		return nil, bizerrors.ErrKUNAPIFailedE
+	}
+	if strings.TrimSpace(quote.QuoteId) == "" {
+		slog.Error("KUN exchange quote returned empty quote id")
+		return nil, bizerrors.ErrKUNAPIFailedE
+	}
+	return &quote, nil
+}
+
+func (s *ExchangeService) queryKUNExchangeOrder(
+	ctx context.Context,
+	merchant *model.Merchant,
+	order *model.ExchangeOrder,
+) (*kundto.ExchangeOrderQueryResp, error) {
+	var kunResp kundto.ExchangeOrderQueryResp
+	if err := s.queryKUNExchangeOrderInto(ctx, merchant, order, &kunResp); err != nil {
+		return nil, err
+	}
+	return &kunResp, nil
+}
+
+func (s *ExchangeService) queryKUNExchangeOrderInto(
+	ctx context.Context,
+	merchant *model.Merchant,
+	order *model.ExchangeOrder,
+	resp *kundto.ExchangeOrderQueryResp,
+) error {
+	if merchant.KunSubCustomerNo == nil {
+		return bizerrors.ErrMerchantNotRegisteredE
+	}
+	if order.KunOrderID == nil || strings.TrimSpace(*order.KunOrderID) == "" {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "exchange order has no kun order id")
+	}
+
+	if order.ExchangeType == "1TO1" {
+		var innerResp kundto.InnerMatchQueryResp
+		err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.InnerMatchQueryPath, &kundto.InnerMatchQueryReq{
+			RequestNo: kun.GenerateRequestNo(),
+			OrderId:   *order.KunOrderID,
+		}, &innerResp)
+		if err != nil {
+			slog.Error("KUN 1:1 exchange query failed", slog.Any("error", err), slog.Uint64("order_id", order.ID))
+			return bizerrors.ErrKUNAPIFailedE
+		}
+		*resp = kundto.ExchangeOrderQueryResp{
+			OrderId:      innerResp.OrderId,
+			OrderStatus:  innerResp.OrderStatus,
+			FromCurrency: innerResp.FromCurrency,
+			ToCurrency:   innerResp.ToCurrency,
+			FromAmount:   innerResp.OrderAmount,
+			ToAmount:     firstNonEmpty(innerResp.ReceiveAmount, innerResp.OrderAmount),
+			ExchangeRate: innerResp.ExchangeRate,
+			TradeFee:     innerResp.TradeFee,
+			FeeCurrency:  innerResp.TradeFeeCurrency,
+		}
+		return nil
+	}
+
+	err := s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.ExchangeOrderQueryPath, &kundto.ExchangeOrderQueryReq{
+		SubCustomerNo: *merchant.KunSubCustomerNo,
+		OrderId:       *order.KunOrderID,
+	}, resp)
+	if err != nil {
+		slog.Error("KUN spot exchange query failed", slog.Any("error", err), slog.Uint64("order_id", order.ID))
+		return bizerrors.ErrKUNAPIFailedE
+	}
+	return nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func resolveExchangeFailReason(reasons ...string) string {

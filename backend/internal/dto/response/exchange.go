@@ -8,6 +8,10 @@ type ExchangePreviewResp struct {
 	FromAmount     string `json:"from_amount"`
 	ToAmount       string `json:"to_amount"`
 	ExchangeRate   string `json:"exchange_rate"`
+	QuoteID        string `json:"quote_id"`
+	ExpireTime     int64  `json:"expire_time"`
+	KunTradeFee    string `json:"kun_trade_fee"`
+	KunFeeCurrency string `json:"kun_fee_currency"`
 	PlatformFee    string `json:"platform_fee"`
 	FeeCurrency    string `json:"fee_currency"`
 	NetToAmount    string `json:"net_to_amount"`

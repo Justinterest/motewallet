@@ -67,6 +67,14 @@ export function ExchangePreviewSummary({
             : "无"}
         </span>
       </div>
+      {hasPositiveFee(preview.kun_trade_fee) && (
+        <div className="flex items-center justify-between">
+          <span className="text-slate-600">KUN 手续费</span>
+          <span className="font-medium text-slate-900">
+            {formatAmount(preview.kun_trade_fee, preview.kun_fee_currency)} {preview.kun_fee_currency}
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <span className="text-slate-600">账户扣款总额</span>
         <span className="font-medium text-slate-900">
