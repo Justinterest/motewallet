@@ -386,7 +386,7 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", order.FromCurrency, totalFrozen); err != nil {
 				return err
 			}
-			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "TRADING", order.ToCurrency, toAmount); err != nil {
+			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "FUNDING", order.ToCurrency, toAmount); err != nil {
 				return err
 			}
 			if err := tx.WithContext(ctx).Model(&model.TransactionRecord{}).

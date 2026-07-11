@@ -81,7 +81,7 @@ const operationNavItems = [
   },
   {
     title: "系统设置",
-    href: "#",
+    href: "/settings",
     icon: Settings,
   },
 ];

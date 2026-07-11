@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
 } from "@/lib/hooks/use-addresses";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { toCurrencyOptions } from "@/lib/utils/currency";
-import { formatChainLabel, getWithdrawalNetworks } from "@/lib/utils/network";
+import { formatChainLabel, getWithdrawalNetworks, resolveDefaultChain } from "@/lib/utils/network";
 import { toast } from "@/hooks/use-toast";
 
 const emptyForm = {
@@ -55,11 +55,20 @@ export default function CryptoAddressesPage() {
     if (!nextCurrency) return;
     if (!currency || !supportedCurrencies.crypto_currencies.includes(currency)) {
       setCurrency(nextCurrency);
-      setChain(getWithdrawalNetworks(nextCurrency)[0]?.value || "");
+      const networks = getWithdrawalNetworks(
+        nextCurrency,
+        supportedCurrencies.crypto_chains?.[nextCurrency]
+      );
+      setChain(
+        resolveDefaultChain(nextCurrency, networks, supportedCurrencies.default_chains)
+      );
     }
   }, [supportedCurrencies, currency]);
 
-  const networks = getWithdrawalNetworks(currency);
+  const networks = getWithdrawalNetworks(
+    currency,
+    supportedCurrencies?.crypto_chains?.[currency]
+  );
   const { data: cryptoAddressesData, isLoading } = useCryptoAddresses();
   const cryptoAddresses = cryptoAddressesData ?? [];
   const addMutation = useAddCryptoAddress();
@@ -110,7 +119,7 @@ export default function CryptoAddressesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">提现地址</h1>
+          <h1 className="text-2xl font-bold text-slate-900">数字货币地址</h1>
           <p className="mt-1 text-sm text-slate-500">
             管理数币提现白名单地址，仅可向已绑定地址发起提现。
           </p>
@@ -146,7 +155,13 @@ export default function CryptoAddressesPage() {
                   value={currency}
                   onValueChange={(value) => {
                     setCurrency(value);
-                    setChain(getWithdrawalNetworks(value)[0]?.value || "");
+                    const nextNetworks = getWithdrawalNetworks(
+                      value,
+                      supportedCurrencies?.crypto_chains?.[value]
+                    );
+                    setChain(
+                      resolveDefaultChain(value, nextNetworks, supportedCurrencies?.default_chains)
+                    );
                   }}
                   options={cryptoCurrencies}
                 />

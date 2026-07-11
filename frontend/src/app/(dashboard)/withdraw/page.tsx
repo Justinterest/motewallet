@@ -26,7 +26,7 @@ import { formatAmount } from "@/lib/utils/format";
 import { toCurrencyOptions } from "@/lib/utils/currency";
 import { TRANSFER_TYPE_LABELS } from "@/lib/utils/bank-account";
 import { FIAT_WITHDRAWAL_PURPOSES } from "@/lib/utils/fiat-withdrawal";
-import { formatChainLabel, getWithdrawalNetworks } from "@/lib/utils/network";
+import { formatChainLabel } from "@/lib/utils/network";
 import { toast } from "@/hooks/use-toast";
 import type { BankAccount, CryptoAddress } from "@/types/address";
 
@@ -74,7 +74,6 @@ export default function WithdrawPage() {
   const fiatCurrencies = toCurrencyOptions(supportedCurrencies?.fiat_currencies ?? []);
 
   const [currency, setCurrency] = useState("");
-  const [chain, setChain] = useState("");
   const [amount, setAmount] = useState("");
   const [cryptoAddressId, setCryptoAddressId] = useState("");
 
@@ -102,7 +101,6 @@ export default function WithdrawPage() {
     if (!nextCurrency) return;
     if (!currency || !supportedCurrencies.crypto_currencies.includes(currency)) {
       setCurrency(nextCurrency);
-      setChain(getWithdrawalNetworks(nextCurrency)[0]?.value || "");
     }
   }, [supportedCurrencies, currency]);
 
@@ -118,11 +116,8 @@ export default function WithdrawPage() {
   const cryptoAddresses = cryptoAddressesData ?? [];
 
   const cryptoAddressesForSelection = useMemo(
-    () =>
-      cryptoAddresses.filter(
-        (a) => a.currency === currency && a.chain === chain && a.status === "ACTIVE"
-      ),
-    [cryptoAddresses, currency, chain]
+    () => cryptoAddresses.filter((a) => a.currency === currency && a.status === "ACTIVE"),
+    [cryptoAddresses, currency]
   );
 
   const cryptoAddressOptions = useMemo(
@@ -331,20 +326,8 @@ export default function WithdrawPage() {
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">币种</label>
                     <SimpleSelect
                       value={currency}
-                      onValueChange={(value) => {
-                        setCurrency(value);
-                        setChain(getWithdrawalNetworks(value)[0]?.value || "");
-                      }}
+                      onValueChange={setCurrency}
                       options={cryptoCurrencies}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">网络</label>
-                    <SimpleSelect
-                      value={chain}
-                      onValueChange={setChain}
-                      options={getWithdrawalNetworks(currency)}
                     />
                   </div>
 
@@ -352,21 +335,19 @@ export default function WithdrawPage() {
                     <div className="mb-1.5 flex items-center justify-between">
                       <label className="text-sm font-medium text-slate-700">收款地址</label>
                       <Link href="/crypto-addresses" className="text-xs text-blue-700 hover:underline">
-                        管理地址
+                        管理数字货币地址
                       </Link>
                     </div>
                     {cryptoAddressesLoading ? (
                       <Skeleton className="h-9 w-full" />
                     ) : cryptoAddressesForSelection.length === 0 ? (
                       <div className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-slate-500">
-                        <p>
-                          请先绑定 {currency} · {formatChainLabel(currency, chain)} 白名单地址
-                        </p>
+                        <p>请先绑定 {currency} 白名单地址</p>
                         <Link
                           href="/crypto-addresses"
                           className="mt-2 inline-block text-blue-700 hover:underline"
                         >
-                          前往提现地址管理
+                          前往数字货币地址管理
                         </Link>
                       </div>
                     ) : (
@@ -439,7 +420,7 @@ export default function WithdrawPage() {
                     <div className="mb-1.5 flex items-center justify-between">
                       <label className="text-sm font-medium text-slate-700">收款银行账户</label>
                       <Link href="/bank-accounts" className="text-xs text-blue-700 hover:underline">
-                        管理账户
+                        管理银行账户
                       </Link>
                     </div>
                     {bankAccountsLoading ? (
@@ -589,5 +570,6 @@ function formatCryptoAddressLabel(account: CryptoAddress) {
     account.address.length <= 12
       ? account.address
       : `${account.address.slice(0, 6)}...${account.address.slice(-6)}`;
-  return `${account.alias} · ${masked}`;
+  const network = formatChainLabel(account.currency, account.chain);
+  return `${account.alias} · ${network} · ${masked}`;
 }

@@ -160,6 +160,14 @@ func Setup(
 		adminMerchants.POST("/:id/kyc/reject", merchantMgmtHandler.RejectKyc)
 	}
 
+	// --- Admin protected: system currency/chain config ---
+	adminSettings := v1.Group("/admin/settings")
+	adminSettings.Use(middleware.AdminAuth(cfg.JWT.Secret))
+	{
+		adminSettings.GET("/currencies", currencyConfigHandler.GetSystemCurrencyConfig)
+		adminSettings.PUT("/currencies", currencyConfigHandler.UpdateSystemCurrencyConfig)
+	}
+
 	// --- Admin protected: crypto deposits ---
 	adminDeposits := v1.Group("/admin/deposits")
 	adminDeposits.Use(middleware.AdminAuth(cfg.JWT.Secret))

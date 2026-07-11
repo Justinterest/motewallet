@@ -33,8 +33,13 @@ type AdminMerchantDetailResp struct {
 	Wallets                   []WalletBalanceResp `json:"wallets"`
 	SupportedCryptoCurrencies []string            `json:"supported_crypto_currencies"`
 	SupportedFiatCurrencies   []string            `json:"supported_fiat_currencies"`
+	SupportedCryptoChains     map[string][]string `json:"supported_crypto_chains"`
+	DefaultCryptoChains       map[string]string   `json:"default_crypto_chains"`
 	AvailableCryptoCurrencies []string            `json:"available_crypto_currencies"`
 	AvailableFiatCurrencies   []string            `json:"available_fiat_currencies"`
+	AvailableCryptoChains     map[string][]string `json:"available_crypto_chains"`
+	AvailableDefaultChains    map[string]string   `json:"available_default_chains"`
+	CatalogChains             map[string][]string `json:"catalog_chains"`
 }
 
 type KUNWalletBalanceResp struct {

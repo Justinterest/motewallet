@@ -5,7 +5,6 @@ import {
   ArrowDownToLine,
   ArrowRight,
   ArrowRightLeft,
-  BarChart3,
   RefreshCw,
   Wallet,
 } from "lucide-react";
@@ -19,15 +18,6 @@ import { formatAmount } from "@/lib/utils/format";
 import { getAllSupportedCurrencies } from "@/lib/utils/currency";
 import type { WalletBalance } from "@/types/wallet";
 import type { LucideIcon } from "lucide-react";
-
-function estimateTotalUSD(balances: WalletBalance[]): number {
-  const usdLike = new Set(["USD", "USDT", "USDC"]);
-  return balances.reduce((sum, wallet) => {
-    if (!usdLike.has(wallet.currency)) return sum;
-    const value = parseFloat(wallet.available_balance);
-    return sum + (Number.isNaN(value) ? 0 : value);
-  }, 0);
-}
 
 function BalanceRows({
   balances,
@@ -136,7 +126,6 @@ export default function DashboardPage() {
   );
   const fundingBalances = wallets.filter((w) => w.account_type === "FUNDING");
   const tradingBalances = wallets.filter((w) => w.account_type === "TRADING");
-  const totalUSD = estimateTotalUSD(wallets);
 
   return (
     <div className="space-y-8">
@@ -147,29 +136,6 @@ export default function DashboardPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           查看账户余额与最近交易
         </p>
-      </div>
-
-      <div className="panel overflow-hidden">
-        <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              总资产（折合 USD）
-            </p>
-            {isLoading ? (
-              <Skeleton className="mt-2 h-10 w-48" />
-            ) : (
-              <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-foreground">
-                ${formatAmount(totalUSD.toFixed(2), "USD")}
-              </p>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              含 USD / USDT / USDC 余额；其他币种暂未折算
-            </p>
-          </div>
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-accent bg-accent/50">
-            <BarChart3 className="h-7 w-7 text-primary" />
-          </div>
-        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

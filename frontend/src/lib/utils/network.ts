@@ -9,10 +9,11 @@ export const DEPOSIT_NETWORKS: Record<string, { value: string; label: string }[]
   ],
   USDC: [
     { value: "ETH_ERC20", label: "ERC20（以太坊）" },
+    { value: "TRX_TRC20", label: "TRC20（波场）" },
     { value: "SOL_Solana", label: "Solana" },
     { value: "BSC_BEP20", label: "BEP20（BNB Chain）" },
   ],
-  BTC: [{ value: "BTC_Bitcoin", label: "Bitcoin" }],
+  BTC: [{ value: "BTC", label: "Bitcoin" }],
 };
 
 const KUN_WITHDRAWAL_CHAIN_TYPES = new Set([
@@ -29,8 +30,43 @@ export const WITHDRAWAL_NETWORKS: Record<string, { value: string; label: string 
   BTC: [{ value: "BTC", label: "Bitcoin" }],
 };
 
-export function getWithdrawalNetworks(currency: string) {
-  return WITHDRAWAL_NETWORKS[currency] ?? [];
+function isChainSupported(chain: string, supported: string[]) {
+  if (supported.includes(chain)) return true;
+  // Accept legacy BTC_Bitcoin when BTC is enabled.
+  if (chain === "BTC_Bitcoin" && supported.includes("BTC")) return true;
+  if (chain === "BTC" && supported.includes("BTC_Bitcoin")) return true;
+  return false;
+}
+
+export function filterNetworksBySupported(
+  networks: { value: string; label: string }[],
+  supportedChains?: string[]
+) {
+  if (!supportedChains || supportedChains.length === 0) {
+    return networks;
+  }
+  return networks.filter((item) => isChainSupported(item.value, supportedChains));
+}
+
+export function getDepositNetworks(currency: string, supportedChains?: string[]) {
+  return filterNetworksBySupported(DEPOSIT_NETWORKS[currency] ?? [], supportedChains);
+}
+
+export function getWithdrawalNetworks(currency: string, supportedChains?: string[]) {
+  return filterNetworksBySupported(WITHDRAWAL_NETWORKS[currency] ?? [], supportedChains);
+}
+
+export function resolveDefaultChain(
+  currency: string,
+  networks: { value: string; label: string }[],
+  defaultChains?: Record<string, string>
+) {
+  const preferred = defaultChains?.[currency];
+  if (preferred && networks.some((item) => isChainSupported(item.value, [preferred]))) {
+    const match = networks.find((item) => isChainSupported(item.value, [preferred]));
+    return match?.value || networks[0]?.value || "";
+  }
+  return networks[0]?.value || "";
 }
 
 export function formatChainLabel(currency: string, chain: string) {

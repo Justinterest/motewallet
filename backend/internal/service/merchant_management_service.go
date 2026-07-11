@@ -145,6 +145,14 @@ func (s *MerchantManagementService) GetDetail(ctx context.Context, id uint64) (*
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
+	supportedChains, err := s.currencyConfigSvc.GetSupportedChains(ctx, merchant)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	defaultChains, err := s.currencyConfigSvc.GetDefaultChains(ctx, merchant)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
 	availableCrypto, err := s.currencyConfigSvc.GetAvailableCrypto(ctx)
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
@@ -153,10 +161,23 @@ func (s *MerchantManagementService) GetDetail(ctx context.Context, id uint64) (*
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
+	availableChains, err := s.currencyConfigSvc.GetAvailableChains(ctx)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	availableDefaults, err := s.currencyConfigSvc.GetAvailableDefaultChains(ctx)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
 	resp.SupportedCryptoCurrencies = supportedCrypto
 	resp.SupportedFiatCurrencies = supportedFiat
+	resp.SupportedCryptoChains = supportedChains
+	resp.DefaultCryptoChains = defaultChains
 	resp.AvailableCryptoCurrencies = availableCrypto
 	resp.AvailableFiatCurrencies = availableFiat
+	resp.AvailableCryptoChains = availableChains
+	resp.AvailableDefaultChains = availableDefaults
+	resp.CatalogChains = s.currencyConfigSvc.GetCatalogChains()
 
 	return resp, nil
 }
@@ -298,20 +319,31 @@ func (s *MerchantManagementService) UpdateSupportedCurrencies(ctx context.Contex
 	if err != nil {
 		return err
 	}
+	selectedChains, selectedDefaults, err := s.currencyConfigSvc.NormalizeMerchantChainSelection(ctx, selectedCrypto, req.CryptoChains, req.DefaultChains)
+	if err != nil {
+		return err
+	}
 	cryptoCSV, fiatCSV := s.currencyConfigSvc.SerializeSelection(selectedCrypto, selectedFiat)
+	chainsJSON, defaultsJSON := s.currencyConfigSvc.SerializeChainSelection(selectedChains, selectedDefaults)
 
 	if err := s.merchantRepo.UpdateFields(ctx, merchantID, map[string]interface{}{
 		"supported_crypto_currencies": *cryptoCSV,
 		"supported_fiat_currencies":   *fiatCSV,
+		"supported_crypto_chains":     *chainsJSON,
+		"default_crypto_chains":       *defaultsJSON,
 	}); err != nil {
 		return bizerrors.ErrInternalError
 	}
 
 	s.logAudit(ctx, adminID, "UPDATE_MERCHANT_SUPPORTED_CURRENCIES", "Merchant", fmt.Sprintf("%d", merchantID), map[string]interface{}{
-		"old_crypto": merchant.SupportedCryptoCurrencies,
-		"old_fiat":   merchant.SupportedFiatCurrencies,
-		"new_crypto": selectedCrypto,
-		"new_fiat":   selectedFiat,
+		"old_crypto":          merchant.SupportedCryptoCurrencies,
+		"old_fiat":            merchant.SupportedFiatCurrencies,
+		"old_chains":          merchant.SupportedCryptoChains,
+		"old_default_chains":  merchant.DefaultCryptoChains,
+		"new_crypto":          selectedCrypto,
+		"new_fiat":            selectedFiat,
+		"new_chains":          selectedChains,
+		"new_default_chains":  selectedDefaults,
 	})
 
 	return nil

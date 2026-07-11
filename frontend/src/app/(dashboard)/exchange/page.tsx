@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, ArrowRightLeft } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ArrowRightLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +30,9 @@ import {
 } from "@/lib/utils/exchange";
 import { toast } from "@/hooks/use-toast";
 
+const DEFAULT_FROM_CURRENCY = "USDT";
+const DEFAULT_TO_CURRENCY = "USD";
+
 function isPositiveAmount(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return false;
@@ -43,8 +47,8 @@ export default function ExchangePage() {
     () => getExchangeFromOptions(allCurrencies),
     [allCurrencies],
   );
-  const [fromCurrency, setFromCurrency] = useState("");
-  const [toCurrency, setToCurrency] = useState("");
+  const [fromCurrency, setFromCurrency] = useState(DEFAULT_FROM_CURRENCY);
+  const [toCurrency, setToCurrency] = useState(DEFAULT_TO_CURRENCY);
   const [fromAmount, setFromAmount] = useState("");
   const [debouncedFromAmount, setDebouncedFromAmount] = useState("");
 
@@ -60,12 +64,21 @@ export default function ExchangePage() {
     let nextTo = toCurrency;
 
     if (!nextFrom || !exchangeCurrencies.includes(nextFrom)) {
-      nextFrom = exchangeCurrencies[0];
+      nextFrom = exchangeCurrencies.includes(DEFAULT_FROM_CURRENCY)
+        ? DEFAULT_FROM_CURRENCY
+        : exchangeCurrencies[0];
     }
 
     const toOptions = getExchangeToOptions(nextFrom, allCurrencies);
     if (!nextTo || !toOptions.includes(nextTo)) {
-      nextTo = toOptions[0] ?? "";
+      if (
+        nextFrom === DEFAULT_FROM_CURRENCY &&
+        toOptions.includes(DEFAULT_TO_CURRENCY)
+      ) {
+        nextTo = DEFAULT_TO_CURRENCY;
+      } else {
+        nextTo = toOptions[0] ?? "";
+      }
     }
 
     if (nextFrom !== fromCurrency) setFromCurrency(nextFrom);
@@ -154,19 +167,20 @@ export default function ExchangePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
+    <div className="flex flex-col gap-6 md:h-[calc(100dvh-7.5rem)] md:min-h-0">
+      <div className="shrink-0">
+        <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          实时询价兑换，卖出与买入均在资金账户完成。
+        </p>
+      </div>
 
-      <p className="text-sm text-slate-600">
-        实时询价兑换，从资金账户扣款，完成后到账至交易账户。支持 USDT/USD、USD/USDT、USD/USDC、USDC/USD。
-      </p>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
+      <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-2">
+        <Card className="flex min-h-0 flex-col overflow-hidden">
+          <CardHeader className="shrink-0">
             <CardTitle className="text-base">币种兑换</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">卖出</label>
@@ -245,11 +259,20 @@ export default function ExchangePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">兑换记录</CardTitle>
+        <Card className="flex min-h-0 flex-col overflow-hidden">
+          <CardHeader className="shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">兑换记录</CardTitle>
+              <Link
+                href="/transactions?tab=exchange"
+                className="inline-flex items-center text-sm font-medium text-primary hover:underline"
+              >
+                查看更多
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             {ordersLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-14 w-full" />

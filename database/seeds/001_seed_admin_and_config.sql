@@ -49,6 +49,8 @@ INSERT INTO `system_configs` (`config_key`, `config_value`, `description`) VALUE
 ('kun_region_code', 'KUN_PL', 'KUN region code (Poland)'),
 ('supported_fiat_currencies', 'USD,HKD,EUR', 'Supported fiat currencies'),
 ('supported_crypto_currencies', 'USDT,USDC,BTC', 'Supported crypto currencies'),
+('supported_crypto_chains', '{"USDT":["ETH_ERC20","TRX_TRC20","SOL_Solana","BSC_BEP20"],"USDC":["ETH_ERC20","TRX_TRC20","SOL_Solana","BSC_BEP20"],"BTC":["BTC"]}', 'Default supported chains per crypto currency (JSON)'),
+('default_crypto_chains', '{"USDT":"TRX_TRC20","USDC":"ETH_ERC20","BTC":"BTC"}', 'Default selected chain per crypto currency (JSON)'),
 ('platform_name', 'Motewallet', 'Platform display name'),
 ('withdrawal_auto_approve_crypto_usd', '0', 'Auto-approve threshold for crypto withdrawal (USD equivalent, 0 = all manual)'),
 ('withdrawal_auto_approve_fiat_usd', '0', 'Auto-approve threshold for fiat withdrawal (USD equivalent, 0 = all manual)');

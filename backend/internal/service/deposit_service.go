@@ -56,6 +56,9 @@ func (s *DepositService) GetDepositAddresses(ctx context.Context, merchantID uin
 	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, currency); err != nil {
 		return nil, err
 	}
+	if err := s.currencyConfigSvc.EnsureChainSupported(ctx, merchant, currency, chain); err != nil {
+		return nil, err
+	}
 
 	chainType := utils.KUNDepositChain(currency, chain)
 

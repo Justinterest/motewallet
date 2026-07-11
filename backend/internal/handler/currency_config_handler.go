@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"errors"
 	"gorm.io/gorm"
+	dtoreq "motewallet/internal/dto/request"
+	dtoresp "motewallet/internal/dto/response"
+	"motewallet/internal/pkg/currency"
 	bizerrors "motewallet/internal/pkg/errors"
 	"motewallet/internal/pkg/response"
 	"motewallet/internal/repository"
@@ -54,9 +57,84 @@ func (h *CurrencyConfigHandler) GetSupportedCurrencies(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
 		return
 	}
+	chains, err := h.currencyConfigSvc.GetSupportedChains(c.Request.Context(), merchant)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+	defaults, err := h.currencyConfigSvc.GetDefaultChains(c.Request.Context(), merchant)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
 
-	response.Success(c, map[string][]string{
-		"crypto_currencies": crypto,
-		"fiat_currencies":   fiat,
+	response.Success(c, dtoresp.SupportedCurrenciesResp{
+		CryptoCurrencies: crypto,
+		FiatCurrencies:   fiat,
+		CryptoChains:     chains,
+		DefaultChains:    defaults,
 	})
+}
+
+func (h *CurrencyConfigHandler) GetSystemCurrencyConfig(c *gin.Context) {
+	crypto, err := h.currencyConfigSvc.GetAvailableCrypto(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+	fiat, err := h.currencyConfigSvc.GetAvailableFiat(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+	chains, err := h.currencyConfigSvc.GetAvailableChains(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+	defaults, err := h.currencyConfigSvc.GetAvailableDefaultChains(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, dtoresp.SystemCurrencyConfigResp{
+		CryptoCurrencies: crypto,
+		FiatCurrencies:   fiat,
+		CryptoChains:     chains,
+		DefaultChains:    defaults,
+		CatalogChains:    h.currencyConfigSvc.GetCatalogChains(),
+		AllCrypto:        append([]string(nil), currency.AllCrypto...),
+		AllFiat:          append([]string(nil), currency.AllFiat...),
+	})
+}
+
+func (h *CurrencyConfigHandler) UpdateSystemCurrencyConfig(c *gin.Context) {
+	if _, exists := c.Get("admin_id"); !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	var req dtoreq.UpdateSystemCurrencyConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	if err := h.currencyConfigSvc.UpdateGlobalConfig(
+		c.Request.Context(),
+		req.CryptoCurrencies,
+		req.FiatCurrencies,
+		req.CryptoChains,
+		req.DefaultChains,
+	); err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, nil)
 }

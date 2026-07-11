@@ -15,7 +15,7 @@ import { useDepositAddresses, useDepositOrders } from "@/lib/hooks/use-trading";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
 import { formatAmount } from "@/lib/utils/format";
 import { toCurrencyOptions } from "@/lib/utils/currency";
-import { DEPOSIT_NETWORKS, formatDepositStatus } from "@/lib/utils/network";
+import { getDepositNetworks, resolveDefaultChain, formatDepositStatus } from "@/lib/utils/network";
 
 export default function DepositPage() {
   const { data: supportedCurrencies } = useSupportedCurrencies();
@@ -29,7 +29,13 @@ export default function DepositPage() {
     if (!nextCurrency) return;
     if (!currency || !supportedCurrencies.crypto_currencies.includes(currency)) {
       setCurrency(nextCurrency);
-      setChain(DEPOSIT_NETWORKS[nextCurrency]?.[0]?.value || "");
+      const networks = getDepositNetworks(
+        nextCurrency,
+        supportedCurrencies.crypto_chains?.[nextCurrency]
+      );
+      setChain(
+        resolveDefaultChain(nextCurrency, networks, supportedCurrencies.default_chains)
+      );
     }
   }, [supportedCurrencies, currency]);
 
@@ -37,7 +43,10 @@ export default function DepositPage() {
   const { data: ordersData, isLoading: ordersLoading } = useDepositOrders(currency, chain);
 
   const orders = ordersData?.orders || [];
-  const networks = DEPOSIT_NETWORKS[currency] || [];
+  const networks = getDepositNetworks(
+    currency,
+    supportedCurrencies?.crypto_chains?.[currency]
+  );
 
   function handleCopy(text: string) {
     navigator.clipboard.writeText(text);
@@ -61,7 +70,13 @@ export default function DepositPage() {
                 value={currency}
                 onValueChange={(value) => {
                   setCurrency(value);
-                  setChain(DEPOSIT_NETWORKS[value]?.[0]?.value || "");
+                  const nextNetworks = getDepositNetworks(
+                    value,
+                    supportedCurrencies?.crypto_chains?.[value]
+                  );
+                  setChain(
+                    resolveDefaultChain(value, nextNetworks, supportedCurrencies?.default_chains)
+                  );
                 }}
                 options={currencies}
               />

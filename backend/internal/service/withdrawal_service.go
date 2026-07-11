@@ -94,6 +94,9 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 	if cryptoAddress.Currency != req.Currency {
 		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto address currency does not match withdrawal currency")
 	}
+	if err := s.currencyConfigSvc.EnsureChainSupported(ctx, merchant, cryptoAddress.Currency, cryptoAddress.Chain); err != nil {
+		return 0, err
+	}
 
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil || amount.LessThanOrEqual(decimal.Zero) {

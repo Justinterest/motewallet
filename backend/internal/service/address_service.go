@@ -17,10 +17,11 @@ import (
 )
 
 type AddressService struct {
-	kunClient       kun.KUNClient
-	merchantRepo    repository.MerchantRepository
-	cryptoAddrRepo  repository.CryptoAddressRepository
-	bankAccountRepo repository.BankAccountRepository
+	kunClient         kun.KUNClient
+	merchantRepo      repository.MerchantRepository
+	cryptoAddrRepo    repository.CryptoAddressRepository
+	bankAccountRepo   repository.BankAccountRepository
+	currencyConfigSvc *CurrencyConfigService
 }
 
 func NewAddressService(
@@ -28,12 +29,14 @@ func NewAddressService(
 	merchantRepo repository.MerchantRepository,
 	cryptoAddrRepo repository.CryptoAddressRepository,
 	bankAccountRepo repository.BankAccountRepository,
+	currencyConfigSvc *CurrencyConfigService,
 ) *AddressService {
 	return &AddressService{
-		kunClient:       kunClient,
-		merchantRepo:    merchantRepo,
-		cryptoAddrRepo:  cryptoAddrRepo,
-		bankAccountRepo: bankAccountRepo,
+		kunClient:         kunClient,
+		merchantRepo:      merchantRepo,
+		cryptoAddrRepo:    cryptoAddrRepo,
+		bankAccountRepo:   bankAccountRepo,
+		currencyConfigSvc: currencyConfigSvc,
 	}
 }
 
@@ -48,6 +51,10 @@ func (s *AddressService) AddCryptoAddress(ctx context.Context, merchantID uint64
 
 	if merchant.KunSubCustomerNo == nil {
 		return nil, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureChainSupported(ctx, merchant, req.Currency, req.Chain); err != nil {
+		return nil, err
 	}
 
 	var kunResp kundto.CryptoAddressAddResp
@@ -136,7 +143,7 @@ func (s *AddressService) DeleteCryptoAddress(ctx context.Context, merchantID uin
 		RequestNo: kun.GenerateRequestNo(),
 		AccountId: *addr.KunAccountID,
 		Currency:  addr.Currency,
-	}, &struct{}{}); err != nil {
+	}, nil); err != nil {
 		slog.Error("KUN delete crypto address failed", slog.Any("error", err))
 		return bizerrors.ErrKUNAPIFailedE
 	}
@@ -155,6 +162,10 @@ func (s *AddressService) AddBankAccount(ctx context.Context, merchantID uint64, 
 
 	if merchant.KunSubCustomerNo == nil {
 		return nil, bizerrors.ErrMerchantNotRegisteredE
+	}
+
+	if err := s.currencyConfigSvc.EnsureCurrencySupported(ctx, merchant, req.Currency); err != nil {
+		return nil, err
 	}
 
 	if err := validateBankAccountBindReq(req); err != nil {
@@ -291,7 +302,7 @@ func (s *AddressService) DeleteBankAccount(ctx context.Context, merchantID uint6
 		RequestNo: kun.GenerateRequestNo(),
 		AccountId: *account.KunAccountID,
 		Currency:  account.CurrencyList,
-	}, &struct{}{})
+	}, nil)
 	if err != nil {
 		slog.Error("KUN unbind bank account failed", slog.Any("error", err))
 		return bizerrors.ErrKUNAPIFailedE

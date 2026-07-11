@@ -112,7 +112,7 @@ func main() {
 	onboardingService := service.NewOnboardingService(cfg, merchantRepo, merchantKycSubmissionRepo, walletService, kycFileService, kunClient)
 	feeTemplateService := service.NewFeeTemplateService(db, feeTemplateRepo, exchangeItemRepo, cryptoWithdrawalItemRepo, fiatWithdrawalItemRepo, auditLogRepo)
 	merchantMgmtService := service.NewMerchantManagementService(db, merchantRepo, merchantWalletRepo, feeTemplateRepo, auditLogRepo, depositOrderRepo, transactionRecordRepo, walletService, currencyConfigService, kunClient)
-	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo)
+	addressService := service.NewAddressService(kunClient, merchantRepo, cryptoAddressRepo, bankAccountRepo, currencyConfigService)
 	depositService := service.NewDepositService(kunClient, merchantRepo, currencyConfigService)
 	adminDepositService := service.NewAdminDepositService(depositOrderRepo)
 	adminWithdrawalService := service.NewAdminWithdrawalService(withdrawalOrderRepo)

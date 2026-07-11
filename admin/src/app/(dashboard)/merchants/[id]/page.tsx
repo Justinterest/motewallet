@@ -67,6 +67,7 @@ import { formatAmount } from "@/lib/utils/format";
 import { toast } from "@/hooks/use-toast";
 import type { KUNWalletBalance, MerchantWallet } from "@/types/merchant";
 import { Switch } from "@/components/ui/switch";
+import { formatChainLabel } from "@/lib/utils/chain";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -223,6 +224,8 @@ export default function MerchantDetailPage({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedCrypto, setSelectedCrypto] = useState<string[]>([]);
   const [selectedFiat, setSelectedFiat] = useState<string[]>([]);
+  const [selectedChains, setSelectedChains] = useState<Record<string, string[]>>({});
+  const [defaultChains, setDefaultChains] = useState<Record<string, string>>({});
   const [kunBalances, setKunBalances] = useState<KUNWalletBalance[]>([]);
   const [kunSyncedAt, setKunSyncedAt] = useState<string | null>(null);
   const [depositsSyncedAt, setDepositsSyncedAt] = useState<string | null>(null);
@@ -232,6 +235,8 @@ export default function MerchantDetailPage({
     if (!merchant) return;
     setSelectedCrypto(merchant.supported_crypto_currencies ?? []);
     setSelectedFiat(merchant.supported_fiat_currencies ?? []);
+    setSelectedChains(merchant.supported_crypto_chains ?? {});
+    setDefaultChains(merchant.default_crypto_chains ?? {});
   }, [merchant]);
 
   const handleFreezeToggle = () => {
@@ -276,6 +281,27 @@ export default function MerchantDetailPage({
       return;
     }
     setSelected([...selected, currency]);
+    if (!selectedChains[currency]?.length) {
+      const available = merchant?.available_crypto_chains?.[currency] ?? [];
+      if (available.length > 0) {
+        setSelectedChains({ ...selectedChains, [currency]: available });
+        setDefaultChains({
+          ...defaultChains,
+          [currency]: merchant?.available_default_chains?.[currency] ?? available[0],
+        });
+      }
+    }
+  };
+
+  const toggleChain = (currency: string, chain: string) => {
+    const current = selectedChains[currency] ?? [];
+    const next = current.includes(chain)
+      ? current.filter((item) => item !== chain)
+      : [...current, chain];
+    setSelectedChains({ ...selectedChains, [currency]: next });
+    if (!next.includes(defaultChains[currency] ?? "") && next.length > 0) {
+      setDefaultChains({ ...defaultChains, [currency]: next[0] });
+    }
   };
 
   const handleSaveSupportedCurrencies = () => {
@@ -287,12 +313,28 @@ export default function MerchantDetailPage({
       });
       return;
     }
+    for (const currency of selectedCrypto) {
+      if ((selectedChains[currency] ?? []).length === 0) {
+        toast({
+          title: "保存失败",
+          description: `${currency} 至少需要选择一条支持链`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     updateSupportedCurrenciesMutation.mutate(
-      { id, crypto_currencies: selectedCrypto, fiat_currencies: selectedFiat },
+      {
+        id,
+        crypto_currencies: selectedCrypto,
+        fiat_currencies: selectedFiat,
+        crypto_chains: selectedChains,
+        default_chains: defaultChains,
+      },
       {
         onSuccess: () => {
-          toast({ title: "币种配置已保存" });
+          toast({ title: "币种与链配置已保存" });
         },
         onError: (error) => {
           toast({ title: "保存失败", description: error.message, variant: "destructive" });
@@ -908,12 +950,60 @@ export default function MerchantDetailPage({
             </div>
           </div>
 
+          <Separator />
+
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-slate-700">数字货币支持链与默认链</p>
+            {selectedCrypto.map((currency) => {
+              const available = merchant.available_crypto_chains?.[currency] ?? [];
+              const enabled = selectedChains[currency] ?? [];
+              return (
+                <div key={currency} className="space-y-3 rounded-lg border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-800">{currency}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">默认链</span>
+                      <Select
+                        value={defaultChains[currency] || enabled[0] || ""}
+                        onValueChange={(value) =>
+                          setDefaultChains({ ...defaultChains, [currency]: value })
+                        }
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="选择默认链" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {enabled.map((chain) => (
+                            <SelectItem key={chain} value={chain}>
+                              {formatChainLabel(chain)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                    {available.map((chain) => (
+                      <div key={chain} className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-sm">{formatChainLabel(chain)}</span>
+                        <Switch
+                          checked={enabled.includes(chain)}
+                          onCheckedChange={() => toggleChain(currency, chain)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           <div className="flex justify-end">
             <Button
               onClick={handleSaveSupportedCurrencies}
               disabled={updateSupportedCurrenciesMutation.isPending}
             >
-              {updateSupportedCurrenciesMutation.isPending ? "保存中..." : "保存币种配置"}
+              {updateSupportedCurrenciesMutation.isPending ? "保存中..." : "保存币种与链配置"}
             </Button>
           </div>
         </CardContent>

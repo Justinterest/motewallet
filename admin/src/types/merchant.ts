@@ -45,6 +45,11 @@ export interface AdminMerchantDetail extends AdminMerchant {
   kyc_fail_reason?: string;
   supported_crypto_currencies: string[];
   supported_fiat_currencies: string[];
+  supported_crypto_chains: Record<string, string[]>;
+  default_crypto_chains: Record<string, string>;
   available_crypto_currencies: string[];
   available_fiat_currencies: string[];
+  available_crypto_chains: Record<string, string[]>;
+  available_default_chains: Record<string, string>;
+  catalog_chains: Record<string, string[]>;
 }

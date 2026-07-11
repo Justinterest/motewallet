@@ -58,11 +58,21 @@ export function useUpdateMerchantSupportedCurrencies() {
       id,
       crypto_currencies,
       fiat_currencies,
+      crypto_chains,
+      default_chains,
     }: {
       id: number;
       crypto_currencies: string[];
       fiat_currencies: string[];
-    }) => merchantApi.updateSupportedCurrencies(id, { crypto_currencies, fiat_currencies }),
+      crypto_chains: Record<string, string[]>;
+      default_chains: Record<string, string>;
+    }) =>
+      merchantApi.updateSupportedCurrencies(id, {
+        crypto_currencies,
+        fiat_currencies,
+        crypto_chains,
+        default_chains,
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["merchants"] }),
   });
 }

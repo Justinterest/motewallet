@@ -10,6 +10,8 @@ type Merchant struct {
 	FeeTemplateID             *uint64    `gorm:"column:fee_template_id;index:idx_merchants_fee_template_id" json:"fee_template_id,omitempty"`
 	SupportedCryptoCurrencies *string    `gorm:"column:supported_crypto_currencies;type:varchar(128)" json:"supported_crypto_currencies,omitempty"`
 	SupportedFiatCurrencies   *string    `gorm:"column:supported_fiat_currencies;type:varchar(128)" json:"supported_fiat_currencies,omitempty"`
+	SupportedCryptoChains     *string    `gorm:"column:supported_crypto_chains;type:text" json:"supported_crypto_chains,omitempty"`
+	DefaultCryptoChains       *string    `gorm:"column:default_crypto_chains;type:text" json:"default_crypto_chains,omitempty"`
 	Status                    string     `gorm:"column:status;type:varchar(20);not null;default:PENDING_AGREEMENT;index:idx_merchants_status" json:"status"`
 	KycAuthID         *string    `gorm:"column:kyc_auth_id;type:varchar(128)" json:"kyc_auth_id,omitempty"`
 	KycStatus         string     `gorm:"column:kyc_status;type:varchar(20);not null;default:NONE;index:idx_merchants_kyc_status" json:"kyc_status"`

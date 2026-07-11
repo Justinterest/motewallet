@@ -48,6 +48,10 @@
 | password_hash | VARCHAR(255) | NOT NULL | bcrypt 密码哈希 |
 | kun_sub_customer_no | VARCHAR(64) | UNIQUE | KUN 子商户号 |
 | fee_template_id | BIGINT UNSIGNED | FK → fee_templates | 绑定的手续费模板 |
+| supported_crypto_currencies | VARCHAR(128) | NULL | 商户支持的数币 CSV；NULL = 继承系统默认 |
+| supported_fiat_currencies | VARCHAR(128) | NULL | 商户支持的法币 CSV；NULL = 继承系统默认 |
+| supported_crypto_chains | TEXT | NULL | 商户支持的链 JSON `{USDT:[...]}`；NULL = 继承系统默认 |
+| default_crypto_chains | TEXT | NULL | 商户默认链 JSON `{USDT:"TRX_TRC20"}`；NULL = 继承系统默认 |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'PENDING_AGREEMENT' | 商户状态 |
 | kyc_auth_id | VARCHAR(128) | | KUN KYC 认证 ID |
 | kyc_status | VARCHAR(20) | DEFAULT 'NONE' | KYC 状态 |
@@ -436,6 +440,12 @@ KUN Webhook 回调
 | description | VARCHAR(255) | | 描述 |
 | created_at | DATETIME(3) | | |
 | updated_at | DATETIME(3) | | |
+
+**币种相关配置键：**
+- `supported_crypto_currencies` — 全局默认数币列表（CSV）
+- `supported_fiat_currencies` — 全局默认法币列表（CSV）
+- `supported_crypto_chains` — 全局默认支持链（JSON：`{"USDT":["ETH_ERC20","TRX_TRC20",...]}`）
+- `default_crypto_chains` — 全局默认选中链（JSON：`{"USDT":"TRX_TRC20"}`）
 
 ---
 

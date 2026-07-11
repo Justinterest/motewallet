@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -20,6 +21,10 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "transfer", label: "划转" },
 ];
 
+function isTabKey(value: string | null): value is TabKey {
+  return value === "deposit" || value === "withdrawal" || value === "exchange" || value === "transfer";
+}
+
 const statusColors: Record<string, string> = {
   COMPLETED: "bg-green-50 text-green-700",
   FAILED: "bg-red-50 text-red-700",
@@ -28,7 +33,15 @@ const statusColors: Record<string, string> = {
 };
 
 export default function TransactionsPage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabKey>("deposit");
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (isTabKey(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const { data: depositData, isLoading: depositLoading } = useDepositOrders();
   const { data: withdrawalData, isLoading: withdrawalLoading } = useWithdrawalOrders();
