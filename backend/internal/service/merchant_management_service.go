@@ -336,17 +336,32 @@ func (s *MerchantManagementService) UpdateSupportedCurrencies(ctx context.Contex
 	}
 
 	s.logAudit(ctx, adminID, "UPDATE_MERCHANT_SUPPORTED_CURRENCIES", "Merchant", fmt.Sprintf("%d", merchantID), map[string]interface{}{
-		"old_crypto":          merchant.SupportedCryptoCurrencies,
-		"old_fiat":            merchant.SupportedFiatCurrencies,
-		"old_chains":          merchant.SupportedCryptoChains,
-		"old_default_chains":  merchant.DefaultCryptoChains,
-		"new_crypto":          selectedCrypto,
-		"new_fiat":            selectedFiat,
-		"new_chains":          selectedChains,
-		"new_default_chains":  selectedDefaults,
+		"old_crypto":         merchant.SupportedCryptoCurrencies,
+		"old_fiat":           merchant.SupportedFiatCurrencies,
+		"old_chains":         merchant.SupportedCryptoChains,
+		"old_default_chains": merchant.DefaultCryptoChains,
+		"new_crypto":         selectedCrypto,
+		"new_fiat":           selectedFiat,
+		"new_chains":         selectedChains,
+		"new_default_chains": selectedDefaults,
 	})
 
 	return nil
+}
+
+func (s *MerchantManagementService) ListLedger(
+	ctx context.Context,
+	merchantID uint64,
+	accountType, currency, bizType, entryType string,
+	page, pageSize int,
+) (*dtoresp.WalletLedgerListResp, error) {
+	if _, err := s.merchantRepo.FindByID(ctx, merchantID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerrors.ErrNotFoundError
+		}
+		return nil, bizerrors.ErrInternalError
+	}
+	return s.walletSvc.ListLedger(ctx, merchantID, accountType, currency, bizType, entryType, page, pageSize)
 }
 
 func (s *MerchantManagementService) logAudit(ctx context.Context, operatorID uint64, action, targetType, targetID string, detail interface{}) {

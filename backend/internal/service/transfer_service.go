@@ -96,10 +96,6 @@ func (s *TransferService) Transfer(ctx context.Context, merchantID uint64, req *
 	var txRecordID uint64
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, req.FromAccountType, req.Currency, amount); err != nil {
-			return err
-		}
-
 		platformOrderID := utils.GeneratePlatformOrderID("TR")
 		txRecord := &model.TransactionRecord{
 			PlatformOrderID: platformOrderID,
@@ -123,6 +119,11 @@ func (s *TransferService) Transfer(ctx context.Context, merchantID uint64, req *
 			KunRequestNo:        &requestNo,
 		}
 		if err := tx.WithContext(ctx).Create(transferOrder).Error; err != nil {
+			return err
+		}
+
+		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "TRANSFER"}
+		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, req.FromAccountType, req.Currency, amount, ref); err != nil {
 			return err
 		}
 
@@ -187,13 +188,14 @@ func (s *TransferService) SettleFromWebhook(ctx context.Context, requestNo, orde
 
 	amount := txRecord.Amount
 
+	ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "TRANSFER"}
 	switch orderStatus {
 	case "SUCCESS":
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, order.FromAccountType, txRecord.Currency, amount); err != nil {
+			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, order.FromAccountType, txRecord.Currency, amount, ref); err != nil {
 				return err
 			}
-			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, order.ToAccountType, txRecord.Currency, amount); err != nil {
+			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, order.ToAccountType, txRecord.Currency, amount, ref); err != nil {
 				return err
 			}
 			return tx.WithContext(ctx).Model(&model.TransactionRecord{}).
@@ -202,7 +204,7 @@ func (s *TransferService) SettleFromWebhook(ctx context.Context, requestNo, orde
 		})
 	case "FAIL":
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, order.FromAccountType, txRecord.Currency, amount); err != nil {
+			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, order.FromAccountType, txRecord.Currency, amount, ref); err != nil {
 				return err
 			}
 			return tx.WithContext(ctx).Model(&model.TransactionRecord{}).
@@ -218,7 +220,8 @@ func (s *TransferService) SettleFromWebhook(ctx context.Context, requestNo, orde
 
 func (s *TransferService) rollbackTransfer(ctx context.Context, txRecordID, merchantID uint64, fromAccountType, currency string, amount decimal.Decimal) {
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.walletSvc.UnfreezeBalance(ctx, tx, merchantID, fromAccountType, currency, amount); err != nil {
+		ref := WalletChangeRef{TransactionRecordID: txRecordID, BizType: "TRANSFER", Remark: "rollback after KUN failure"}
+		if err := s.walletSvc.UnfreezeBalance(ctx, tx, merchantID, fromAccountType, currency, amount, ref); err != nil {
 			return err
 		}
 		return tx.WithContext(ctx).Model(&model.TransactionRecord{}).

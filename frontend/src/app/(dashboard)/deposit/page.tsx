@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -55,15 +56,17 @@ export default function DepositPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">充值</h1>
+    <div className="flex flex-col gap-6 md:h-[calc(100dvh-7.5rem)] md:min-h-0">
+      <div className="shrink-0">
+        <h1 className="text-2xl font-bold text-slate-900">充值</h1>
+      </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
+      <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-2">
+        <Card className="flex min-h-0 flex-col overflow-hidden">
+          <CardHeader className="shrink-0">
             <CardTitle className="text-base">充值地址</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">币种</label>
               <SimpleSelect
@@ -121,11 +124,20 @@ export default function DepositPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">充值记录</CardTitle>
+        <Card className="flex min-h-0 flex-col overflow-hidden">
+          <CardHeader className="shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">充值记录</CardTitle>
+              <Link
+                href="/transactions?tab=deposit"
+                className="inline-flex items-center text-sm font-medium text-primary hover:underline"
+              >
+                查看更多
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             {ordersLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />

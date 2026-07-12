@@ -10,11 +10,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useDepositOrders, useWithdrawalOrders, useExchangeOrders, useTransferOrders } from "@/lib/hooks/use-trading";
+import { useWalletLedger } from "@/lib/hooks/use-wallet";
 import { formatAmount } from "@/lib/utils/format";
+import type { WalletLedgerEntry } from "@/types/wallet";
 
-type TabKey = "deposit" | "withdrawal" | "exchange" | "transfer";
+type TabKey = "ledger" | "deposit" | "withdrawal" | "exchange" | "transfer";
 
 const tabs: { key: TabKey; label: string }[] = [
+  { key: "ledger", label: "资金变化" },
   { key: "deposit", label: "充值" },
   { key: "withdrawal", label: "提现" },
   { key: "exchange", label: "兑换" },
@@ -22,7 +25,13 @@ const tabs: { key: TabKey; label: string }[] = [
 ];
 
 function isTabKey(value: string | null): value is TabKey {
-  return value === "deposit" || value === "withdrawal" || value === "exchange" || value === "transfer";
+  return (
+    value === "ledger" ||
+    value === "deposit" ||
+    value === "withdrawal" ||
+    value === "exchange" ||
+    value === "transfer"
+  );
 }
 
 const statusColors: Record<string, string> = {
@@ -32,9 +41,42 @@ const statusColors: Record<string, string> = {
   PENDING: "bg-slate-100 text-slate-600",
 };
 
+const entryTypeLabels: Record<string, string> = {
+  CREDIT: "入账",
+  FREEZE: "冻结",
+  UNFREEZE: "解冻",
+  DEDUCT_FROZEN: "扣款",
+};
+
+const bizTypeLabels: Record<string, string> = {
+  DEPOSIT: "充值",
+  WITHDRAWAL: "提现",
+  EXCHANGE: "兑换",
+  TRANSFER: "划转",
+};
+
+const accountTypeLabels: Record<string, string> = {
+  FUNDING: "资金账户",
+  TRADING: "交易账户",
+};
+
+function formatSignedAmount(entry: WalletLedgerEntry): { text: string; className: string } {
+  const amount = formatAmount(entry.amount, entry.currency);
+  switch (entry.entry_type) {
+    case "CREDIT":
+    case "UNFREEZE":
+      return { text: `+${amount}`, className: "text-green-700" };
+    case "DEDUCT_FROZEN":
+    case "FREEZE":
+      return { text: `-${amount}`, className: "text-red-700" };
+    default:
+      return { text: amount, className: "text-slate-900" };
+  }
+}
+
 export default function TransactionsPage() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabKey>("deposit");
+  const [activeTab, setActiveTab] = useState<TabKey>("ledger");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -43,6 +85,10 @@ export default function TransactionsPage() {
     }
   }, [searchParams]);
 
+  const { data: ledgerData, isLoading: ledgerLoading } = useWalletLedger(
+    { page: 1, page_size: 50 },
+    activeTab === "ledger",
+  );
   const { data: depositData, isLoading: depositLoading } = useDepositOrders();
   const { data: withdrawalData, isLoading: withdrawalLoading } = useWithdrawalOrders();
   const { data: exchangeData, isLoading: exchangeLoading } = useExchangeOrders();
@@ -50,6 +96,51 @@ export default function TransactionsPage() {
 
   function renderContent() {
     switch (activeTab) {
+      case "ledger": {
+        const entries = ledgerData?.entries || [];
+        if (ledgerLoading) return <LoadingSkeleton />;
+        if (entries.length === 0) return <EmptyState />;
+        return entries.map((entry) => {
+          const signed = formatSignedAmount(entry);
+          const biz = entry.biz_type ? bizTypeLabels[entry.biz_type] || entry.biz_type : null;
+          return (
+            <div
+              key={entry.id}
+              className="flex items-start justify-between gap-4 rounded-lg border p-3"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-slate-900">
+                    {entryTypeLabels[entry.entry_type] || entry.entry_type}
+                  </p>
+                  <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                    {accountTypeLabels[entry.account_type] || entry.account_type}
+                  </Badge>
+                  {biz && (
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                      {biz}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  {entry.currency} · 余额 {formatAmount(entry.balance_before, entry.currency)} →{" "}
+                  {formatAmount(entry.balance_after, entry.currency)}
+                  {" · "}冻结 {formatAmount(entry.frozen_before, entry.currency)} →{" "}
+                  {formatAmount(entry.frozen_after, entry.currency)}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {new Date(entry.created_at).toLocaleString("zh-CN")}
+                  {entry.platform_order_id ? ` · ${entry.platform_order_id}` : ""}
+                  {entry.remark ? ` · ${entry.remark}` : ""}
+                </p>
+              </div>
+              <p className={`shrink-0 text-sm font-semibold ${signed.className}`}>
+                {signed.text} {entry.currency}
+              </p>
+            </div>
+          );
+        });
+      }
       case "deposit": {
         const orders = depositData?.orders || [];
         if (depositLoading) return <LoadingSkeleton />;
@@ -111,7 +202,7 @@ export default function TransactionsPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {tabs.map((tab) => (
               <button
                 key={tab.key}

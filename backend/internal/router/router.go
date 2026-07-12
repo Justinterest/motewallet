@@ -89,6 +89,7 @@ func Setup(
 	account.Use(middleware.JWTAuth(cfg.JWT.Secret))
 	{
 		account.GET("/balances", walletHandler.GetBalances)
+		account.GET("/ledger", walletHandler.ListLedger)
 		account.GET("/supported-currencies", currencyConfigHandler.GetSupportedCurrencies)
 		account.POST("/transfer", transferHandler.Transfer)
 		account.GET("/transfers", transferHandler.ListTransfers)
@@ -156,6 +157,7 @@ func Setup(
 		adminMerchants.PUT("/:id/supported-currencies", merchantMgmtHandler.UpdateSupportedCurrencies)
 		adminMerchants.POST("/:id/sync-kun-balances", merchantMgmtHandler.SyncKUNBalances)
 		adminMerchants.POST("/:id/sync-deposits", merchantMgmtHandler.SyncDeposits)
+		adminMerchants.GET("/:id/ledger", merchantMgmtHandler.ListLedger)
 		adminMerchants.POST("/:id/kyc/approve", merchantMgmtHandler.ApproveKyc)
 		adminMerchants.POST("/:id/kyc/reject", merchantMgmtHandler.RejectKyc)
 	}

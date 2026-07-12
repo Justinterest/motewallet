@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { AdminMerchant, AdminMerchantDetail, SyncDepositsResponse, SyncKUNBalancesResponse } from "@/types/merchant";
+import type { AdminMerchant, AdminMerchantDetail, SyncDepositsResponse, SyncKUNBalancesResponse, WalletLedgerListResponse } from "@/types/merchant";
 import type { PaginatedData } from "@/types/api";
 
 export const merchantApi = {
@@ -28,4 +28,16 @@ export const merchantApi = {
     apiClient.post<never, SyncKUNBalancesResponse>(`/api/v1/admin/merchants/${id}/sync-kun-balances`),
   syncDeposits: (id: number) =>
     apiClient.post<never, SyncDepositsResponse>(`/api/v1/admin/merchants/${id}/sync-deposits`),
+  getLedger: (
+    id: number,
+    params?: {
+      page?: number;
+      page_size?: number;
+      account_type?: string;
+      currency?: string;
+      biz_type?: string;
+      entry_type?: string;
+    },
+  ) =>
+    apiClient.get<never, WalletLedgerListResponse>(`/api/v1/admin/merchants/${id}/ledger`, { params }),
 };

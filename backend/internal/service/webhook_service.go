@@ -219,7 +219,8 @@ func (s *WebhookService) handleCryptoDeposit(ctx context.Context, event *kundto.
 			return err
 		}
 
-		return s.walletSvc.CreditBalance(ctx, tx, merchant.ID, "FUNDING", data.Currency, amount)
+		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "DEPOSIT"}
+		return s.walletSvc.CreditBalance(ctx, tx, merchant.ID, "FUNDING", data.Currency, amount, ref)
 	})
 }
 
@@ -246,11 +247,12 @@ func (s *WebhookService) handleCryptoWithdrawal(ctx context.Context, event *kund
 
 	kunFee, _ := decimal.NewFromString(data.FeeAmount)
 	totalFrozen := txRecord.Amount.Add(txRecord.PlatformFee)
+	ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL"}
 
 	switch data.OrderStatus {
 	case "SUCCESS":
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen); err != nil {
+			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen, ref); err != nil {
 				return err
 			}
 			if err := s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "COMPLETED"); err != nil {
@@ -263,7 +265,7 @@ func (s *WebhookService) handleCryptoWithdrawal(ctx context.Context, event *kund
 		})
 	case "FAIL":
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen); err != nil {
+			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen, ref); err != nil {
 				return err
 			}
 			return s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "FAILED")
@@ -298,11 +300,12 @@ func (s *WebhookService) handleFiatWithdrawal(ctx context.Context, event *kundto
 
 	kunFee, _ := decimal.NewFromString(data.FeeAmount)
 	totalFrozen := txRecord.Amount.Add(txRecord.PlatformFee)
+	ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL"}
 
 	switch data.OrderStatus {
 	case "SUCCESS":
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen); err != nil {
+			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen, ref); err != nil {
 				return err
 			}
 			if err := s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "COMPLETED"); err != nil {
@@ -314,7 +317,7 @@ func (s *WebhookService) handleFiatWithdrawal(ctx context.Context, event *kundto
 		})
 	case "FAIL":
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen); err != nil {
+			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen, ref); err != nil {
 				return err
 			}
 			return s.transactionRecordRepo.UpdateStatus(ctx, txRecord.ID, "FAILED")

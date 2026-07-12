@@ -94,3 +94,21 @@ export function useSyncDeposits() {
     },
   });
 }
+
+export function useMerchantLedger(
+  id: number,
+  params?: {
+    page?: number;
+    page_size?: number;
+    account_type?: string;
+    currency?: string;
+    biz_type?: string;
+    entry_type?: string;
+  },
+) {
+  return useQuery({
+    queryKey: ["merchants", id, "ledger", params],
+    queryFn: () => merchantApi.getLedger(id, params),
+    enabled: !!id,
+  });
+}

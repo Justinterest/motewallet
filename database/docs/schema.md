@@ -4,6 +4,10 @@
 
 - **金额存储**：使用 `DECIMAL(28,8)` 统一存储所有币种金额，支持法币（2 位小数）和数字货币（BTC 8 位小数）
   - 选择 DECIMAL 而非 BIGINT 的原因：平台同时处理法币和加密货币，精度需求不同（USD 2 位 vs BTC 8 位），使用 DECIMAL 可避免应用层对不同币种做不同的倍率转换
+- **资金分层**：
+  - `merchant_wallets` — 当前余额快照（balance / frozen_balance）
+  - `wallet_ledger` — 钱包变动账本（每次余额/冻结变更一行，含变动前后余额，只追加）
+  - `transaction_records` + `*_orders` — 业务流水与业务明细（商户交易列表、手续费、审核等）
 - **软删除**：使用 `deleted_at` 字段（DATETIME(3) NULL）
 - **时间精度**：统一 `DATETIME(3)` 毫秒级
 - **字符集**：`utf8mb4_unicode_ci`
@@ -12,7 +16,7 @@
 
 ## 表清单
 
-所有表在 `000001_init_schema.up.sql` 中统一创建。
+核心表在 `000001_init_schema.up.sql` 中创建；后续变更见后续 migration。
 
 | # | 表名 | 描述 |
 |---|------|------|
@@ -21,10 +25,10 @@
 | 3 | fee_template_exchange_items | 兑换手续费配置 |
 | 4 | fee_template_crypto_withdrawal_items | 数币提现手续费配置 |
 | 5 | fee_template_fiat_withdrawal_items | 法币提现手续费配置 |
-| 6 | merchant_wallets | 商户钱包余额 |
+| 6 | merchant_wallets | 商户钱包余额（当前快照） |
 | 7 | crypto_addresses | 数币提现白名单地址 |
 | 8 | bank_accounts | 法币提现银行账户 |
-| 9 | transaction_records | 平台资金流水账本（纯账本） |
+| 9 | transaction_records | 平台业务资金流水 |
 | 10 | admin_users | 管理员账号 |
 | 11 | audit_logs | 操作审计日志 |
 | 12 | system_configs | 系统配置（KV） |
@@ -34,6 +38,7 @@
 | 16 | withdrawal_orders | 提现订单（审核、目标、链上信息） |
 | 17 | exchange_orders | 兑换订单 |
 | 18 | transfer_orders | 划转订单 |
+| 19 | wallet_ledger | 钱包资金变动账本（只追加） |
 
 ---
 
@@ -146,9 +151,11 @@
 
 ---
 
-### 6. transaction_records（平台资金流水账本）
+### 6. transaction_records（平台业务资金流水）
 
-纯账本层，统一记录所有类型的金额变动。不包含任何业务类型专有字段——具体业务数据在各 `*_orders` 表中。
+业务流水层，统一记录充值/提现/兑换/划转等业务订单摘要。不包含任何业务类型专有字段——具体业务数据在各 `*_orders` 表中。
+
+**注意：** 钱包余额/冻结的每一次变动记录在 `wallet_ledger`，不在本表。一笔业务流水可对应多条钱包账本（如提现：FREEZE → DEDUCT_FROZEN 或 UNFREEZE）。
 
 | 字段 | 类型 | 约束 | 说明 |
 |------|------|------|------|
@@ -476,6 +483,53 @@ KUN Webhook 回调
 - 提现从 FUNDING 账户扣款，处理中金额记入 frozen_balance
 - 兑换前需先从 FUNDING 划转到 TRADING
 - 余额变动使用乐观锁（version 字段）防并发
+- **所有** balance / frozen_balance 变更必须经 `WalletService`，并在同一事务写入 `wallet_ledger`
+
+---
+
+### 13b. wallet_ledger（钱包资金变动账本）
+
+只追加的钱包变动明细。用于对账、审计、按变动前后余额重建钱包状态。Migration：`000006_create_wallet_ledger.up.sql`。
+
+| 字段 | 类型 | 约束 | 说明 |
+|------|------|------|------|
+| id | BIGINT UNSIGNED | PK | |
+| merchant_id | BIGINT UNSIGNED | FK → merchants, NOT NULL | 商户 ID |
+| wallet_id | BIGINT UNSIGNED | FK → merchant_wallets, NOT NULL | 钱包行 ID |
+| account_type | VARCHAR(10) | NOT NULL | FUNDING / TRADING |
+| currency | VARCHAR(10) | NOT NULL | 币种 |
+| entry_type | VARCHAR(20) | NOT NULL | 变动类型 |
+| amount | DECIMAL(28,8) | NOT NULL, CHECK > 0 | 变动金额（正数） |
+| balance_before | DECIMAL(28,8) | NOT NULL | 变动前余额 |
+| balance_after | DECIMAL(28,8) | NOT NULL | 变动后余额 |
+| frozen_before | DECIMAL(28,8) | NOT NULL | 变动前冻结 |
+| frozen_after | DECIMAL(28,8) | NOT NULL | 变动后冻结 |
+| transaction_record_id | BIGINT UNSIGNED | FK → transaction_records | 关联业务流水 |
+| biz_type | VARCHAR(20) | | DEPOSIT / WITHDRAWAL / EXCHANGE / TRANSFER |
+| remark | VARCHAR(500) | | 备注（如 rollback） |
+| created_at | DATETIME(3) | NOT NULL | 只追加，无 updated_at |
+
+**entry_type 枚举值：**
+- `CREDIT` — 入账（balance 增加）
+- `FREEZE` — 冻结（frozen_balance 增加）
+- `UNFREEZE` — 解冻（frozen_balance 减少）
+- `DEDUCT_FROZEN` — 扣减已冻结（balance 与 frozen_balance 同时减少）
+
+**写入约定：**
+1. 先创建 `transaction_records`（及对应 `*_orders`），再变更钱包
+2. 余额更新与账本插入必须在同一 DB 事务内
+3. 禁止绕过 `WalletService` 直接改 `merchant_wallets`
+
+**典型对应关系：**
+
+| 业务动作 | wallet_ledger 行 |
+|----------|------------------|
+| 充值成功 | CREDIT × 1（FUNDING） |
+| 提现提交 | FREEZE × 1 |
+| 提现成功 | DEDUCT_FROZEN × 1 |
+| 提现失败/拒绝 | UNFREEZE × 1 |
+| 划转成功 | DEDUCT_FROZEN（源账户）+ CREDIT（目标账户） |
+| 兑换成功 | DEDUCT_FROZEN（付出币种）+ CREDIT（得到币种） |
 
 ---
 

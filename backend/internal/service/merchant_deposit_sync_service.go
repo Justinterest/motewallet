@@ -199,7 +199,8 @@ func (s *MerchantManagementService) createDepositRecord(
 		}
 
 		if status == "COMPLETED" {
-			return s.walletSvc.CreditBalance(ctx, tx, merchantID, "FUNDING", record.OrderCurrency, amount)
+			ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "DEPOSIT"}
+			return s.walletSvc.CreditBalance(ctx, tx, merchantID, "FUNDING", record.OrderCurrency, amount, ref)
 		}
 		return nil
 	})
@@ -261,7 +262,8 @@ func (s *MerchantManagementService) updateExistingDepositRecord(
 			return err
 		}
 
-		return s.walletSvc.CreditBalance(ctx, tx, merchantID, "FUNDING", record.OrderCurrency, amount)
+		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "DEPOSIT"}
+		return s.walletSvc.CreditBalance(ctx, tx, merchantID, "FUNDING", record.OrderCurrency, amount, ref)
 	})
 	if err != nil {
 		return false, err

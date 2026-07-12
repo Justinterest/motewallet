@@ -56,6 +56,7 @@ import {
   useUpdateMerchantSupportedCurrencies,
   useSyncKUNBalances,
   useSyncDeposits,
+  useMerchantLedger,
   useApproveKyc,
   useRejectKyc,
 } from "@/lib/hooks/use-merchants";
@@ -210,6 +211,10 @@ export default function MerchantDetailPage({
   const updateSupportedCurrenciesMutation = useUpdateMerchantSupportedCurrencies();
   const syncKUNBalancesMutation = useSyncKUNBalances();
   const syncDepositsMutation = useSyncDeposits();
+  const { data: ledgerData, isLoading: ledgerLoading } = useMerchantLedger(id, {
+    page: 1,
+    page_size: 50,
+  });
   const { data: depositsData, isLoading: depositsLoading } = useMerchantDeposits(id);
   const { data: withdrawalsData, isLoading: withdrawalsLoading } = useMerchantWithdrawals(id);
   const { data: exchangesData, isLoading: exchangesLoading } = useAdminExchanges({ merchantId: id });
@@ -698,6 +703,91 @@ export default function MerchantDetailPage({
             <p className="mt-3 text-center text-xs text-slate-400">
               商户尚未完成 KUN 入网，无法同步 KUN 余额
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">资金变化</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ledgerLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (ledgerData?.entries?.length ?? 0) > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>时间</TableHead>
+                  <TableHead>类型</TableHead>
+                  <TableHead>账户</TableHead>
+                  <TableHead>业务</TableHead>
+                  <TableHead>币种</TableHead>
+                  <TableHead className="text-right">变动金额</TableHead>
+                  <TableHead className="text-right">余额后</TableHead>
+                  <TableHead className="text-right">冻结后</TableHead>
+                  <TableHead>订单号</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ledgerData?.entries.map((entry) => {
+                  const entryLabel =
+                    entry.entry_type === "CREDIT"
+                      ? "入账"
+                      : entry.entry_type === "FREEZE"
+                        ? "冻结"
+                        : entry.entry_type === "UNFREEZE"
+                          ? "解冻"
+                          : entry.entry_type === "DEDUCT_FROZEN"
+                            ? "扣款"
+                            : entry.entry_type;
+                  const bizLabel =
+                    entry.biz_type === "DEPOSIT"
+                      ? "充值"
+                      : entry.biz_type === "WITHDRAWAL"
+                        ? "提现"
+                        : entry.biz_type === "EXCHANGE"
+                          ? "兑换"
+                          : entry.biz_type === "TRANSFER"
+                            ? "划转"
+                            : entry.biz_type || "—";
+                  const signedPrefix =
+                    entry.entry_type === "CREDIT" || entry.entry_type === "UNFREEZE"
+                      ? "+"
+                      : entry.entry_type === "DEDUCT_FROZEN" || entry.entry_type === "FREEZE"
+                        ? "-"
+                        : "";
+                  return (
+                    <TableRow key={entry.id}>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {new Date(entry.created_at).toLocaleString("zh-CN")}
+                      </TableCell>
+                      <TableCell>{entryLabel}</TableCell>
+                      <TableCell>
+                        {entry.account_type === "FUNDING" ? "资金" : entry.account_type === "TRADING" ? "交易" : entry.account_type}
+                      </TableCell>
+                      <TableCell>{bizLabel}</TableCell>
+                      <TableCell>{entry.currency}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {signedPrefix}
+                        {formatAmount(entry.amount, entry.currency)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatAmount(entry.balance_after, entry.currency)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatAmount(entry.frozen_after, entry.currency)}
+                      </TableCell>
+                      <TableCell className="max-w-[160px] truncate font-mono text-xs text-slate-500">
+                        {entry.platform_order_id || "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="py-4 text-center text-sm text-slate-400">暂无资金变化记录</p>
           )}
         </CardContent>
       </Card>

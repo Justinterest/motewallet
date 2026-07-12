@@ -167,7 +167,7 @@ export default function DashboardPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">最近交易</h2>
           <Link
-            href="/transactions"
+            href="/transactions?tab=ledger"
             className="inline-flex items-center text-sm font-medium text-primary hover:underline"
           >
             查看全部

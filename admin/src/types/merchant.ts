@@ -25,6 +25,30 @@ export interface SyncDepositsResponse {
   synced_at: string;
 }
 
+export interface WalletLedgerEntry {
+  id: number;
+  account_type: string;
+  currency: string;
+  entry_type: string;
+  amount: string;
+  balance_before: string;
+  balance_after: string;
+  frozen_before: string;
+  frozen_after: string;
+  transaction_record_id?: number;
+  platform_order_id?: string;
+  biz_type?: string;
+  remark?: string;
+  created_at: string;
+}
+
+export interface WalletLedgerListResponse {
+  entries: WalletLedgerEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 export interface AdminMerchant {
   id: number;
   email: string;

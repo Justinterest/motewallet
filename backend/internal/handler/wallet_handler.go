@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	bizerrors "motewallet/internal/pkg/errors"
@@ -27,6 +28,38 @@ func (h *WalletHandler) GetBalances(c *gin.Context) {
 	}
 
 	result, err := h.walletService.GetBalances(c.Request.Context(), userID.(uint64))
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	response.Success(c, result)
+}
+
+func (h *WalletHandler) ListLedger(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	result, err := h.walletService.ListLedger(
+		c.Request.Context(),
+		userID.(uint64),
+		c.Query("account_type"),
+		c.Query("currency"),
+		c.Query("biz_type"),
+		c.Query("entry_type"),
+		page,
+		pageSize,
+	)
 	if err != nil {
 		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
 			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)

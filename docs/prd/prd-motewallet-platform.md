@@ -523,6 +523,7 @@ Motewallet 是一个面向商户的钱包管理平台，对接 KUN（鲲）KUN-S
 - [ ] AC-2: Webhook 回调时同步更新流水状态
 - [ ] AC-3: 平台手续费按商户绑定的模板实时计算
 - [ ] AC-4: 支持后台导出对账报表
+- [ ] AC-5: 每次钱包余额/冻结变动写入 `wallet_ledger`（含变动前后余额、关联 `transaction_record_id`），与业务流水同事务提交
 
 **优先级：** Must Have
 
@@ -818,7 +819,8 @@ FeeTemplate（手续费模板）
 | FeeTemplateExchange | 兑换手续费配置（币对、费率、最低手续费） |
 | FeeTemplateCryptoWithdrawal | 数币提现手续费配置（币种、链、费率、固定费用） |
 | FeeTemplateFiatWithdrawal | 法币提现手续费配置（币种、转账类型、费率、固定费用） |
-| TransactionRecord | **平台资金流水**（所有交易的统一记录，含平台手续费和 KUN 手续费） |
+| TransactionRecord | **平台业务资金流水**（充值/兑换/提现/划转的统一业务记录，含平台手续费） |
+| WalletLedger | **钱包资金变动账本**（每次余额/冻结变更一行，含变动前后余额，关联 TransactionRecord） |
 | CryptoAddress | 数币白名单地址（平台记录） |
 | BankAccount | 法币提现银行账户（平台记录） |
 | WebhookLog | Webhook 回调日志（原始数据存档） |
@@ -889,6 +891,7 @@ FeeTemplate（手续费模板）
 | 方法 | 路径 | 描述 |
 |------|------|------|
 | GET | /api/v1/account/balances | 查询所有余额（资金账户+交易账户） |
+| GET | /api/v1/account/ledger | 查询钱包资金变化（wallet_ledger） |
 | POST | /api/v1/account/transfer | 资金划转（资金账户↔交易账户） |
 | GET | /api/v1/account/transfers | 划转记录 |
 

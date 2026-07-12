@@ -110,10 +110,6 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 	var orderID uint64
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, "FUNDING", req.Currency, totalDeduction); err != nil {
-			return err
-		}
-
 		platformOrderID := utils.GeneratePlatformOrderID("WD")
 		txRecord := &model.TransactionRecord{
 			PlatformOrderID: platformOrderID,
@@ -139,6 +135,11 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 			ReviewStatus:        "PENDING_REVIEW",
 		}
 		if err := tx.WithContext(ctx).Create(withdrawalOrder).Error; err != nil {
+			return err
+		}
+
+		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL"}
+		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, "FUNDING", req.Currency, totalDeduction, ref); err != nil {
 			return err
 		}
 
@@ -290,10 +291,6 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 	var orderID uint64
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, "FUNDING", req.Currency, totalDeduction); err != nil {
-			return err
-		}
-
 		platformOrderID := utils.GeneratePlatformOrderID("WD")
 		txRecord := &model.TransactionRecord{
 			PlatformOrderID: platformOrderID,
@@ -321,6 +318,11 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 			ReviewStatus:        "PENDING_REVIEW",
 		}
 		if err := tx.WithContext(ctx).Create(withdrawalOrder).Error; err != nil {
+			return err
+		}
+
+		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL"}
+		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, "FUNDING", req.Currency, totalDeduction, ref); err != nil {
 			return err
 		}
 
@@ -458,7 +460,8 @@ func (s *WithdrawalService) RejectWithdrawal(ctx context.Context, adminID uint64
 	totalFrozen := txRecord.Amount.Add(txRecord.PlatformFee)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen); err != nil {
+		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL", Remark: "withdrawal rejected"}
+		if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", txRecord.Currency, totalFrozen, ref); err != nil {
 			return err
 		}
 		return nil
