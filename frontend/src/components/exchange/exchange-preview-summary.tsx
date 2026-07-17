@@ -50,7 +50,8 @@ export function ExchangePreviewSummary({
       <div className="flex items-center justify-between">
         <span className="text-slate-600">兑换比例</span>
         <span className="font-medium text-slate-900">
-          1 {fromCurrency} = {formatAmount(preview.exchange_rate, toCurrency)} {toCurrency}
+          1 {fromCurrency} = {formatAmount(preview.exchange_rate, toCurrency)}{" "}
+          {toCurrency}
         </span>
       </div>
       <div className="flex items-center justify-between">
@@ -71,7 +72,8 @@ export function ExchangePreviewSummary({
         <div className="flex items-center justify-between">
           <span className="text-slate-600">KUN 手续费</span>
           <span className="font-medium text-slate-900">
-            {formatAmount(preview.kun_trade_fee, preview.kun_fee_currency)} {preview.kun_fee_currency}
+            {formatAmount(preview.kun_trade_fee, preview.kun_fee_currency)}{" "}
+            {preview.kun_fee_currency}
           </span>
         </div>
       )}

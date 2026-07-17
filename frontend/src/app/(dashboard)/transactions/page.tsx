@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { ExchangeOrderItem } from "@/components/exchange/exchange-order-item";
 import { useDepositOrders, useWithdrawalOrders, useExchangeOrders, useTransferOrders } from "@/lib/hooks/use-trading";
 import { useWalletLedger } from "@/lib/hooks/use-wallet";
 import { formatAmount } from "@/lib/utils/format";
@@ -171,14 +172,7 @@ export default function TransactionsPage() {
         const orders = exchangeData?.orders || [];
         if (exchangeLoading) return <LoadingSkeleton />;
         if (orders.length === 0) return <EmptyState />;
-        return orders.map((o) => (
-          <TxRow
-            key={o.id}
-            title={`${formatAmount(o.from_amount, o.from_currency)} ${o.from_currency} → ${o.to_amount ? formatAmount(o.to_amount, o.to_currency) : "—"} ${o.to_currency}`}
-            sub={`${o.exchange_type} · ${new Date(o.created_at).toLocaleString("zh-CN")}${o.status === "FAILED" && o.fail_reason ? ` · 失败原因：${o.fail_reason}` : ""}`}
-            status={o.status}
-          />
-        ));
+        return orders.map((o) => <ExchangeOrderItem key={o.id} order={o} />);
       }
       case "transfer": {
         const orders = transferData?.orders || [];

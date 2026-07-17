@@ -14,6 +14,7 @@ import {
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExchangePreviewSummary } from "@/components/exchange/exchange-preview-summary";
+import { ExchangeOrderItem } from "@/components/exchange/exchange-order-item";
 import {
   useCreateExchangeOrder,
   useExchangeOrders,
@@ -129,8 +130,7 @@ export default function ExchangePage() {
     previewSuccess &&
     !previewFetching &&
     preview != null &&
-    preview.from_amount.trim() === debouncedFromAmount.trim() &&
-    Boolean(preview.quote_id);
+    preview.from_amount.trim() === debouncedFromAmount.trim();
 
   const orderMutation = useCreateExchangeOrder();
   const { data: ordersData, isLoading: ordersLoading } = useExchangeOrders();
@@ -145,13 +145,12 @@ export default function ExchangePage() {
   }, [walletData, fromCurrency]);
 
   function handleConfirmOrder() {
-    if (!previewReady || !preview?.quote_id) return;
+    if (!previewReady) return;
     orderMutation.mutate(
       {
         from_currency: fromCurrency,
         to_currency: toCurrency,
         from_amount: fromAmount,
-        quote_id: preview.quote_id,
       },
       {
         onSuccess: () => {
@@ -171,7 +170,7 @@ export default function ExchangePage() {
       <div className="shrink-0">
         <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
         <p className="mt-1 text-sm text-slate-600">
-          实时询价兑换，卖出与买入均在资金账户完成。
+          卖出与买入均在资金账户完成。
         </p>
       </div>
 
@@ -283,23 +282,7 @@ export default function ExchangePage() {
             ) : (
               <div className="space-y-3">
                 {orders.map((order) => (
-                  <div key={order.id} className="rounded-lg border p-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-900">
-                        {formatAmount(order.from_amount, order.from_currency)} {order.from_currency} → {order.to_amount ? formatAmount(order.to_amount, order.to_currency) : "—"} {order.to_currency}
-                      </p>
-                      <span className={`text-xs font-medium ${order.status === "COMPLETED" ? "text-green-600" : order.status === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
-                        {order.status === "COMPLETED" ? "已完成" : order.status === "FAILED" ? "失败" : "处理中"}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
-                      <span>{order.exchange_rate ? `汇率 ${order.exchange_rate}` : order.exchange_type}</span>
-                      <span>{new Date(order.created_at).toLocaleString("zh-CN")}</span>
-                    </div>
-                    {order.status === "FAILED" && order.fail_reason && (
-                      <p className="mt-2 text-xs text-red-600">失败原因：{order.fail_reason}</p>
-                    )}
-                  </div>
+                  <ExchangeOrderItem key={order.id} order={order} />
                 ))}
               </div>
             )}
