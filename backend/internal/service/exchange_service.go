@@ -99,8 +99,6 @@ func (s *ExchangeService) PreviewExchange(ctx context.Context, merchantID uint64
 	// 	ExchangeRate:   exchangeRate,
 	// 	QuoteID:        quote.QuoteId,
 	// 	ExpireTime:     quote.ExpireTime,
-	// 	KunTradeFee:    quote.TradeFee,
-	// 	KunFeeCurrency: quote.FeeCurrency,
 	// 	PlatformFee:    platformFee.String(),
 	// 	FeeCurrency:    req.FromCurrency,
 	// 	NetToAmount:    toAmount.String(),

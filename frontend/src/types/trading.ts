@@ -54,8 +54,6 @@ export interface ExchangePreview {
   exchange_rate: string;
   quote_id: string;
   expire_time: number;
-  kun_trade_fee: string;
-  kun_fee_currency: string;
   platform_fee: string;
   fee_currency: string;
   net_to_amount: string;

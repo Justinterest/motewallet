@@ -10,9 +10,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ExchangeOrderItem } from "@/components/exchange/exchange-order-item";
+import { DepositOrderItem } from "@/components/deposit/deposit-order-item";
 import { useDepositOrders, useWithdrawalOrders, useExchangeOrders, useTransferOrders } from "@/lib/hooks/use-trading";
 import { useWalletLedger } from "@/lib/hooks/use-wallet";
 import { formatAmount } from "@/lib/utils/format";
+import { formatChainLabel } from "@/lib/utils/network";
 import type { WalletLedgerEntry } from "@/types/wallet";
 
 type TabKey = "ledger" | "deposit" | "withdrawal" | "exchange" | "transfer";
@@ -146,14 +148,7 @@ export default function TransactionsPage() {
         const orders = depositData?.orders || [];
         if (depositLoading) return <LoadingSkeleton />;
         if (orders.length === 0) return <EmptyState />;
-        return orders.map((o) => (
-          <TxRow
-            key={o.id}
-            title={`${formatAmount(o.amount, o.currency)} ${o.currency}`}
-            sub={`${o.network} · ${new Date(o.created_at).toLocaleString("zh-CN")}`}
-            status={o.status}
-          />
-        ));
+        return orders.map((o) => <DepositOrderItem key={o.id} order={o} />);
       }
       case "withdrawal": {
         const orders = withdrawalData?.orders || [];
@@ -163,7 +158,7 @@ export default function TransactionsPage() {
           <TxRow
             key={o.id}
             title={`${formatAmount(o.amount, o.currency)} ${o.currency}`}
-            sub={`${o.type === "CRYPTO" ? o.chain || "" : "法币"} · ${new Date(o.created_at).toLocaleString("zh-CN")}`}
+            sub={`${o.type === "CRYPTO" ? formatChainLabel(o.currency, o.chain) || "加密货币" : "法币"} · ${new Date(o.created_at).toLocaleString("zh-CN")}`}
             status={o.status}
           />
         ));

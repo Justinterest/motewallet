@@ -539,8 +539,10 @@ export default function WithdrawPage() {
                     </div>
                     <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
                       <span>
-                        {order.type === "FIAT" ? "法币" : order.chain || "加密货币"} ·{" "}
-                        {reviewLabels[order.review_status] || order.review_status}
+                        {order.type === "FIAT"
+                          ? "法币"
+                          : formatChainLabel(order.currency, order.chain) || "加密货币"}{" "}
+                        · {reviewLabels[order.review_status] || "审核中"}
                       </span>
                       <span>{new Date(order.created_at).toLocaleString("zh-CN")}</span>
                     </div>

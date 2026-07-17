@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,18 +11,18 @@ import {
 } from "@/components/ui/card";
 import { SimpleSelect } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DepositAddressCard } from "@/components/deposit/deposit-address-card";
+import { DepositOrderItem } from "@/components/deposit/deposit-order-item";
 import { useDepositAddresses, useDepositOrders } from "@/lib/hooks/use-trading";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
-import { formatAmount } from "@/lib/utils/format";
 import { toCurrencyOptions } from "@/lib/utils/currency";
-import { getDepositNetworks, resolveDefaultChain, formatDepositStatus } from "@/lib/utils/network";
+import { formatChainLabel, getDepositNetworks, resolveDefaultChain } from "@/lib/utils/network";
 
 export default function DepositPage() {
   const { data: supportedCurrencies } = useSupportedCurrencies();
   const currencies = toCurrencyOptions(supportedCurrencies?.crypto_currencies ?? []);
   const [currency, setCurrency] = useState("");
   const [chain, setChain] = useState("");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const nextCurrency = supportedCurrencies?.crypto_currencies?.[0];
@@ -41,24 +40,25 @@ export default function DepositPage() {
   }, [supportedCurrencies, currency]);
 
   const { data: addressData, isLoading: addressLoading } = useDepositAddresses(currency, chain);
-  const { data: ordersData, isLoading: ordersLoading } = useDepositOrders(currency, chain);
+  // 充值记录不按网络过滤，展示全部最近记录
+  const { data: ordersData, isLoading: ordersLoading } = useDepositOrders();
 
   const orders = ordersData?.orders || [];
   const networks = getDepositNetworks(
     currency,
     supportedCurrencies?.crypto_chains?.[currency]
   );
-
-  function handleCopy(text: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
+  const selectedNetworkLabel =
+    networks.find((item) => item.value === chain)?.label ||
+    formatChainLabel(currency, chain || addressData?.network);
 
   return (
     <div className="flex flex-col gap-6 md:h-[calc(100dvh-7.5rem)] md:min-h-0">
       <div className="shrink-0">
         <h1 className="text-2xl font-bold text-slate-900">充值</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          向下方地址转入数字货币，确认后自动入账资金账户。
+        </p>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-2">
@@ -95,31 +95,33 @@ export default function DepositPage() {
             </div>
 
             {addressLoading ? (
-              <Skeleton className="h-20 w-full" />
-            ) : addressData?.address ? (
-              <div className="rounded-lg border bg-slate-50 p-4">
-                <p className="mb-1 text-xs text-slate-500">收款地址</p>
-                <p className="break-all font-mono text-sm text-slate-900">{addressData.address}</p>
-                {addressData.network && (
-                  <p className="mt-1 text-xs text-slate-500">网络：{addressData.network}</p>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => handleCopy(addressData.address)}
-                >
-                  {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
-                  {copied ? "已复制" : "复制地址"}
-                </Button>
+              <div className="space-y-3 rounded-lg border bg-slate-50 p-4">
+                <Skeleton className="mx-auto h-[168px] w-[168px] rounded-xl" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
+            ) : addressData?.address ? (
+              <DepositAddressCard
+                address={addressData.address}
+                currency={currency}
+                network={selectedNetworkLabel}
+              />
             ) : (
-              <p className="text-sm text-slate-400">暂无可用地址</p>
+              <p className="text-sm text-slate-400">当前币种/网络暂无可用充值地址</p>
             )}
 
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              <p>请仅向该地址转入所选币种，并确认网络与上方选择一致。</p>
-              <p className="mt-1">到账后余额将自动更新，一般需要等待区块确认。</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+              <p className="font-medium">充值须知</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                <li>
+                  请仅转入 <span className="font-medium">{currency || "所选币种"}</span>
+                  ，并确认网络为{" "}
+                  <span className="font-medium">{selectedNetworkLabel || "上方所选网络"}</span>
+                  。
+                </li>
+                <li>转入其他币种或错误网络可能导致资产无法找回。</li>
+                <li>到账需等待链上确认，确认完成后余额会自动更新，无需手动提交。</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
@@ -140,40 +142,15 @@ export default function DepositPage() {
           <CardContent className="min-h-0 flex-1 overflow-y-auto">
             {ordersLoading ? (
               <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
               </div>
             ) : orders.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-400">暂无充值记录</p>
             ) : (
               <div className="space-y-3">
                 {orders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {formatAmount(order.amount, order.currency)} {order.currency}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {order.network} · {new Date(order.created_at).toLocaleString("zh-CN")}
-                      </p>
-                      {order.tx_hash && (
-                        <p className="mt-0.5 truncate text-xs text-slate-400" title={order.tx_hash}>
-                          交易哈希：{order.tx_hash}
-                        </p>
-                      )}
-                    </div>
-                    <span
-                      className={`text-xs font-medium ${
-                        order.status === "COMPLETED" || order.status === "SUCCESS"
-                          ? "text-green-600"
-                          : order.status === "FAILED"
-                            ? "text-red-600"
-                            : "text-amber-600"
-                      }`}
-                    >
-                      {formatDepositStatus(order.status)}
-                    </span>
-                  </div>
+                  <DepositOrderItem key={order.id} order={order} />
                 ))}
               </div>
             )}
