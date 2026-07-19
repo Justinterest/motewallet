@@ -19,6 +19,9 @@ const (
 	ErrMerchantFrozen              = 10012
 	ErrFeeTemplateInUse            = 10013
 	ErrInvalidStatusTransition     = 10014
+	ErrInvalidTOTPCode             = 10016
+	ErrTOTPNotEnabled              = 10017
+	ErrTOTPAlreadyEnabled          = 10018
 	ErrWebhookDuplicate            = 10020
 	ErrMerchantNotRegistered       = 10024
 	ErrKycAlreadyProcessing        = 10025
@@ -82,6 +85,9 @@ var (
 	ErrMerchantFrozenE              = NewBusinessError(http.StatusForbidden, ErrMerchantFrozen, "merchant account is frozen")
 	ErrFeeTemplateInUseE            = NewBusinessError(http.StatusConflict, ErrFeeTemplateInUse, "fee template is referenced by merchants and cannot be deleted")
 	ErrInvalidStatusTransitionE     = NewBusinessError(http.StatusBadRequest, ErrInvalidStatusTransition, "invalid status transition")
+	ErrInvalidTOTPCodeE             = NewBusinessError(http.StatusBadRequest, ErrInvalidTOTPCode, "两步验证码错误")
+	ErrTOTPNotEnabledE              = NewBusinessError(http.StatusBadRequest, ErrTOTPNotEnabled, "尚未开启两步验证")
+	ErrTOTPAlreadyEnabledE          = NewBusinessError(http.StatusBadRequest, ErrTOTPAlreadyEnabled, "两步验证已开启")
 	ErrWebhookDuplicateE            = NewBusinessError(http.StatusOK, ErrWebhookDuplicate, "webhook event already processed")
 	ErrMerchantNotRegisteredE       = NewBusinessError(http.StatusBadRequest, ErrMerchantNotRegistered, "请先完成企业认证后再使用该功能")
 	ErrKycAlreadyProcessingE        = NewBusinessError(http.StatusBadRequest, ErrKycAlreadyProcessing, "企业认证审核中，请耐心等待")

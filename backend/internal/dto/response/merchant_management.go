@@ -9,6 +9,7 @@ type AdminMerchantListItem struct {
 	KycStatus         string     `json:"kyc_status"`
 	FeeTemplateID     *uint64    `json:"fee_template_id,omitempty"`
 	KunSubCustomerNo  *string    `json:"kun_sub_customer_no,omitempty"`
+	TotpEnabled       bool       `json:"totp_enabled"`
 	AgreementSignedAt *time.Time `json:"agreement_signed_at,omitempty"`
 	KycSubmittedAt    *time.Time `json:"kyc_submitted_at,omitempty"`
 	KycCompletedAt    *time.Time `json:"kyc_completed_at,omitempty"`
@@ -25,6 +26,7 @@ type AdminMerchantDetailResp struct {
 	FeeTemplateID     *uint64             `json:"fee_template_id,omitempty"`
 	FeeTemplateName   *string             `json:"fee_template_name,omitempty"`
 	KunSubCustomerNo  *string             `json:"kun_sub_customer_no,omitempty"`
+	TotpEnabled       bool                `json:"totp_enabled"`
 	AgreementSignedAt *time.Time          `json:"agreement_signed_at,omitempty"`
 	KycSubmittedAt    *time.Time          `json:"kyc_submitted_at,omitempty"`
 	KycCompletedAt    *time.Time          `json:"kyc_completed_at,omitempty"`

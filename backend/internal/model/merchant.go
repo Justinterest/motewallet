@@ -6,6 +6,9 @@ type Merchant struct {
 	SoftDeleteModel
 	Email             string     `gorm:"column:email;type:varchar(128);not null;uniqueIndex:uk_merchants_email" json:"email"`
 	PasswordHash      string     `gorm:"column:password_hash;type:varchar(255);not null" json:"-"`
+	TotpSecret        *string    `gorm:"column:totp_secret;type:varchar(64)" json:"-"`
+	TotpEnabled       bool       `gorm:"column:totp_enabled;type:tinyint(1);not null;default:0" json:"totp_enabled"`
+	TotpPendingSecret *string    `gorm:"column:totp_pending_secret;type:varchar(64)" json:"-"`
 	KunSubCustomerNo  *string    `gorm:"column:kun_sub_customer_no;type:varchar(64);uniqueIndex:uk_merchants_kun_sub_customer_no" json:"kun_sub_customer_no,omitempty"`
 	FeeTemplateID             *uint64    `gorm:"column:fee_template_id;index:idx_merchants_fee_template_id" json:"fee_template_id,omitempty"`
 	SupportedCryptoCurrencies *string    `gorm:"column:supported_crypto_currencies;type:varchar(128)" json:"supported_crypto_currencies,omitempty"`

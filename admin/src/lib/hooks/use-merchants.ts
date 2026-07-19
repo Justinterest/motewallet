@@ -112,3 +112,14 @@ export function useMerchantLedger(
     enabled: !!id,
   });
 }
+
+export function useResetMerchant2FA() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => merchantApi.reset2FA(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["merchants", id] });
+    },
+  });
+}

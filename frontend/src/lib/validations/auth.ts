@@ -36,3 +36,12 @@ export const registerSchema = z
   });
 
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+
+export const totpCodeSchema = z.object({
+  code: z
+    .string()
+    .length(6, { message: "请输入 6 位验证码" })
+    .regex(/^\d{6}$/, { message: "验证码必须为 6 位数字" }),
+});
+
+export type TotpCodeFormValues = z.infer<typeof totpCodeSchema>;

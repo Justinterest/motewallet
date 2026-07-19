@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useVerificationOptional } from "./verification-context";
 
-const VERIFICATION_EXEMPT_PREFIXES = ["/kyc", "/onboarding/agreement"];
+const VERIFICATION_EXEMPT_PREFIXES = ["/kyc", "/onboarding/agreement", "/settings"];
 
 /**
  * Blocks pointer interaction on page content when the merchant is not ACTIVE.

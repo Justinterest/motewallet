@@ -77,6 +77,7 @@ func (s *MerchantManagementService) List(ctx context.Context, req *dtoreq.AdminL
 			KycStatus:         m.KycStatus,
 			FeeTemplateID:     m.FeeTemplateID,
 			KunSubCustomerNo:  m.KunSubCustomerNo,
+			TotpEnabled:       m.TotpEnabled,
 			AgreementSignedAt: m.AgreementSignedAt,
 			KycSubmittedAt:    m.KycSubmittedAt,
 			KycCompletedAt:    m.KycCompletedAt,
@@ -122,6 +123,7 @@ func (s *MerchantManagementService) GetDetail(ctx context.Context, id uint64) (*
 		KycFailReason:     merchant.KycFailReason,
 		FeeTemplateID:     merchant.FeeTemplateID,
 		KunSubCustomerNo:  merchant.KunSubCustomerNo,
+		TotpEnabled:       merchant.TotpEnabled,
 		AgreementSignedAt: merchant.AgreementSignedAt,
 		KycSubmittedAt:    merchant.KycSubmittedAt,
 		KycCompletedAt:    merchant.KycCompletedAt,
@@ -213,6 +215,31 @@ func (s *MerchantManagementService) UpdateStatus(ctx context.Context, adminID, m
 	s.logAudit(ctx, adminID, "UPDATE_MERCHANT_STATUS", "Merchant", fmt.Sprintf("%d", merchantID), map[string]string{
 		"old_status": merchant.Status,
 		"new_status": req.Status,
+	})
+
+	return nil
+}
+
+func (s *MerchantManagementService) Reset2FA(ctx context.Context, adminID, merchantID uint64) error {
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerrors.ErrNotFoundError
+		}
+		return bizerrors.ErrInternalError
+	}
+
+	if err := s.merchantRepo.UpdateFields(ctx, merchantID, map[string]interface{}{
+		"totp_secret":         nil,
+		"totp_enabled":        false,
+		"totp_pending_secret": nil,
+	}); err != nil {
+		return bizerrors.ErrInternalError
+	}
+
+	s.logAudit(ctx, adminID, "RESET_MERCHANT_2FA", "Merchant", fmt.Sprintf("%d", merchantID), map[string]string{
+		"email":            merchant.Email,
+		"previous_enabled": fmt.Sprintf("%v", merchant.TotpEnabled),
 	})
 
 	return nil

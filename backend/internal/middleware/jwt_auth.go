@@ -33,6 +33,13 @@ func JWTAuth(secret string) gin.HandlerFunc {
 			return
 		}
 
+		// Challenge tokens (2FA verify/setup) must not access protected routes.
+		if claims.Purpose != jwt.PurposeSession {
+			response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+			c.Abort()
+			return
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("user_email", claims.Email)
 		c.Next()

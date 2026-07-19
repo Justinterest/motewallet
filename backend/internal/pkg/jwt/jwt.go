@@ -12,22 +12,34 @@ import (
 const (
 	CookieMerchantToken = "token"
 	CookieAdminToken    = "admin_token"
+
+	PurposeSession   = ""
+	Purpose2FAVerify = "2fa_verify"
+	Purpose2FASetup  = "2fa_setup"
+	Purpose2FARebind = "2fa_rebind"
 )
 
 type Claims struct {
 	UserID   uint64 `json:"user_id"`
 	UserType string `json:"user_type"` // MERCHANT or ADMIN
 	Email    string `json:"email"`
+	Purpose  string `json:"purpose,omitempty"`
 	jwtlib.RegisteredClaims
 }
 
-// GenerateToken creates a signed JWT token string.
+// GenerateToken creates a signed JWT session token.
 func GenerateToken(userID uint64, userType, email, secret string, expiry time.Duration) (string, error) {
+	return GenerateTokenWithPurpose(userID, userType, email, PurposeSession, secret, expiry)
+}
+
+// GenerateTokenWithPurpose creates a signed JWT with an optional purpose claim.
+func GenerateTokenWithPurpose(userID uint64, userType, email, purpose, secret string, expiry time.Duration) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		UserID:   userID,
 		UserType: userType,
 		Email:    email,
+		Purpose:  purpose,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			ExpiresAt: jwtlib.NewNumericDate(now.Add(expiry)),
 			IssuedAt:  jwtlib.NewNumericDate(now),

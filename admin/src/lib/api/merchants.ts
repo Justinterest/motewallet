@@ -40,4 +40,6 @@ export const merchantApi = {
     },
   ) =>
     apiClient.get<never, WalletLedgerListResponse>(`/api/v1/admin/merchants/${id}/ledger`, { params }),
+  reset2FA: (id: number) =>
+    apiClient.post<never, void>(`/api/v1/admin/merchants/${id}/reset-2fa`),
 };

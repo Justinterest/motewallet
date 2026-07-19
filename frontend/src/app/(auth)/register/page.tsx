@@ -24,12 +24,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { TotpSetupPanel } from "@/components/auth/totp-setup-panel";
 
 import {
   registerSchema,
   type RegisterFormValues,
 } from "@/lib/validations/auth";
-import { useRegister, useSendVerificationCode } from "@/lib/hooks/use-auth";
+import {
+  useConfirm2FASetup,
+  useRegister,
+  useSendVerificationCode,
+} from "@/lib/hooks/use-auth";
+import type { AuthChallenge } from "@/types/auth";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -38,8 +44,11 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [sendMessage, setSendMessage] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<AuthChallenge | null>(null);
+
   const registerMutation = useRegister();
   const sendCodeMutation = useSendVerificationCode();
+  const setupMutation = useConfirm2FASetup();
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -85,15 +94,54 @@ export default function RegisterPage() {
   }
 
   function onSubmit(values: RegisterFormValues) {
-    registerMutation.mutate({
-      email: values.email,
-      password: values.password,
-      verification_code: values.verificationCode,
-    });
+    registerMutation.mutate(
+      {
+        email: values.email,
+        password: values.password,
+        verification_code: values.verificationCode,
+      },
+      {
+        onSuccess: (result) => {
+          if (result.status === "REQUIRES_2FA_SETUP") {
+            setChallenge(result);
+          }
+        },
+      }
+    );
   }
 
-  const canSendCode =
-    countdown === 0 && !sendCodeMutation.isPending;
+  const canSendCode = countdown === 0 && !sendCodeMutation.isPending;
+  const setupError =
+    setupMutation.error?.message ||
+    (setupMutation.isError ? "绑定失败，请重试" : null);
+
+  if (
+    challenge?.status === "REQUIRES_2FA_SETUP" &&
+    challenge.temp_token &&
+    challenge.totp_uri &&
+    challenge.totp_secret
+  ) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <TotpSetupPanel
+            totpUri={challenge.totp_uri}
+            totpSecret={challenge.totp_secret}
+            title="开启两步验证"
+            description="注册成功。请使用验证器 App 扫描二维码并输入验证码，完成两步验证绑定后方可使用账户。"
+            isPending={setupMutation.isPending}
+            errorMessage={setupError}
+            onSubmit={(code) =>
+              setupMutation.mutate({
+                temp_token: challenge.temp_token!,
+                code,
+              })
+            }
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

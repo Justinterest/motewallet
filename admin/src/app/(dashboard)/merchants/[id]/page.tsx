@@ -59,6 +59,7 @@ import {
   useMerchantLedger,
   useApproveKyc,
   useRejectKyc,
+  useResetMerchant2FA,
 } from "@/lib/hooks/use-merchants";
 import { useFeeTemplates } from "@/lib/hooks/use-fee-templates";
 import { useMerchantDeposits } from "@/lib/hooks/use-deposits";
@@ -221,8 +222,10 @@ export default function MerchantDetailPage({
   const syncExchangeMutation = useSyncExchangeStatus();
   const approveKycMutation = useApproveKyc();
   const rejectKycMutation = useRejectKyc();
+  const reset2FAMutation = useResetMerchant2FA();
 
   const [freezeDialogOpen, setFreezeDialogOpen] = useState(false);
+  const [reset2FADialogOpen, setReset2FADialogOpen] = useState(false);
   const [kycRejectDialogOpen, setKycRejectDialogOpen] = useState(false);
   const [kycApproveDialogOpen, setKycApproveDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -258,6 +261,18 @@ export default function MerchantDetailPage({
         },
       }
     );
+  };
+
+  const handleReset2FA = () => {
+    reset2FAMutation.mutate(id, {
+      onSuccess: () => {
+        toast({ title: "已解除两步验证", description: "商户下次登录需重新绑定" });
+        setReset2FADialogOpen(false);
+      },
+      onError: (error) => {
+        toast({ title: "操作失败", description: error.message, variant: "destructive" });
+      },
+    });
   };
 
   const handleAssignTemplate = () => {
@@ -500,6 +515,16 @@ export default function MerchantDetailPage({
               <div className="mt-1">{getKycBadge(merchant.kyc_status)}</div>
             </div>
             <div>
+              <p className="text-sm text-slate-500">两步验证</p>
+              <div className="mt-1">
+                {merchant.totp_enabled ? (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">已开启</Badge>
+                ) : (
+                  <Badge variant="outline">未开启</Badge>
+                )}
+              </div>
+            </div>
+            <div>
               <p className="text-sm text-slate-500">手续费模板</p>
               <p className="font-medium">{merchant.fee_template_name || "未分配"}</p>
             </div>
@@ -597,6 +622,26 @@ export default function MerchantDetailPage({
                   冻结
                 </>
               )}
+            </Button>
+          </div>
+
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">解除两步验证</p>
+              <p className="text-sm text-slate-500">
+                {merchant.totp_enabled
+                  ? "解除后商户下次登录需重新绑定验证器"
+                  : "商户当前未开启两步验证"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              disabled={!merchant.totp_enabled || reset2FAMutation.isPending}
+              onClick={() => setReset2FADialogOpen(true)}
+            >
+              <ShieldOff className="size-4" />
+              解除 2FA
             </Button>
           </div>
 
@@ -1161,6 +1206,26 @@ export default function MerchantDetailPage({
                 : merchant.status === "FROZEN"
                   ? "确认解冻"
                   : "确认冻结"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={reset2FADialogOpen} onOpenChange={setReset2FADialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认解除两步验证</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要解除商户 {merchant.email} 的两步验证吗？解除后该商户下次登录必须重新绑定验证器。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReset2FA}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {reset2FAMutation.isPending ? "处理中..." : "确认解除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

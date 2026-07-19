@@ -47,6 +47,8 @@ func Setup(
 		authPublic.POST("/send-verification-code", authHandler.SendVerificationCode)
 		authPublic.POST("/register", authHandler.Register)
 		authPublic.POST("/login", authHandler.Login)
+		authPublic.POST("/2fa/verify", authHandler.Verify2FA)
+		authPublic.POST("/2fa/setup/confirm", authHandler.Confirm2FASetup)
 	}
 
 	adminAuthPublic := v1.Group("/admin/auth")
@@ -60,6 +62,9 @@ func Setup(
 	{
 		authProtected.POST("/logout", authHandler.Logout)
 		authProtected.GET("/me", authHandler.Me)
+		authProtected.GET("/2fa/status", authHandler.GetTotpStatus)
+		authProtected.POST("/2fa/rebind/prepare", authHandler.PrepareTotpRebind)
+		authProtected.POST("/2fa/rebind/confirm", authHandler.ConfirmTotpRebind)
 	}
 
 	// --- Admin protected routes ---
@@ -160,6 +165,7 @@ func Setup(
 		adminMerchants.GET("/:id/ledger", merchantMgmtHandler.ListLedger)
 		adminMerchants.POST("/:id/kyc/approve", merchantMgmtHandler.ApproveKyc)
 		adminMerchants.POST("/:id/kyc/reject", merchantMgmtHandler.RejectKyc)
+		adminMerchants.POST("/:id/reset-2fa", merchantMgmtHandler.Reset2FA)
 	}
 
 	// --- Admin protected: system currency/chain config ---

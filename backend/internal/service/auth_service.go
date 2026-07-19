@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"motewallet/internal/config"
 	dtoresp "motewallet/internal/dto/response"
@@ -13,12 +14,15 @@ import (
 	"motewallet/internal/pkg/jwt"
 	"motewallet/internal/pkg/kun"
 	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/pkg/totp"
 	"motewallet/internal/pkg/utils"
 	"motewallet/internal/pkg/verification"
 	"motewallet/internal/repository"
 
 	"gorm.io/gorm"
 )
+
+const totpChallengeTTL = 10 * time.Minute
 
 type AuthService struct {
 	cfg               *config.Config
@@ -40,9 +44,10 @@ func NewAuthService(cfg *config.Config, merchantRepo repository.MerchantReposito
 	}
 }
 
-type RegisterResult struct {
-	Token    string
-	Merchant *dtoresp.MerchantInfoResp
+type AuthResult struct {
+	IssueSession bool
+	Token        string
+	Challenge    *dtoresp.AuthChallengeResp
 }
 
 func (s *AuthService) SendVerificationCode(ctx context.Context, emailAddr string) error {
@@ -74,7 +79,7 @@ func (s *AuthService) SendVerificationCode(ctx context.Context, emailAddr string
 	return nil
 }
 
-func (s *AuthService) Register(ctx context.Context, email, password, verificationCode string) (*RegisterResult, error) {
+func (s *AuthService) Register(ctx context.Context, email, password, verificationCode string) (*AuthResult, error) {
 	// if err := s.verificationStore.Verify(email, verificationCode); err != nil {
 	// 	switch {
 	// 	case errors.Is(err, verification.ErrExpiredCode):
@@ -106,9 +111,16 @@ func (s *AuthService) Register(ctx context.Context, email, password, verificatio
 		return nil, bizerrors.ErrInternalError
 	}
 
+	secret, uri, err := totp.GenerateSecret(email)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+
 	merchant := &model.Merchant{
 		Email:            email,
 		PasswordHash:     hash,
+		TotpSecret:       &secret,
+		TotpEnabled:      false,
 		KunSubCustomerNo: &registerResp.SubCustomerNo,
 		Status:           "PENDING_AGREEMENT",
 		KycStatus:        "NONE",
@@ -126,30 +138,23 @@ func (s *AuthService) Register(ctx context.Context, email, password, verificatio
 		return nil, bizerrors.ErrInternalError
 	}
 
-	token, err := jwt.GenerateToken(merchant.ID, "MERCHANT", merchant.Email, s.cfg.JWT.Secret, s.cfg.JWT.Expiry)
+	tempToken, err := jwt.GenerateTokenWithPurpose(merchant.ID, "MERCHANT", merchant.Email, jwt.Purpose2FASetup, s.cfg.JWT.Secret, totpChallengeTTL)
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
 
-	return &RegisterResult{
-		Token: token,
-		Merchant: &dtoresp.MerchantInfoResp{
-			ID:            merchant.ID,
-			Email:         merchant.Email,
-			Status:        merchant.Status,
-			KycStatus:     merchant.KycStatus,
-			FeeTemplateID: merchant.FeeTemplateID,
-			CreatedAt:     merchant.CreatedAt,
+	return &AuthResult{
+		IssueSession: false,
+		Challenge: &dtoresp.AuthChallengeResp{
+			Status:     dtoresp.AuthStatusRequires2FASetup,
+			TempToken:  tempToken,
+			TotpSecret: secret,
+			TotpURI:    uri,
 		},
 	}, nil
 }
 
-type LoginResult struct {
-	Token    string
-	Merchant *dtoresp.MerchantInfoResp
-}
-
-func (s *AuthService) Login(ctx context.Context, email, password string) (*LoginResult, error) {
+func (s *AuthService) Login(ctx context.Context, email, password string) (*AuthResult, error) {
 	merchant, err := s.merchantRepo.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -162,22 +167,167 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*Login
 		return nil, bizerrors.ErrInvalidCredentialsError
 	}
 
-	token, err := jwt.GenerateToken(merchant.ID, "MERCHANT", merchant.Email, s.cfg.JWT.Secret, s.cfg.JWT.Expiry)
+	if merchant.TotpEnabled && merchant.TotpSecret != nil && *merchant.TotpSecret != "" {
+		tempToken, err := jwt.GenerateTokenWithPurpose(merchant.ID, "MERCHANT", merchant.Email, jwt.Purpose2FAVerify, s.cfg.JWT.Secret, totpChallengeTTL)
+		if err != nil {
+			return nil, bizerrors.ErrInternalError
+		}
+		return &AuthResult{
+			IssueSession: false,
+			Challenge: &dtoresp.AuthChallengeResp{
+				Status:    dtoresp.AuthStatusRequires2FA,
+				TempToken: tempToken,
+			},
+		}, nil
+	}
+
+	// 2FA not enabled (new account incomplete setup, or admin reset) → force setup
+	secret, uri, err := totp.GenerateSecret(merchant.Email)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+	if err := s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
+		"totp_secret":         secret,
+		"totp_enabled":        false,
+		"totp_pending_secret": nil,
+	}); err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+
+	tempToken, err := jwt.GenerateTokenWithPurpose(merchant.ID, "MERCHANT", merchant.Email, jwt.Purpose2FASetup, s.cfg.JWT.Secret, totpChallengeTTL)
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
 
-	return &LoginResult{
-		Token: token,
-		Merchant: &dtoresp.MerchantInfoResp{
-			ID:            merchant.ID,
-			Email:         merchant.Email,
-			Status:        merchant.Status,
-			KycStatus:     merchant.KycStatus,
-			FeeTemplateID: merchant.FeeTemplateID,
-			CreatedAt:     merchant.CreatedAt,
+	return &AuthResult{
+		IssueSession: false,
+		Challenge: &dtoresp.AuthChallengeResp{
+			Status:     dtoresp.AuthStatusRequires2FASetup,
+			TempToken:  tempToken,
+			TotpSecret: secret,
+			TotpURI:    uri,
 		},
 	}, nil
+}
+
+func (s *AuthService) Verify2FA(ctx context.Context, tempToken, code string) (*AuthResult, error) {
+	claims, err := jwt.ParseToken(tempToken, s.cfg.JWT.Secret)
+	if err != nil || claims.UserType != "MERCHANT" || claims.Purpose != jwt.Purpose2FAVerify {
+		return nil, bizerrors.ErrInvalidTokenError
+	}
+
+	merchant, err := s.merchantRepo.FindByID(ctx, claims.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerrors.ErrNotFoundError
+		}
+		return nil, bizerrors.ErrInternalError
+	}
+
+	if !merchant.TotpEnabled || merchant.TotpSecret == nil || !totp.Validate(code, *merchant.TotpSecret) {
+		return nil, bizerrors.ErrInvalidTOTPCodeE
+	}
+
+	return s.issueSession(merchant)
+}
+
+func (s *AuthService) Confirm2FASetup(ctx context.Context, tempToken, code string) (*AuthResult, error) {
+	claims, err := jwt.ParseToken(tempToken, s.cfg.JWT.Secret)
+	if err != nil || claims.UserType != "MERCHANT" || claims.Purpose != jwt.Purpose2FASetup {
+		return nil, bizerrors.ErrInvalidTokenError
+	}
+
+	merchant, err := s.merchantRepo.FindByID(ctx, claims.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerrors.ErrNotFoundError
+		}
+		return nil, bizerrors.ErrInternalError
+	}
+
+	if merchant.TotpSecret == nil || *merchant.TotpSecret == "" {
+		return nil, bizerrors.ErrTOTPNotEnabledE
+	}
+	if !totp.Validate(code, *merchant.TotpSecret) {
+		return nil, bizerrors.ErrInvalidTOTPCodeE
+	}
+
+	if err := s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
+		"totp_enabled":        true,
+		"totp_pending_secret": nil,
+	}); err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+
+	merchant.TotpEnabled = true
+	return s.issueSession(merchant)
+}
+
+func (s *AuthService) GetTotpStatus(ctx context.Context, merchantID uint64) (*dtoresp.TotpStatusResp, error) {
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerrors.ErrNotFoundError
+		}
+		return nil, bizerrors.ErrInternalError
+	}
+	return &dtoresp.TotpStatusResp{Enabled: merchant.TotpEnabled}, nil
+}
+
+func (s *AuthService) PrepareTotpRebind(ctx context.Context, merchantID uint64, currentCode string) (*dtoresp.TotpSetupResp, error) {
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerrors.ErrNotFoundError
+		}
+		return nil, bizerrors.ErrInternalError
+	}
+
+	if !merchant.TotpEnabled || merchant.TotpSecret == nil {
+		return nil, bizerrors.ErrTOTPNotEnabledE
+	}
+	if !totp.Validate(currentCode, *merchant.TotpSecret) {
+		return nil, bizerrors.ErrInvalidTOTPCodeE
+	}
+
+	secret, uri, err := totp.GenerateSecret(merchant.Email)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+
+	if err := s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
+		"totp_pending_secret": secret,
+	}); err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+
+	return &dtoresp.TotpSetupResp{
+		TotpSecret: secret,
+		TotpURI:    uri,
+	}, nil
+}
+
+func (s *AuthService) ConfirmTotpRebind(ctx context.Context, merchantID uint64, code string) error {
+	merchant, err := s.merchantRepo.FindByID(ctx, merchantID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerrors.ErrNotFoundError
+		}
+		return bizerrors.ErrInternalError
+	}
+
+	if merchant.TotpPendingSecret == nil || *merchant.TotpPendingSecret == "" {
+		return bizerrors.ErrValidationError
+	}
+	if !totp.Validate(code, *merchant.TotpPendingSecret) {
+		return bizerrors.ErrInvalidTOTPCodeE
+	}
+
+	return s.merchantRepo.UpdateFields(ctx, merchant.ID, map[string]interface{}{
+		"totp_secret":         *merchant.TotpPendingSecret,
+		"totp_enabled":        true,
+		"totp_pending_secret": nil,
+	})
 }
 
 func (s *AuthService) GetMerchantByID(ctx context.Context, id uint64) (*dtoresp.MerchantInfoResp, error) {
@@ -189,12 +339,33 @@ func (s *AuthService) GetMerchantByID(ctx context.Context, id uint64) (*dtoresp.
 		return nil, bizerrors.ErrInternalError
 	}
 
+	return toMerchantInfo(merchant), nil
+}
+
+func (s *AuthService) issueSession(merchant *model.Merchant) (*AuthResult, error) {
+	token, err := jwt.GenerateToken(merchant.ID, "MERCHANT", merchant.Email, s.cfg.JWT.Secret, s.cfg.JWT.Expiry)
+	if err != nil {
+		return nil, bizerrors.ErrInternalError
+	}
+
+	return &AuthResult{
+		IssueSession: true,
+		Token:        token,
+		Challenge: &dtoresp.AuthChallengeResp{
+			Status:   dtoresp.AuthStatusSuccess,
+			Merchant: toMerchantInfo(merchant),
+		},
+	}, nil
+}
+
+func toMerchantInfo(merchant *model.Merchant) *dtoresp.MerchantInfoResp {
 	return &dtoresp.MerchantInfoResp{
 		ID:            merchant.ID,
 		Email:         merchant.Email,
 		Status:        merchant.Status,
 		KycStatus:     merchant.KycStatus,
+		TotpEnabled:   merchant.TotpEnabled,
 		FeeTemplateID: merchant.FeeTemplateID,
 		CreatedAt:     merchant.CreatedAt,
-	}, nil
+	}
 }

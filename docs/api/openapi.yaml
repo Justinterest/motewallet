@@ -79,7 +79,7 @@ paths:
   /api/v1/auth/register:
     post:
       tags: [Merchant Auth]
-      summary: 商户注册
+      summary: 商户注册（完成后需绑定两步验证）
       operationId: merchantRegister
       requestBody:
         required: true
@@ -89,12 +89,7 @@ paths:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
         "200":
-          description: 注册成功
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-                example: token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax
+          description: 注册成功，返回两步验证绑定信息（尚未签发 session cookie）
           content:
             application/json:
               schema:
@@ -103,7 +98,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/MerchantInfo"
+                        $ref: "#/components/schemas/AuthChallenge"
         "400":
           description: 参数校验失败
           content:
@@ -120,7 +115,7 @@ paths:
   /api/v1/auth/login:
     post:
       tags: [Merchant Auth]
-      summary: 商户登录
+      summary: 商户登录（第一步：校验邮箱密码）
       operationId: merchantLogin
       requestBody:
         required: true
@@ -130,7 +125,40 @@ paths:
               $ref: "#/components/schemas/LoginRequest"
       responses:
         "200":
-          description: 登录成功
+          description: |
+            返回 AuthChallenge：
+            - REQUIRES_2FA：已开启两步验证，需调用 /auth/2fa/verify
+            - REQUIRES_2FA_SETUP：未开启或已被管理员重置，需绑定后调用 /auth/2fa/setup/confirm
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AuthChallenge"
+        "401":
+          description: 邮箱或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/auth/2fa/verify:
+    post:
+      tags: [Merchant Auth]
+      summary: 登录两步验证码校验
+      operationId: merchantVerify2FA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpVerifyRequest"
+      responses:
+        "200":
+          description: 验证成功，签发 session cookie
           headers:
             Set-Cookie:
               schema:
@@ -144,13 +172,145 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/MerchantInfo"
-        "401":
-          description: 邮箱或密码错误
+                        $ref: "#/components/schemas/AuthChallenge"
+        "400":
+          description: 验证码错误
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/auth/2fa/setup/confirm:
+    post:
+      tags: [Merchant Auth]
+      summary: 确认绑定两步验证（注册或重新绑定）
+      operationId: merchantConfirm2FASetup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpVerifyRequest"
+      responses:
+        "200":
+          description: 绑定成功，签发 session cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AuthChallenge"
+        "400":
+          description: 验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/auth/2fa/status:
+    get:
+      tags: [Merchant Auth]
+      summary: 获取两步验证状态
+      operationId: merchantTotpStatus
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TotpStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/2fa/rebind/prepare:
+    post:
+      tags: [Merchant Auth]
+      summary: 准备重新绑定两步验证（需当前验证码）
+      operationId: merchantTotpRebindPrepare
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_code]
+              properties:
+                current_code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+      responses:
+        "200":
+          description: 返回新的 TOTP secret 与 URI
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TotpSetup"
+        "400":
+          description: 当前验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/2fa/rebind/confirm:
+    post:
+      tags: [Merchant Auth]
+      summary: 确认重新绑定两步验证
+      operationId: merchantTotpRebindConfirm
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+      responses:
+        "200":
+          description: 重新绑定成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+        "400":
+          description: 新验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/auth/logout:
     post:
@@ -431,9 +591,57 @@ components:
           type: string
           enum: [NOT_SUBMITTED, PENDING, APPROVED, REJECTED]
           example: NOT_SUBMITTED
+        totp_enabled:
+          type: boolean
+          example: true
         created_at:
           type: string
           format: date-time
+
+    AuthChallenge:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [SUCCESS, REQUIRES_2FA, REQUIRES_2FA_SETUP]
+        temp_token:
+          type: string
+          description: 临时 token，用于后续 2FA 校验或绑定
+        totp_secret:
+          type: string
+          description: TOTP base32 secret（仅 REQUIRES_2FA_SETUP）
+        totp_uri:
+          type: string
+          description: otpauth URI，用于生成二维码（仅 REQUIRES_2FA_SETUP）
+        merchant:
+          $ref: "#/components/schemas/MerchantInfo"
+
+    TotpVerifyRequest:
+      type: object
+      required: [temp_token, code]
+      properties:
+        temp_token:
+          type: string
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+          example: "123456"
+
+    TotpStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+
+    TotpSetup:
+      type: object
+      properties:
+        totp_secret:
+          type: string
+        totp_uri:
+          type: string
 
     AdminInfo:
       type: object

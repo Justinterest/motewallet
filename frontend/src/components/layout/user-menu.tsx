@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { LogOut, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -37,9 +38,11 @@ export function UserMenu() {
           </div>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <Settings className="mr-2 h-4 w-4" />
-          设置
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings className="mr-2 h-4 w-4" />
+            设置
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

@@ -51,6 +51,9 @@
 | id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 商户 ID |
 | email | VARCHAR(128) | UNIQUE, NOT NULL | 登录邮箱 |
 | password_hash | VARCHAR(255) | NOT NULL | bcrypt 密码哈希 |
+| totp_secret | VARCHAR(64) | NULL | TOTP base32 密钥 |
+| totp_enabled | TINYINT(1) | NOT NULL, DEFAULT 0 | 是否已开启两步验证 |
+| totp_pending_secret | VARCHAR(64) | NULL | 重新绑定中的待确认密钥 |
 | kun_sub_customer_no | VARCHAR(64) | UNIQUE | KUN 子商户号 |
 | fee_template_id | BIGINT UNSIGNED | FK → fee_templates | 绑定的手续费模板 |
 | supported_crypto_currencies | VARCHAR(128) | NULL | 商户支持的数币 CSV；NULL = 继承系统默认 |

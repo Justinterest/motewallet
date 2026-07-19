@@ -61,6 +61,7 @@ export interface AdminMerchant {
   kyc_completed_at?: string;
   agreement_signed_at?: string;
   frozen_at?: string;
+  totp_enabled: boolean;
   created_at: string;
 }
 
