@@ -170,7 +170,7 @@ export default function ExchangePage() {
       <div className="shrink-0">
         <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
         <p className="mt-1 text-sm text-slate-600">
-          卖出与买入均在资金账户完成。
+          从资金账户卖出，买入币种入账到交易账户。
         </p>
       </div>
 

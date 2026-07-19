@@ -22,6 +22,7 @@ import {
 import { WithdrawalFeeSummary } from "@/components/withdrawal/fee-summary";
 import { useBankAccounts, useCryptoAddresses } from "@/lib/hooks/use-addresses";
 import { useSupportedCurrencies } from "@/lib/hooks/use-supported-currencies";
+import { useWalletBalances } from "@/lib/hooks/use-wallet";
 import { formatAmount } from "@/lib/utils/format";
 import { toCurrencyOptions } from "@/lib/utils/currency";
 import { TRANSFER_TYPE_LABELS } from "@/lib/utils/bank-account";
@@ -114,6 +115,21 @@ export default function WithdrawPage() {
 
   const { data: cryptoAddressesData, isLoading: cryptoAddressesLoading } = useCryptoAddresses();
   const cryptoAddresses = cryptoAddressesData ?? [];
+  const { data: walletData } = useWalletBalances();
+
+  const cryptoFundingAvailable = useMemo(() => {
+    const wallet = walletData?.wallets.find(
+      (item) => item.account_type === "FUNDING" && item.currency === currency,
+    );
+    return wallet?.available_balance ?? "0";
+  }, [walletData, currency]);
+
+  const fiatFundingAvailable = useMemo(() => {
+    const wallet = walletData?.wallets.find(
+      (item) => item.account_type === "FUNDING" && item.currency === fiatCurrency,
+    );
+    return wallet?.available_balance ?? "0";
+  }, [walletData, fiatCurrency]);
 
   const cryptoAddressesForSelection = useMemo(
     () => cryptoAddresses.filter((a) => a.currency === currency && a.status === "ACTIVE"),
@@ -288,7 +304,19 @@ export default function WithdrawPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">提现</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">提现</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          提现从资金账户扣款。若余额在交易账户，请先
+          <Link
+            href="/transfer?from=TRADING&to=FUNDING"
+            className="mx-1 text-blue-700 hover:underline"
+          >
+            划转回资金账户
+          </Link>
+          。
+        </p>
+      </div>
 
       <div className="flex gap-2 rounded-lg border bg-slate-50 p-1 w-fit">
         <button
@@ -360,13 +388,29 @@ export default function WithdrawPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">提现金额</label>
-                    <Input
-                      type="text"
-                      placeholder="0.00"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                    />
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700">提现金额</label>
+                      <span className="text-xs text-slate-500">
+                        资金账户可用 {formatAmount(cryptoFundingAvailable, currency)} {currency}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setAmount(cryptoFundingAvailable)}
+                        disabled={parseFloat(cryptoFundingAvailable) <= 0}
+                      >
+                        全部
+                      </Button>
+                    </div>
                   </div>
 
                   <WithdrawalFeeSummary
@@ -445,13 +489,29 @@ export default function WithdrawPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">提现金额</label>
-                    <Input
-                      type="text"
-                      placeholder="0.00"
-                      value={fiatAmount}
-                      onChange={(e) => setFiatAmount(e.target.value)}
-                    />
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700">提现金额</label>
+                      <span className="text-xs text-slate-500">
+                        资金账户可用 {formatAmount(fiatFundingAvailable, fiatCurrency)} {fiatCurrency}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="0.00"
+                        value={fiatAmount}
+                        onChange={(e) => setFiatAmount(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setFiatAmount(fiatFundingAvailable)}
+                        disabled={parseFloat(fiatFundingAvailable) <= 0}
+                      >
+                        全部
+                      </Button>
+                    </div>
                   </div>
 
                   <div>

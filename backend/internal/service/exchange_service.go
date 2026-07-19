@@ -140,7 +140,8 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 	totalFreeze := fromAmount.Add(platformFee)
 
 	requestNo := kun.GenerateRequestNo()
-	autoTransfer := "YES"
+	// NO: 兑换结果留在交易账户（KUN_PL），不自动划回资金账户
+	autoTransfer := "NO"
 	subType := "1TO1"
 	exchangeRate := decimal.NewFromInt(1)
 	var orderID uint64
@@ -413,10 +414,11 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "EXCHANGE"}
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			// 资金账户扣出卖出币种，交易账户入账买入币种
 			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", order.FromCurrency, totalFrozen, ref); err != nil {
 				return err
 			}
-			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "FUNDING", order.ToCurrency, toAmount, ref); err != nil {
+			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "TRADING", order.ToCurrency, toAmount, ref); err != nil {
 				return err
 			}
 			if err := tx.WithContext(ctx).Model(&model.TransactionRecord{}).

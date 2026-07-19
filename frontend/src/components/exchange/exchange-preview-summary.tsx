@@ -75,7 +75,7 @@ export function ExchangePreviewSummary({
         </span>
       </div>
       <div className="flex items-center justify-between border-t border-slate-200 pt-2">
-        <span className="text-slate-600">预估到账（资金账户）</span>
+        <span className="text-slate-600">预估到账（交易账户）</span>
         <span className="font-semibold text-slate-900">
           {formatAmount(preview.net_to_amount, toCurrency)} {toCurrency}
         </span>
