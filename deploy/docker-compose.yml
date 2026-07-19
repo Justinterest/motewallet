@@ -1,0 +1,59 @@
+name: motewallet-withdrawal
+
+services:
+  backend:
+    image: motewallet-backend:${BACKEND_TAG:-latest}
+    container_name: motewallet-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_PORT: "8080"
+      APP_ENV: ${APP_ENV:-production}
+      TZ: Asia/Shanghai
+    ports:
+      - "${BACKEND_HOST_BIND:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
+    networks:
+      - motewallet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    image: motewallet-frontend:${FRONTEND_TAG:-latest}
+    container_name: motewallet-frontend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${FRONTEND_HOST_BIND:-127.0.0.1}:${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - motewallet
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  admin:
+    image: motewallet-admin:${ADMIN_TAG:-latest}
+    container_name: motewallet-admin
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${ADMIN_HOST_BIND:-127.0.0.1}:${ADMIN_PORT:-3001}:3001"
+    networks:
+      - motewallet
+    depends_on:
+      backend:
+        condition: service_healthy
+
+networks:
+  motewallet:
+    name: motewallet-withdrawal

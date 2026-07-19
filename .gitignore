@@ -6,3 +6,6 @@
 
 # KUN RSA keys (generated locally, never commit)
 **/.kun-keys/
+
+# Docker export artifacts
+deploy/dist/

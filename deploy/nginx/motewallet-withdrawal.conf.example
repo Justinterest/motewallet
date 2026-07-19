@@ -1,0 +1,87 @@
+# 示例：商户端 / 管理端各自一个子域；API 不单独对外，由 nginx 同域转发 /api/
+# 不改动现有 motewallet.com / ops.motewallet.com
+#
+# 域名:
+#   wallet.motewallet.com  -> frontend :3000  +  /api/ -> backend :8080
+#   portal.motewallet.com  -> admin    :3001  +  /api/ -> backend :8080
+#
+# backend 仅监听 127.0.0.1:8080，不对外暴露端口。
+# KUN webhook: https://wallet.motewallet.com/api/v1/webhook/kun
+#
+# 安装:
+#   sudo cp deploy/nginx/motewallet-withdrawal.conf.example /etc/nginx/conf.d/motewallet-withdrawal.conf
+#   sudo nginx -t && sudo systemctl reload nginx
+
+# ---- 商户端 ----
+server {
+    listen 80;
+    server_name wallet.motewallet.com;
+    location ^~ /.well-known/acme-challenge/ {
+        root /opt/certbot/www;
+        default_type "text/plain";
+        allow all;
+    }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    server_name wallet.motewallet.com;
+
+    ssl_certificate     /opt/certbot/conf/live/wallet.motewallet.com/fullchain.pem;
+    ssl_certificate_key /opt/certbot/conf/live/wallet.motewallet.com/privkey.pem;
+
+    client_max_body_size 80M;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # API：仅经 nginx 转发到本机 backend
+    location /api/ {
+        proxy_read_timeout 600s;
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+    }
+}
+
+# ---- 管理端 ----
+server {
+    listen 80;
+    server_name portal.motewallet.com;
+    location ^~ /.well-known/acme-challenge/ {
+        root /opt/certbot/www;
+        default_type "text/plain";
+        allow all;
+    }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    server_name portal.motewallet.com;
+
+    ssl_certificate     /opt/certbot/conf/live/portal.motewallet.com/fullchain.pem;
+    ssl_certificate_key /opt/certbot/conf/live/portal.motewallet.com/privkey.pem;
+
+    client_max_body_size 80M;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # API：仅经 nginx 转发到本机 backend
+    location /api/ {
+        proxy_read_timeout 600s;
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+    }
+}

@@ -2,8 +2,9 @@ import axios from "axios";
 import type { ApiResponse } from "@/types/api";
 import { ApiError, extractFieldErrors } from "./api-error";
 
+// 生产：留空走同域（nginx 把 /api/ 转到 backend）；本地开发默认直连 :8080
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
