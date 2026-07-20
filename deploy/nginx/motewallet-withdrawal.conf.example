@@ -8,9 +8,20 @@
 # backend 仅监听 127.0.0.1:8080，不对外暴露端口。
 # KUN webhook: https://wallet.motewallet.com/api/v1/webhook/kun
 #
-# 安装:
-#   sudo cp deploy/nginx/motewallet-withdrawal.conf.example /etc/nginx/conf.d/motewallet-withdrawal.conf
-#   sudo nginx -t && sudo systemctl reload nginx
+# 上传并启用（在仓库根目录执行）:
+#   scp deploy/nginx/motewallet-withdrawal.conf.example \
+#     motewallet-prod:/tmp/motewallet-withdrawal.conf
+#   ssh motewallet-prod 'sudo mv /tmp/motewallet-withdrawal.conf /etc/nginx/conf.d/motewallet-withdrawal.conf \
+#     && sudo nginx -t && sudo systemctl reload nginx'
+#
+# 证书（若尚未签发）:
+#   ssh motewallet-prod 'sudo docker run --rm \
+#     -v /opt/certbot/conf:/etc/letsencrypt \
+#     -v /opt/certbot/www:/var/www/certbot \
+#     certbot/certbot certonly --webroot -w /var/www/certbot \
+#     -d wallet.motewallet.com -d portal.motewallet.com'
+#
+# 注意: 启用 HTTPS server 块前需先有证书；可先只开 listen 80 再签证书。
 
 # ---- 商户端 ----
 server {

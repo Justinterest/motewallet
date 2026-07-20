@@ -51,6 +51,16 @@ vi ~/motewallet-withdrawal/.env   # 填生产配置
 
 KUN webhook：`https://wallet.motewallet.com/api/v1/webhook/kun`
 
+上传并启用：
+
+```bash
+scp deploy/nginx/motewallet-withdrawal.conf.example \
+  motewallet-prod:/tmp/motewallet-withdrawal.conf
+
+ssh motewallet-prod 'sudo mv /tmp/motewallet-withdrawal.conf /etc/nginx/conf.d/motewallet-withdrawal.conf \
+  && sudo nginx -t && sudo systemctl reload nginx'
+```
+
 ## 数据库迁移（线上）
 
 Schema 变更在 `database/migrations/`（golang-migrate）。**不要**把 seed 打到生产。
