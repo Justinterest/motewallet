@@ -9,7 +9,7 @@ import type {
   User,
 } from "@/types/auth";
 
-function getRedirectPath(_user: User): string {
+function getRedirectPath(): string {
   return "/dashboard";
 }
 
@@ -24,7 +24,7 @@ function completeAuth(
   }
   setUser(challenge.merchant);
   queryClient.setQueryData(["auth", "me"], challenge.merchant);
-  router.push(getRedirectPath(challenge.merchant));
+  router.push(getRedirectPath());
   return challenge;
 }
 

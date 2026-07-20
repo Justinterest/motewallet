@@ -124,6 +124,7 @@ export function KycFileUpload({
   pathsRef.current = paths;
 
   const filledPaths = paths.filter(Boolean);
+  const filledPathsKey = filledPaths.join("|");
   const isUploading = uploadingCount > 0;
   const remaining = Math.max(0, minItems - filledPaths.length - pending.length);
 
@@ -223,8 +224,9 @@ export function KycFileUpload({
 
   useEffect(() => {
     let cancelled = false;
+    const currentPaths = filledPathsKey ? filledPathsKey.split("|") : [];
 
-    for (const path of filledPaths) {
+    for (const path of currentPaths) {
       if (!isStagedObjectKey(path)) continue;
 
       void getKycFileAccessUrl(path)
@@ -248,7 +250,7 @@ export function KycFileUpload({
       const next = { ...prev };
       let changed = false;
       for (const key of Object.keys(next)) {
-        if (!filledPaths.includes(key)) {
+        if (!currentPaths.includes(key)) {
           revokeBlob(next[key].previewUrl);
           delete next[key];
           changed = true;
@@ -260,7 +262,7 @@ export function KycFileUpload({
     return () => {
       cancelled = true;
     };
-  }, [filledPaths.join("|")]);
+  }, [filledPathsKey]);
 
   useEffect(() => {
     return () => {

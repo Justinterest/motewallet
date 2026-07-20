@@ -145,7 +145,7 @@ function EurIcon({ className }: SvgProps) {
   );
 }
 
-const ICON_MAP: Record<string, (props: SvgProps) => JSX.Element> = {
+const ICON_MAP: Record<string, (props: SvgProps) => React.ReactElement> = {
   USD: UsdIcon,
   USDT: UsdtIcon,
   USDC: UsdcIcon,

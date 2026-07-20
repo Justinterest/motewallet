@@ -95,10 +95,11 @@ export function formValuesToSubmitRequest(
     },
     shareholdersInfo: values.shareholdersInfo.map(personToApi),
     directorInfo: values.directorInfo.map((p) => {
-      const { shareholdingRatio: _ratio, ...rest } = personToApi({
+      const { shareholdingRatio, ...rest } = personToApi({
         ...p,
         shareholdingRatio: p.shareholdingRatio ?? "",
       });
+      void shareholdingRatio;
       return rest;
     }),
   };

@@ -114,7 +114,6 @@ export default function WithdrawPage() {
   }, [supportedCurrencies, fiatCurrency]);
 
   const { data: cryptoAddressesData, isLoading: cryptoAddressesLoading } = useCryptoAddresses();
-  const cryptoAddresses = cryptoAddressesData ?? [];
   const { data: walletData } = useWalletBalances();
 
   const cryptoFundingAvailable = useMemo(() => {
@@ -132,8 +131,11 @@ export default function WithdrawPage() {
   }, [walletData, fiatCurrency]);
 
   const cryptoAddressesForSelection = useMemo(
-    () => cryptoAddresses.filter((a) => a.currency === currency && a.status === "ACTIVE"),
-    [cryptoAddresses, currency]
+    () =>
+      (cryptoAddressesData ?? []).filter(
+        (a) => a.currency === currency && a.status === "ACTIVE",
+      ),
+    [cryptoAddressesData, currency]
   );
 
   const cryptoAddressOptions = useMemo(
@@ -159,11 +161,13 @@ export default function WithdrawPage() {
   }, [cryptoAddressesForSelection, cryptoAddressId]);
 
   const { data: bankAccountsData, isLoading: bankAccountsLoading } = useBankAccounts();
-  const bankAccounts = bankAccountsData ?? [];
 
   const accountsForCurrency = useMemo(
-    () => bankAccounts.filter((a) => a.currency === fiatCurrency && a.status === "ACTIVE"),
-    [bankAccounts, fiatCurrency]
+    () =>
+      (bankAccountsData ?? []).filter(
+        (a) => a.currency === fiatCurrency && a.status === "ACTIVE",
+      ),
+    [bankAccountsData, fiatCurrency]
   );
 
   const bankAccountOptions = useMemo(

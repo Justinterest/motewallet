@@ -1,6 +1,6 @@
 "use client";
 
-import type { Control, FieldPath } from "react-hook-form";
+import type { Control, FieldPath, FieldPathValue } from "react-hook-form";
 import {
   FormControl,
   FormField,
@@ -13,10 +13,19 @@ import { KycFormRow } from "@/components/kyc/kyc-form-row";
 import type { KycFieldMetaKey } from "@/lib/kyc/field-meta";
 import type { KycFormValues } from "@/lib/validations/onboarding";
 
+/** Paths whose value is a string (date fields), not arrays/objects. */
+type KycStringFieldPath = {
+  [P in FieldPath<KycFormValues>]: FieldPathValue<KycFormValues, P> extends
+    | string
+    | undefined
+    ? P
+    : never;
+}[FieldPath<KycFormValues>];
+
 interface CertificateValidityFieldsProps {
   control: Control<KycFormValues>;
-  startName: FieldPath<KycFormValues>;
-  endName: FieldPath<KycFormValues>;
+  startName: KycStringFieldPath;
+  endName: KycStringFieldPath;
   startLabelKey: KycFieldMetaKey;
   endLabelKey: KycFieldMetaKey;
 }
@@ -37,7 +46,12 @@ export function CertificateValidityFields({
           <FormItem>
             <KycFormLabel fieldKey={startLabelKey} />
             <FormControl>
-              <FormDatePicker {...field} />
+              <FormDatePicker
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                disabled={field.disabled}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -50,7 +64,12 @@ export function CertificateValidityFields({
           <FormItem>
             <KycFormLabel fieldKey={endLabelKey} />
             <FormControl>
-              <FormDatePicker {...field} />
+              <FormDatePicker
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                disabled={field.disabled}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

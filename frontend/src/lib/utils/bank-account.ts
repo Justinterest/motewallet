@@ -5,6 +5,7 @@ export const TRANSFER_TYPE_LABELS: Record<string, string> = {
   TT: "电汇",
 };
 
-export function getTransferTypesForCurrency(_currency: string) {
+export function getTransferTypesForCurrency(currency: string) {
+  void currency;
   return [{ value: BANK_ACCOUNT_TRANSFER_TYPE, label: "电汇 (TT)" }];
 }
