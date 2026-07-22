@@ -81,8 +81,12 @@ migrate -path migrations -database "mysql://root:密码@tcp(localhost:3306)/mote
 ### 执行命令
 
 ```bash
+# 本地（mysql 客户端）
 # 在 database/ 目录下
 mysql -u root -p motewallet < seeds/001_seed_admin_and_config.sql
+
+# 线上 / 本机直连（须在 migrate up 之后）
+./deploy/scripts/seed.sh
 ```
 
 或在 MySQL 交互式客户端中：

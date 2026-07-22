@@ -63,17 +63,18 @@ ssh motewallet-prod 'sudo mv /tmp/motewallet-withdrawal.conf /etc/nginx/conf.d/m
 
 ## 数据库迁移（线上）
 
-Schema 变更在 `database/migrations/`（golang-migrate）。**不要**把 seed 打到生产。
+Schema 变更在 `database/migrations/`（golang-migrate）。种子数据在 `database/seeds/`（管理员账号、默认费率、系统配置等）。
 
-推荐顺序：**先 migrate，再发 backend**。
+推荐顺序：**先 migrate，再 seed（仅首次），再发 backend**。
 
 ```bash
 # 查看线上当前版本
 ./deploy/scripts/migrate.sh version
 
-# 首次：建库 + 跑完全部 migration
+# 首次：建库 + migration + 种子数据
 ./deploy/scripts/migrate.sh create-db
 ./deploy/scripts/migrate.sh up
+./deploy/scripts/seed.sh
 
 # 日常：有新 migration 时
 ./deploy/scripts/migrate.sh up
@@ -82,15 +83,21 @@ Schema 变更在 `database/migrations/`（golang-migrate）。**不要**把 seed
 ./deploy/scripts/migrate.sh down 1
 ```
 
-脚本会：
+`migrate.sh` 会：
 1. rsync `database/migrations/` 到服务器
 2. **每次同步** 本地 `deploy/.env` → 服务器（改密码后无需手动 scp）
 3. 用 Docker 跑 `migrate/migrate` 连库执行
+
+`seed.sh` 会：
+1. rsync `database/seeds/` 到服务器
+2. 按文件名顺序执行 `*.sql`（须在 `migrate up` 之后）
+3. 重复执行可能因主键/唯一约束失败，仅用于首次初始化
 
 本机直连 DB（需网络可达）：
 
 ```bash
 MIGRATE_LOCAL=1 ./deploy/scripts/migrate.sh version
+SEED_LOCAL=1 ./deploy/scripts/seed.sh
 ```
 
 ## 日常发布（可单独发）
