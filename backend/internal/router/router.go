@@ -12,6 +12,7 @@ func Setup(
 	healthHandler *handler.HealthHandler,
 	authHandler *handler.AuthHandler,
 	adminAuthHandler *handler.AdminAuthHandler,
+	adminUserHandler *handler.AdminUserHandler,
 	onboardingHandler *handler.OnboardingHandler,
 	walletHandler *handler.WalletHandler,
 	feeTemplateHandler *handler.FeeTemplateHandler,
@@ -54,6 +55,9 @@ func Setup(
 	adminAuthPublic := v1.Group("/admin/auth")
 	{
 		adminAuthPublic.POST("/login", adminAuthHandler.Login)
+		adminAuthPublic.POST("/2fa/verify", adminAuthHandler.Verify2FA)
+		adminAuthPublic.POST("/2fa/setup/confirm", adminAuthHandler.Confirm2FASetup)
+		adminAuthPublic.POST("/change-password", adminAuthHandler.ChangePassword)
 	}
 
 	// --- Merchant protected routes ---
@@ -138,6 +142,16 @@ func Setup(
 		exchange.POST("/preview", exchangeHandler.PreviewExchange)
 		exchange.POST("/order", exchangeHandler.CreateExchangeOrder)
 		exchange.GET("/orders", exchangeHandler.ListExchangeOrders)
+	}
+
+	// --- Admin protected: employee management ---
+	adminUsers := v1.Group("/admin/users")
+	adminUsers.Use(middleware.AdminAuth(cfg.JWT.Secret))
+	{
+		adminUsers.GET("", adminUserHandler.List)
+		adminUsers.POST("", adminUserHandler.Create)
+		adminUsers.POST("/:id/reset-password", adminUserHandler.ResetPassword)
+		adminUsers.POST("/:id/reset-2fa", adminUserHandler.Reset2FA)
 	}
 
 	// --- Admin protected: fee templates ---

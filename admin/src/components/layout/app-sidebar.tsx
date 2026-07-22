@@ -88,8 +88,8 @@ const operationNavItems = [
 
 const systemNavItems = [
   {
-    title: "管理员",
-    href: "#",
+    title: "员工管理",
+    href: "/employees",
     icon: Users,
   },
   {
@@ -169,7 +169,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.href}
+                    isActive={pathname === item.href || (item.href !== "#" && pathname.startsWith(item.href))}
                     tooltip={item.title}
                   >
                     <Link href={item.href}>

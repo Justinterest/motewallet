@@ -15,6 +15,8 @@ tags:
     description: 商户认证
   - name: Admin Auth
     description: 管理员认证
+  - name: Admin Users
+    description: 员工（管理员账号）管理
 
 paths:
   /health:
@@ -360,6 +362,12 @@ paths:
     post:
       tags: [Admin Auth]
       summary: 管理员登录
+      description: |
+        密码校验通过后：
+        - REQUIRES_2FA：已开启两步验证，需调用 /admin/auth/2fa/verify
+        - REQUIRES_2FA_SETUP：未开启或已被重置，需绑定后调用 /admin/auth/2fa/setup/confirm
+        - 完成 2FA 后若 must_change_password=true，返回 REQUIRES_PASSWORD_CHANGE，需调用 /admin/auth/change-password
+        - SUCCESS：签发 admin_token cookie
       operationId: adminLogin
       requestBody:
         required: true
@@ -369,7 +377,37 @@ paths:
               $ref: "#/components/schemas/AdminLoginRequest"
       responses:
         "200":
-          description: 登录成功
+          description: 返回认证挑战（需 2FA 校验或绑定）
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminAuthChallenge"
+        "401":
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/auth/2fa/verify:
+    post:
+      tags: [Admin Auth]
+      summary: 管理员登录两步验证码校验
+      operationId: adminVerify2FA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpVerifyRequest"
+      responses:
+        "200":
+          description: 验证成功，签发 session cookie
           headers:
             Set-Cookie:
               schema:
@@ -383,9 +421,88 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/AdminInfo"
-        "401":
-          description: 用户名或密码错误
+                        $ref: "#/components/schemas/AdminAuthChallenge"
+        "400":
+          description: 验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/auth/2fa/setup/confirm:
+    post:
+      tags: [Admin Auth]
+      summary: 确认绑定管理员两步验证
+      operationId: adminConfirm2FASetup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TotpVerifyRequest"
+      responses:
+        "200":
+          description: 绑定成功，签发 session cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: admin_token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminAuthChallenge"
+        "400":
+          description: 验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/auth/change-password:
+    post:
+      tags: [Admin Auth]
+      summary: 登录流程中修改初始/重置密码
+      description: 使用 REQUIRES_PASSWORD_CHANGE 返回的 temp_token；成功后签发 session cookie。
+      operationId: adminChangePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [temp_token, new_password]
+              properties:
+                temp_token:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 8
+                  maxLength: 64
+      responses:
+        "200":
+          description: 修改成功，签发 session cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: admin_token=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminAuthChallenge"
+        "400":
+          description: 密码不符合要求或与当前密码相同
           content:
             application/json:
               schema:
@@ -434,6 +551,158 @@ paths:
                         $ref: "#/components/schemas/AdminInfo"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/admin/users:
+    get:
+      tags: [Admin Users]
+      summary: 员工列表
+      description: 仅超级管理员可访问
+      operationId: adminListUsers
+      security:
+        - adminCookieAuth: []
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AdminUserItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: 非超级管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      tags: [Admin Users]
+      summary: 添加员工
+      description: 仅超级管理员可访问。未传 password 时自动生成初始密码并在响应中返回一次。
+      operationId: adminCreateUser
+      security:
+        - adminCookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdminUserRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CreateAdminUserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: 非超级管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 用户名或邮箱已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/users/{id}/reset-password:
+    post:
+      tags: [Admin Users]
+      summary: 重置员工密码
+      description: 仅超级管理员可访问。返回新随机密码一次。
+      operationId: adminResetUserPassword
+      security:
+        - adminCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint64
+      responses:
+        "200":
+          description: 重置成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          new_password:
+                            type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: 非超级管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 员工不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/users/{id}/reset-2fa:
+    post:
+      tags: [Admin Users]
+      summary: 重置员工两步验证
+      description: 仅超级管理员可访问。清除 TOTP 后，员工下次登录必须重新绑定。
+      operationId: adminResetUser2FA
+      security:
+        - adminCookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint64
+      responses:
+        "200":
+          description: 重置成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: 非超级管理员
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 员工不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/account/ledger:
     get:
@@ -658,8 +927,82 @@ components:
           example: admin@motewallet.com
         role:
           type: string
-          enum: [SUPER_ADMIN, ADMIN, OPERATOR, AUDITOR, VIEWER]
+          enum: [SUPER_ADMIN, OPERATOR, FINANCE]
           example: SUPER_ADMIN
+
+    AdminAuthChallenge:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [SUCCESS, REQUIRES_2FA, REQUIRES_2FA_SETUP, REQUIRES_PASSWORD_CHANGE]
+        temp_token:
+          type: string
+          description: 临时 token，用于后续 2FA 校验、绑定或修改密码
+        totp_secret:
+          type: string
+          description: TOTP base32 secret（仅 REQUIRES_2FA_SETUP）
+        totp_uri:
+          type: string
+          description: otpauth URI，用于生成二维码（仅 REQUIRES_2FA_SETUP）
+        admin:
+          $ref: "#/components/schemas/AdminInfo"
+
+    AdminUserItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint64
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [SUPER_ADMIN, OPERATOR, FINANCE]
+        status:
+          type: string
+          example: ACTIVE
+        totp_enabled:
+          type: boolean
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAdminUserRequest:
+      type: object
+      required: [username, email, role]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [SUPER_ADMIN, OPERATOR, FINANCE]
+        password:
+          type: string
+          minLength: 8
+          maxLength: 64
+          description: 可选；不传则自动生成
+
+    CreateAdminUserResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AdminUserItem"
+        initial_password:
+          type: string
+          description: 仅自动生成密码时返回
 
     WalletLedgerEntry:
       type: object

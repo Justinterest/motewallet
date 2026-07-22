@@ -107,6 +107,7 @@ func main() {
 	// Services
 	authService := service.NewAuthService(cfg, merchantRepo, feeTemplateRepo, kunClient, emailSender)
 	adminAuthService := service.NewAdminAuthService(cfg, adminUserRepo)
+	adminUserMgmtService := service.NewAdminUserManagementService(adminUserRepo, auditLogRepo)
 	currencyConfigService := service.NewCurrencyConfigService(systemConfigRepo)
 	walletService := service.NewWalletService(merchantWalletRepo, walletLedgerRepo, merchantRepo, currencyConfigService)
 	kycFileService := service.NewKycFileService(cfg, merchantRepo, s3Storage, kunClient)
@@ -128,6 +129,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler()
 	authHandler := handler.NewAuthHandler(cfg, authService)
 	adminAuthHandler := handler.NewAdminAuthHandler(cfg, adminAuthService)
+	adminUserHandler := handler.NewAdminUserHandler(adminUserMgmtService)
 	onboardingHandler := handler.NewOnboardingHandler(onboardingService, kycFileService)
 	walletHandler := handler.NewWalletHandler(walletService)
 	feeTemplateHandler := handler.NewFeeTemplateHandler(feeTemplateService)
@@ -150,6 +152,7 @@ func main() {
 		healthHandler,
 		authHandler,
 		adminAuthHandler,
+		adminUserHandler,
 		onboardingHandler,
 		walletHandler,
 		feeTemplateHandler,

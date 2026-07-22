@@ -413,6 +413,10 @@ KUN Webhook 回调
 | username | VARCHAR(64) | UNIQUE, NOT NULL | 用户名 |
 | email | VARCHAR(128) | UNIQUE, NOT NULL | 邮箱 |
 | password_hash | VARCHAR(255) | NOT NULL | 密码哈希 |
+| must_change_password | TINYINT(1) | NOT NULL, DEFAULT 0 | 下次登录是否必须修改密码 |
+| totp_secret | VARCHAR(64) | NULL | TOTP base32 密钥 |
+| totp_enabled | TINYINT(1) | NOT NULL, DEFAULT 0 | 是否已开启两步验证 |
+| totp_pending_secret | VARCHAR(64) | NULL | 重新绑定中的待确认密钥 |
 | role | VARCHAR(20) | NOT NULL, DEFAULT 'OPERATOR' | 角色 |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'ACTIVE' | 状态 |
 | last_login_at | DATETIME(3) | | 最后登录时间 |

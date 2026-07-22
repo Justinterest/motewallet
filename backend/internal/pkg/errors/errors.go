@@ -22,6 +22,7 @@ const (
 	ErrInvalidTOTPCode             = 10016
 	ErrTOTPNotEnabled              = 10017
 	ErrTOTPAlreadyEnabled          = 10018
+	ErrUsernameAlreadyExists       = 10019
 	ErrWebhookDuplicate            = 10020
 	ErrMerchantNotRegistered       = 10024
 	ErrKycAlreadyProcessing        = 10025
@@ -88,6 +89,7 @@ var (
 	ErrInvalidTOTPCodeE             = NewBusinessError(http.StatusBadRequest, ErrInvalidTOTPCode, "两步验证码错误")
 	ErrTOTPNotEnabledE              = NewBusinessError(http.StatusBadRequest, ErrTOTPNotEnabled, "尚未开启两步验证")
 	ErrTOTPAlreadyEnabledE          = NewBusinessError(http.StatusBadRequest, ErrTOTPAlreadyEnabled, "两步验证已开启")
+	ErrUsernameAlreadyExistsError   = NewBusinessError(http.StatusConflict, ErrUsernameAlreadyExists, "用户名已存在")
 	ErrWebhookDuplicateE            = NewBusinessError(http.StatusOK, ErrWebhookDuplicate, "webhook event already processed")
 	ErrMerchantNotRegisteredE       = NewBusinessError(http.StatusBadRequest, ErrMerchantNotRegistered, "请先完成企业认证后再使用该功能")
 	ErrKycAlreadyProcessingE        = NewBusinessError(http.StatusBadRequest, ErrKycAlreadyProcessing, "企业认证审核中，请耐心等待")

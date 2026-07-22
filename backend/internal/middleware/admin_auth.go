@@ -33,6 +33,12 @@ func AdminAuth(secret string) gin.HandlerFunc {
 			return
 		}
 
+		if claims.Purpose != jwt.PurposeSession {
+			response.Error(c, http.StatusUnauthorized, bizerrors.ErrUnauthorized, "unauthorized")
+			c.Abort()
+			return
+		}
+
 		c.Set("admin_id", claims.UserID)
 		c.Set("admin_email", claims.Email)
 		// Role is not in the JWT claims — we'd need to look it up if needed.

@@ -4,7 +4,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { adminAuthApi } from "@/lib/api/auth";
 import { useAuthStore } from "@/stores/auth-store";
-import type { AdminLoginRequest } from "@/types/auth";
+import type {
+  AdminAuthChallenge,
+  AdminChangePasswordRequest,
+  AdminLoginRequest,
+  AdminUser,
+} from "@/types/auth";
+
+export function completeAdminAuth(
+  challenge: AdminAuthChallenge,
+  setAdmin: (admin: AdminUser) => void,
+  queryClient: ReturnType<typeof useQueryClient>,
+  router: ReturnType<typeof useRouter>
+) {
+  if (challenge.status !== "SUCCESS" || !challenge.admin) {
+    return challenge;
+  }
+  setAdmin(challenge.admin);
+  queryClient.setQueryData(["admin", "me"], challenge.admin);
+  router.push("/dashboard");
+  return challenge;
+}
 
 export function useCurrentAdmin() {
   const { setAdmin } = useAuthStore();
@@ -22,15 +42,29 @@ export function useCurrentAdmin() {
 }
 
 export function useAdminLogin() {
-  const { setAdmin } = useAuthStore();
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (data: AdminLoginRequest) => adminAuthApi.login(data),
-    onSuccess: (data) => {
-      setAdmin(data);
-      queryClient.setQueryData(["admin", "me"], data);
-    },
+  });
+}
+
+export function useVerifyAdmin2FA() {
+  return useMutation({
+    mutationFn: (data: { temp_token: string; code: string }) =>
+      adminAuthApi.verify2FA(data),
+  });
+}
+
+export function useConfirmAdmin2FASetup() {
+  return useMutation({
+    mutationFn: (data: { temp_token: string; code: string }) =>
+      adminAuthApi.confirm2FASetup(data),
+  });
+}
+
+export function useChangeAdminPassword() {
+  return useMutation({
+    mutationFn: (data: AdminChangePasswordRequest) =>
+      adminAuthApi.changePassword(data),
   });
 }
 
@@ -47,7 +81,6 @@ export function useAdminLogout() {
       router.push("/login");
     },
     onError: () => {
-      // 即使退出失败也清除本地状态
       clearAdmin();
       queryClient.clear();
       router.push("/login");

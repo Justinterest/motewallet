@@ -24,6 +24,15 @@ func NewAdminAuthHandler(cfg *config.Config, adminAuthService *service.AdminAuth
 	}
 }
 
+func (h *AdminAuthHandler) respondAuthResult(c *gin.Context, result *service.AdminAuthResult) {
+	if result.IssueSession {
+		secure := h.cfg.IsProduction()
+		maxAge := int(h.cfg.JWT.Expiry.Seconds())
+		jwt.SetTokenCookie(c, jwt.CookieAdminToken, result.Token, maxAge, secure)
+	}
+	response.Success(c, result.Challenge)
+}
+
 func (h *AdminAuthHandler) Login(c *gin.Context) {
 	var req dtoreq.AdminLoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -41,10 +50,67 @@ func (h *AdminAuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	secure := h.cfg.IsProduction()
-	maxAge := int(h.cfg.JWT.Expiry.Seconds())
-	jwt.SetTokenCookie(c, jwt.CookieAdminToken, result.Token, maxAge, secure)
-	response.Success(c, result.Admin)
+	h.respondAuthResult(c, result)
+}
+
+func (h *AdminAuthHandler) Verify2FA(c *gin.Context) {
+	var req dtoreq.TotpVerifyReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	result, err := h.adminAuthService.Verify2FA(c.Request.Context(), req.TempToken, req.Code)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	h.respondAuthResult(c, result)
+}
+
+func (h *AdminAuthHandler) Confirm2FASetup(c *gin.Context) {
+	var req dtoreq.TotpSetupConfirmReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	result, err := h.adminAuthService.Confirm2FASetup(c.Request.Context(), req.TempToken, req.Code)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	h.respondAuthResult(c, result)
+}
+
+func (h *AdminAuthHandler) ChangePassword(c *gin.Context) {
+	var req dtoreq.AdminChangePasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, bizerrors.ErrValidation, err.Error())
+		return
+	}
+
+	result, err := h.adminAuthService.ChangePassword(c.Request.Context(), req.TempToken, req.NewPassword)
+	if err != nil {
+		if bizErr, ok := err.(*bizerrors.BusinessError); ok {
+			response.Error(c, bizErr.HTTPStatus, bizErr.Code, bizErr.Message)
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, bizerrors.ErrInternal, "internal server error")
+		return
+	}
+
+	h.respondAuthResult(c, result)
 }
 
 func (h *AdminAuthHandler) Logout(c *gin.Context) {

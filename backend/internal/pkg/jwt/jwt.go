@@ -13,10 +13,11 @@ const (
 	CookieMerchantToken = "token"
 	CookieAdminToken    = "admin_token"
 
-	PurposeSession   = ""
-	Purpose2FAVerify = "2fa_verify"
-	Purpose2FASetup  = "2fa_setup"
-	Purpose2FARebind = "2fa_rebind"
+	PurposeSession        = ""
+	Purpose2FAVerify      = "2fa_verify"
+	Purpose2FASetup       = "2fa_setup"
+	Purpose2FARebind      = "2fa_rebind"
+	PurposePasswordChange = "password_change"
 )
 
 type Claims struct {

@@ -3,9 +3,10 @@ package response
 import "time"
 
 const (
-	AuthStatusSuccess          = "SUCCESS"
-	AuthStatusRequires2FA      = "REQUIRES_2FA"
-	AuthStatusRequires2FASetup = "REQUIRES_2FA_SETUP"
+	AuthStatusSuccess                 = "SUCCESS"
+	AuthStatusRequires2FA             = "REQUIRES_2FA"
+	AuthStatusRequires2FASetup        = "REQUIRES_2FA_SETUP"
+	AuthStatusRequiresPasswordChange  = "REQUIRES_PASSWORD_CHANGE"
 )
 
 type MerchantInfoResp struct {
