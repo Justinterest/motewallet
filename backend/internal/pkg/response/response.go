@@ -2,6 +2,7 @@ package response
 
 import (
 	"net/http"
+	"reflect"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,10 +49,24 @@ func Paginated(c *gin.Context, list interface{}, total int64, page, pageSize int
 		Code:    0,
 		Message: "success",
 		Data: PaginatedData{
-			List:     list,
+			List:     emptySliceIfNil(list),
 			Total:    total,
 			Page:     page,
 			PageSize: pageSize,
 		},
 	})
+}
+
+// emptySliceIfNil ensures JSON encodes empty results as [] instead of null.
+func emptySliceIfNil(list interface{}) interface{} {
+	if list == nil {
+		return []any{}
+	}
+
+	v := reflect.ValueOf(list)
+	if v.Kind() == reflect.Slice && v.IsNil() {
+		return reflect.MakeSlice(v.Type(), 0, 0).Interface()
+	}
+
+	return list
 }

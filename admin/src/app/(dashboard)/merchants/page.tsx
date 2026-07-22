@@ -93,6 +93,7 @@ export default function MerchantsPage() {
     search: search || undefined,
   });
 
+  const merchants = data?.list ?? [];
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
   const handleSearch = () => {
@@ -176,7 +177,7 @@ export default function MerchantsPage() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : !data || data.list.length === 0 ? (
+          ) : merchants.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-400">
               <p className="text-sm">暂无商户数据</p>
             </div>
@@ -193,7 +194,7 @@ export default function MerchantsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.list.map((merchant) => (
+                {merchants.map((merchant) => (
                   <TableRow
                     key={merchant.id}
                     className="cursor-pointer"
