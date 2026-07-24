@@ -8,13 +8,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 	dtoresp "motewallet/internal/dto/response"
 	"motewallet/internal/model"
 	bizerrors "motewallet/internal/pkg/errors"
 	kundto "motewallet/internal/pkg/kun/dto"
 	"motewallet/internal/pkg/utils"
+
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 const kunDepositSyncPageSize = 50

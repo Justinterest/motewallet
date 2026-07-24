@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"motewallet/internal/model"
 )
 
@@ -16,6 +18,8 @@ type MerchantWalletRepository interface {
 	FindByMerchantAndAccount(ctx context.Context, merchantID uint64, accountType, currency string) (*model.MerchantWallet, error)
 	FindByMerchantAccountCurrency(ctx context.Context, merchantID uint64, accountType, currency string) (*model.MerchantWallet, error)
 	FindByMerchantAccountCurrencyWithDB(ctx context.Context, db *gorm.DB, merchantID uint64, accountType, currency string) (*model.MerchantWallet, error)
+	// FindOrCreateWithDB returns the wallet row, creating a zero-balance wallet if missing.
+	FindOrCreateWithDB(ctx context.Context, db *gorm.DB, merchantID uint64, accountType, currency string) (*model.MerchantWallet, error)
 	UpdateBalanceWithVersion(ctx context.Context, db *gorm.DB, wallet *model.MerchantWallet) error
 }
 
@@ -65,6 +69,31 @@ func (r *merchantWalletRepository) FindByMerchantAccountCurrencyWithDB(ctx conte
 		return nil, err
 	}
 	return &wallet, nil
+}
+
+func (r *merchantWalletRepository) FindOrCreateWithDB(ctx context.Context, db *gorm.DB, merchantID uint64, accountType, currency string) (*model.MerchantWallet, error) {
+	wallet, err := r.FindByMerchantAccountCurrencyWithDB(ctx, db, merchantID, accountType, currency)
+	if err == nil {
+		return wallet, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	created := &model.MerchantWallet{
+		MerchantID:    merchantID,
+		AccountType:   accountType,
+		Currency:      currency,
+		Balance:       decimal.Zero,
+		FrozenBalance: decimal.Zero,
+		Version:       0,
+	}
+	// Ignore duplicate-key races from concurrent ensure calls; re-read below.
+	if err := db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(created).Error; err != nil {
+		return nil, err
+	}
+
+	return r.FindByMerchantAccountCurrencyWithDB(ctx, db, merchantID, accountType, currency)
 }
 
 func (r *merchantWalletRepository) UpdateBalanceWithVersion(ctx context.Context, db *gorm.DB, wallet *model.MerchantWallet) error {

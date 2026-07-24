@@ -137,12 +137,14 @@ export default function ExchangePage() {
   const { data: walletData } = useWalletBalances();
   const orders = ordersData?.orders || [];
 
+  const wallets = walletData?.wallets ?? [];
+
   const fundingAvailable = useMemo(() => {
-    const wallet = walletData?.wallets.find(
+    const wallet = wallets.find(
       (item) => item.account_type === "FUNDING" && item.currency === fromCurrency,
     );
     return wallet?.available_balance ?? "0";
-  }, [walletData, fromCurrency]);
+  }, [wallets, fromCurrency]);
 
   function handleConfirmOrder() {
     if (!previewReady) return;

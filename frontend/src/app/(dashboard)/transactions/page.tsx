@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ExchangeOrderItem } from "@/components/exchange/exchange-order-item";
 import { DepositOrderItem } from "@/components/deposit/deposit-order-item";
-import { useDepositOrders, useWithdrawalOrders, useExchangeOrders, useTransferOrders } from "@/lib/hooks/use-trading";
+import {
+  useDepositOrders,
+  useWithdrawalOrders,
+  useExchangeOrders,
+  useTransferOrders,
+} from "@/lib/hooks/use-trading";
 import { useWalletLedger } from "@/lib/hooks/use-wallet";
 import { formatAmount } from "@/lib/utils/format";
 import { formatChainLabel } from "@/lib/utils/network";
@@ -63,7 +64,10 @@ const accountTypeLabels: Record<string, string> = {
   TRADING: "交易账户",
 };
 
-function formatSignedAmount(entry: WalletLedgerEntry): { text: string; className: string } {
+function formatSignedAmount(entry: WalletLedgerEntry): {
+  text: string;
+  className: string;
+} {
   const amount = formatAmount(entry.amount, entry.currency);
   switch (entry.entry_type) {
     case "CREDIT":
@@ -93,9 +97,12 @@ export default function TransactionsPage() {
     activeTab === "ledger",
   );
   const { data: depositData, isLoading: depositLoading } = useDepositOrders();
-  const { data: withdrawalData, isLoading: withdrawalLoading } = useWithdrawalOrders();
-  const { data: exchangeData, isLoading: exchangeLoading } = useExchangeOrders();
-  const { data: transferData, isLoading: transferLoading } = useTransferOrders();
+  const { data: withdrawalData, isLoading: withdrawalLoading } =
+    useWithdrawalOrders();
+  const { data: exchangeData, isLoading: exchangeLoading } =
+    useExchangeOrders();
+  const { data: transferData, isLoading: transferLoading } =
+    useTransferOrders();
 
   function renderContent() {
     switch (activeTab) {
@@ -105,7 +112,9 @@ export default function TransactionsPage() {
         if (entries.length === 0) return <EmptyState />;
         return entries.map((entry) => {
           const signed = formatSignedAmount(entry);
-          const biz = entry.biz_type ? bizTypeLabels[entry.biz_type] || entry.biz_type : null;
+          const biz = entry.biz_type
+            ? bizTypeLabels[entry.biz_type] || entry.biz_type
+            : null;
           return (
             <div
               key={entry.id}
@@ -116,28 +125,41 @@ export default function TransactionsPage() {
                   <p className="text-sm font-medium text-slate-900">
                     {entryTypeLabels[entry.entry_type] || entry.entry_type}
                   </p>
-                  <Badge variant="secondary" className="bg-slate-100 text-slate-600">
-                    {accountTypeLabels[entry.account_type] || entry.account_type}
+                  <Badge
+                    variant="secondary"
+                    className="bg-slate-100 text-slate-600"
+                  >
+                    {accountTypeLabels[entry.account_type] ||
+                      entry.account_type}
                   </Badge>
                   {biz && (
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-50 text-blue-700"
+                    >
                       {biz}
                     </Badge>
                   )}
                 </div>
                 <p className="text-xs text-slate-500">
-                  {entry.currency} · 余额 {formatAmount(entry.balance_before, entry.currency)} →{" "}
+                  {entry.currency} · 余额{" "}
+                  {formatAmount(entry.balance_before, entry.currency)} →{" "}
                   {formatAmount(entry.balance_after, entry.currency)}
-                  {" · "}冻结 {formatAmount(entry.frozen_before, entry.currency)} →{" "}
+                  {" · "}冻结{" "}
+                  {formatAmount(entry.frozen_before, entry.currency)} →{" "}
                   {formatAmount(entry.frozen_after, entry.currency)}
                 </p>
                 <p className="text-xs text-slate-400">
                   {new Date(entry.created_at).toLocaleString("zh-CN")}
-                  {entry.platform_order_id ? ` · ${entry.platform_order_id}` : ""}
+                  {entry.platform_order_id
+                    ? ` · ${entry.platform_order_id}`
+                    : ""}
                   {entry.remark ? ` · ${entry.remark}` : ""}
                 </p>
               </div>
-              <p className={`shrink-0 text-sm font-semibold ${signed.className}`}>
+              <p
+                className={`shrink-0 text-sm font-semibold ${signed.className}`}
+              >
                 {signed.text} {entry.currency}
               </p>
             </div>
@@ -215,15 +237,32 @@ export default function TransactionsPage() {
   );
 }
 
-function TxRow({ title, sub, status }: { title: string; sub: string; status: string }) {
+function TxRow({
+  title,
+  sub,
+  status,
+}: {
+  title: string;
+  sub: string;
+  status: string;
+}) {
   return (
     <div className="flex items-center justify-between rounded-lg border p-3">
       <div>
         <p className="text-sm font-medium text-slate-900">{title}</p>
         <p className="text-xs text-slate-500">{sub}</p>
       </div>
-      <Badge variant="secondary" className={statusColors[status] || statusColors.PENDING}>
-        {status === "COMPLETED" ? "已完成" : status === "FAILED" ? "失败" : status === "PROCESSING" ? "处理中" : "待处理"}
+      <Badge
+        variant="secondary"
+        className={statusColors[status] || statusColors.PENDING}
+      >
+        {status === "COMPLETED"
+          ? "已完成"
+          : status === "FAILED"
+            ? "失败"
+            : status === "PROCESSING"
+              ? "处理中"
+              : "待处理"}
       </Badge>
     </div>
   );

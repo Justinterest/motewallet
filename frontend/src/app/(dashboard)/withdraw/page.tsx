@@ -116,19 +116,21 @@ export default function WithdrawPage() {
   const { data: cryptoAddressesData, isLoading: cryptoAddressesLoading } = useCryptoAddresses();
   const { data: walletData } = useWalletBalances();
 
+  const wallets = walletData?.wallets ?? [];
+
   const cryptoFundingAvailable = useMemo(() => {
-    const wallet = walletData?.wallets.find(
+    const wallet = wallets.find(
       (item) => item.account_type === "FUNDING" && item.currency === currency,
     );
     return wallet?.available_balance ?? "0";
-  }, [walletData, currency]);
+  }, [wallets, currency]);
 
   const fiatFundingAvailable = useMemo(() => {
-    const wallet = walletData?.wallets.find(
+    const wallet = wallets.find(
       (item) => item.account_type === "FUNDING" && item.currency === fiatCurrency,
     );
     return wallet?.available_balance ?? "0";
-  }, [walletData, fiatCurrency]);
+  }, [wallets, fiatCurrency]);
 
   const cryptoAddressesForSelection = useMemo(
     () =>

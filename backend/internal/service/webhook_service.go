@@ -7,12 +7,13 @@ import (
 	"log/slog"
 	"time"
 
+	"motewallet/internal/model"
+	kundto "motewallet/internal/pkg/kun/dto"
+	"motewallet/internal/pkg/utils"
+	"motewallet/internal/repository"
+
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"motewallet/internal/model"
-	"motewallet/internal/pkg/utils"
-	kundto "motewallet/internal/pkg/kun/dto"
-	"motewallet/internal/repository"
 )
 
 type WebhookService struct {
@@ -24,8 +25,8 @@ type WebhookService struct {
 	transactionRecordRepo repository.TransactionRecordRepository
 	depositOrderRepo      repository.DepositOrderRepository
 	withdrawalOrderRepo   repository.WithdrawalOrderRepository
-	exchangeOrderRepo repository.ExchangeOrderRepository
-	transferSvc       *TransferService
+	exchangeOrderRepo     repository.ExchangeOrderRepository
+	transferSvc           *TransferService
 }
 
 func NewWebhookService(
@@ -259,8 +260,8 @@ func (s *WebhookService) handleCryptoWithdrawal(ctx context.Context, event *kund
 				return err
 			}
 			return s.withdrawalOrderRepo.UpdateFields(ctx, order.ID, map[string]interface{}{
-				"tx_id":    data.TxId,
-				"kun_fee":  kunFee,
+				"tx_id":   data.TxId,
+				"kun_fee": kunFee,
 			})
 		})
 	case "FAIL":

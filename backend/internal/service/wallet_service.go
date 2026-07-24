@@ -49,9 +49,22 @@ func NewWalletService(
 }
 
 func (s *WalletService) InitializeWallets(ctx context.Context, merchantID uint64) error {
+	existing, err := s.merchantWalletRepo.FindByMerchantID(ctx, merchantID)
+	if err != nil {
+		return err
+	}
+	existingKeys := make(map[string]struct{}, len(existing))
+	for _, w := range existing {
+		existingKeys[w.AccountType+":"+w.Currency] = struct{}{}
+	}
+
 	var wallets []*model.MerchantWallet
 	for _, accountType := range accountTypes {
 		for _, currency := range currencies {
+			key := accountType + ":" + currency
+			if _, ok := existingKeys[key]; ok {
+				continue
+			}
 			wallets = append(wallets, &model.MerchantWallet{
 				MerchantID:    merchantID,
 				AccountType:   accountType,
@@ -62,16 +75,30 @@ func (s *WalletService) InitializeWallets(ctx context.Context, merchantID uint64
 			})
 		}
 	}
+	if len(wallets) == 0 {
+		return nil
+	}
 	return s.merchantWalletRepo.CreateBatch(ctx, wallets)
+}
+
+// ensureWallet returns the merchant wallet row, creating a zero-balance row if missing.
+// All balance mutations must go through this so deposit/exchange/transfer/withdrawal
+// never fail solely because InitializeWallets was skipped or a new currency appeared.
+func (s *WalletService) ensureWallet(ctx context.Context, tx *gorm.DB, merchantID uint64, accountType, currency string) (*model.MerchantWallet, error) {
+	wallet, err := s.merchantWalletRepo.FindOrCreateWithDB(ctx, tx, merchantID, accountType, currency)
+	if err != nil {
+		return nil, fmt.Errorf("ensure wallet: %w", err)
+	}
+	return wallet, nil
 }
 
 func (s *WalletService) FreezeBalance(ctx context.Context, tx *gorm.DB, merchantID uint64, accountType, currency string, amount decimal.Decimal, ref WalletChangeRef) error {
 	if err := validatePositiveAmount(amount); err != nil {
 		return err
 	}
-	wallet, err := s.merchantWalletRepo.FindByMerchantAccountCurrencyWithDB(ctx, tx, merchantID, accountType, currency)
+	wallet, err := s.ensureWallet(ctx, tx, merchantID, accountType, currency)
 	if err != nil {
-		return fmt.Errorf("find wallet: %w", err)
+		return err
 	}
 	available := wallet.Balance.Sub(wallet.FrozenBalance)
 	if available.LessThan(amount) {
@@ -92,9 +119,9 @@ func (s *WalletService) UnfreezeBalance(ctx context.Context, tx *gorm.DB, mercha
 	if err := validatePositiveAmount(amount); err != nil {
 		return err
 	}
-	wallet, err := s.merchantWalletRepo.FindByMerchantAccountCurrencyWithDB(ctx, tx, merchantID, accountType, currency)
+	wallet, err := s.ensureWallet(ctx, tx, merchantID, accountType, currency)
 	if err != nil {
-		return fmt.Errorf("find wallet: %w", err)
+		return err
 	}
 	if wallet.FrozenBalance.LessThan(amount) {
 		return bizerrors.ErrInsufficientBalanceE
@@ -114,9 +141,9 @@ func (s *WalletService) DeductFrozen(ctx context.Context, tx *gorm.DB, merchantI
 	if err := validatePositiveAmount(amount); err != nil {
 		return err
 	}
-	wallet, err := s.merchantWalletRepo.FindByMerchantAccountCurrencyWithDB(ctx, tx, merchantID, accountType, currency)
+	wallet, err := s.ensureWallet(ctx, tx, merchantID, accountType, currency)
 	if err != nil {
-		return fmt.Errorf("find wallet: %w", err)
+		return err
 	}
 	if wallet.FrozenBalance.LessThan(amount) {
 		return bizerrors.ErrInsufficientBalanceE
@@ -137,9 +164,9 @@ func (s *WalletService) CreditBalance(ctx context.Context, tx *gorm.DB, merchant
 	if err := validatePositiveAmount(amount); err != nil {
 		return err
 	}
-	wallet, err := s.merchantWalletRepo.FindByMerchantAccountCurrencyWithDB(ctx, tx, merchantID, accountType, currency)
+	wallet, err := s.ensureWallet(ctx, tx, merchantID, accountType, currency)
 	if err != nil {
-		return fmt.Errorf("find wallet: %w", err)
+		return err
 	}
 
 	balanceBefore := wallet.Balance
@@ -239,13 +266,22 @@ func (s *WalletService) GetBalances(ctx context.Context, merchantID uint64) (*dt
 	}
 
 	orderedCurrencies := append(supportedFiat, supportedCrypto...)
-	var resp []dtoresp.WalletBalanceResp
+	resp := make([]dtoresp.WalletBalanceResp, 0, len(accountTypes)*len(orderedCurrencies))
 	for _, accountType := range accountTypes {
 		for _, code := range orderedCurrencies {
 			key := accountType + ":" + code
 			if item, ok := walletByKey[key]; ok {
 				resp = append(resp, item)
+				continue
 			}
+			// No DB row yet: still surface every supported currency with zero balances.
+			resp = append(resp, dtoresp.WalletBalanceResp{
+				AccountType:      accountType,
+				Currency:         code,
+				Balance:          "0",
+				FrozenBalance:    "0",
+				AvailableBalance: "0",
+			})
 		}
 	}
 

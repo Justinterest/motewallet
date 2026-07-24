@@ -70,20 +70,22 @@ export default function TransferPage() {
   const { data: ordersData, isLoading: ordersLoading } = useTransferOrders();
   const orders = ordersData?.orders || [];
 
+  const wallets = walletData?.wallets ?? [];
+
   const sourceAvailable = useMemo(() => {
-    const wallet = walletData?.wallets.find(
+    const wallet = wallets.find(
       (item) => item.account_type === fromAccount && item.currency === currency,
     );
     return wallet?.available_balance ?? "0";
-  }, [walletData, fromAccount, currency]);
+  }, [wallets, fromAccount, currency]);
 
   const fundingBalances = useMemo(
-    () => walletData?.wallets.filter((w) => w.account_type === "FUNDING") ?? [],
-    [walletData],
+    () => wallets.filter((w) => w.account_type === "FUNDING"),
+    [wallets],
   );
   const tradingBalances = useMemo(
-    () => walletData?.wallets.filter((w) => w.account_type === "TRADING") ?? [],
-    [walletData],
+    () => wallets.filter((w) => w.account_type === "TRADING"),
+    [wallets],
   );
 
   function handleSwapAccounts() {
