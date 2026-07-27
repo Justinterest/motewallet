@@ -47,15 +47,11 @@ func (s *CurrencyConfigService) GetAvailableChains(ctx context.Context) (map[str
 	if err != nil {
 		return nil, err
 	}
-	availableCrypto, err := s.GetAvailableCrypto(ctx)
-	if err != nil {
-		return nil, err
-	}
 	raw := currency.ParseChainMap(value)
 	if len(raw) == 0 {
 		raw = currency.ParseChainMap(currency.DefaultSupportedChainsJSON)
 	}
-	return s.filterChainsByCurrencies(raw, availableCrypto), nil
+	return s.filterChainsByCurrencies(raw, currency.AllCrypto), nil
 }
 
 func (s *CurrencyConfigService) GetAvailableDefaultChains(ctx context.Context) (map[string]string, error) {
@@ -75,42 +71,38 @@ func (s *CurrencyConfigService) GetAvailableDefaultChains(ctx context.Context) (
 }
 
 func (s *CurrencyConfigService) GetSupportedCrypto(ctx context.Context, merchant *model.Merchant) ([]string, error) {
-	available, err := s.GetAvailableCrypto(ctx)
-	if err != nil {
-		return nil, err
-	}
 	if merchant == nil || merchant.SupportedCryptoCurrencies == nil || strings.TrimSpace(*merchant.SupportedCryptoCurrencies) == "" {
-		return available, nil
+		return s.GetAvailableCrypto(ctx)
 	}
-	return currency.FilterAllowed(currency.ParseList(*merchant.SupportedCryptoCurrencies), available), nil
+	return currency.FilterAllowed(currency.ParseList(*merchant.SupportedCryptoCurrencies), currency.AllCrypto), nil
 }
 
 func (s *CurrencyConfigService) GetSupportedFiat(ctx context.Context, merchant *model.Merchant) ([]string, error) {
-	available, err := s.GetAvailableFiat(ctx)
-	if err != nil {
-		return nil, err
-	}
 	if merchant == nil || merchant.SupportedFiatCurrencies == nil || strings.TrimSpace(*merchant.SupportedFiatCurrencies) == "" {
-		return available, nil
+		return s.GetAvailableFiat(ctx)
 	}
-	return currency.FilterAllowed(currency.ParseList(*merchant.SupportedFiatCurrencies), available), nil
+	return currency.FilterAllowed(currency.ParseList(*merchant.SupportedFiatCurrencies), currency.AllFiat), nil
 }
 
 func (s *CurrencyConfigService) GetSupportedChains(ctx context.Context, merchant *model.Merchant) (map[string][]string, error) {
-	available, err := s.GetAvailableChains(ctx)
-	if err != nil {
-		return nil, err
-	}
 	supportedCrypto, err := s.GetSupportedCrypto(ctx, merchant)
 	if err != nil {
 		return nil, err
 	}
 
 	if merchant == nil || merchant.SupportedCryptoChains == nil || strings.TrimSpace(*merchant.SupportedCryptoChains) == "" {
+		available, err := s.GetAvailableChains(ctx)
+		if err != nil {
+			return nil, err
+		}
 		return s.filterChainsByCurrencies(available, supportedCrypto), nil
 	}
 
 	merchantChains := currency.ParseChainMap(*merchant.SupportedCryptoChains)
+	available, err := s.GetAvailableChains(ctx)
+	if err != nil {
+		return nil, err
+	}
 	result := make(map[string][]string)
 	for _, code := range supportedCrypto {
 		allowed := available[code]
@@ -207,18 +199,9 @@ func (s *CurrencyConfigService) EnsureChainSupported(ctx context.Context, mercha
 	return nil
 }
 
-func (s *CurrencyConfigService) NormalizeMerchantSelection(ctx context.Context, crypto, fiat []string) ([]string, []string, error) {
-	availableCrypto, err := s.GetAvailableCrypto(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	availableFiat, err := s.GetAvailableFiat(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	selectedCrypto := currency.ValidateSelection(crypto, availableCrypto)
-	selectedFiat := currency.ValidateSelection(fiat, availableFiat)
+func (s *CurrencyConfigService) NormalizeMerchantSelection(_ context.Context, crypto, fiat []string) ([]string, []string, error) {
+	selectedCrypto := currency.ValidateSelection(crypto, currency.AllCrypto)
+	selectedFiat := currency.ValidateSelection(fiat, currency.AllFiat)
 	if len(selectedCrypto) == 0 {
 		return nil, nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "at least one crypto currency must be selected")
 	}
@@ -272,7 +255,7 @@ func (s *CurrencyConfigService) NormalizeMerchantChainSelection(
 }
 
 func (s *CurrencyConfigService) NormalizeGlobalSelection(
-	ctx context.Context,
+	_ context.Context,
 	crypto, fiat []string,
 	chains map[string][]string,
 	defaults map[string]string,
@@ -287,7 +270,7 @@ func (s *CurrencyConfigService) NormalizeGlobalSelection(
 	}
 
 	normalizedChains := make(map[string][]string)
-	for _, code := range selectedCrypto {
+	for _, code := range currency.AllCrypto {
 		catalog := currency.CatalogChains(code)
 		selected := currency.ValidateChainSelection(code, chains[code], catalog)
 		if len(selected) == 0 {
@@ -297,7 +280,7 @@ func (s *CurrencyConfigService) NormalizeGlobalSelection(
 	}
 
 	normalizedDefaults := make(map[string]string)
-	for _, code := range selectedCrypto {
+	for _, code := range currency.AllCrypto {
 		normalizedDefaults[code] = currency.ResolveDefaultChain(code, normalizedChains[code], defaults[code])
 	}
 

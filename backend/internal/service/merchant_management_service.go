@@ -11,6 +11,7 @@ import (
 	dtoreq "motewallet/internal/dto/request"
 	dtoresp "motewallet/internal/dto/response"
 	"motewallet/internal/model"
+	"motewallet/internal/pkg/currency"
 	bizerrors "motewallet/internal/pkg/errors"
 	"motewallet/internal/pkg/kun"
 	"motewallet/internal/repository"
@@ -155,11 +156,7 @@ func (s *MerchantManagementService) GetDetail(ctx context.Context, id uint64) (*
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
-	availableCrypto, err := s.currencyConfigSvc.GetAvailableCrypto(ctx)
-	if err != nil {
-		return nil, bizerrors.ErrInternalError
-	}
-	availableFiat, err := s.currencyConfigSvc.GetAvailableFiat(ctx)
+	availableDefaults, err := s.currencyConfigSvc.GetAvailableDefaultChains(ctx)
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
@@ -167,16 +164,12 @@ func (s *MerchantManagementService) GetDetail(ctx context.Context, id uint64) (*
 	if err != nil {
 		return nil, bizerrors.ErrInternalError
 	}
-	availableDefaults, err := s.currencyConfigSvc.GetAvailableDefaultChains(ctx)
-	if err != nil {
-		return nil, bizerrors.ErrInternalError
-	}
 	resp.SupportedCryptoCurrencies = supportedCrypto
 	resp.SupportedFiatCurrencies = supportedFiat
 	resp.SupportedCryptoChains = supportedChains
 	resp.DefaultCryptoChains = defaultChains
-	resp.AvailableCryptoCurrencies = availableCrypto
-	resp.AvailableFiatCurrencies = availableFiat
+	resp.AvailableCryptoCurrencies = append([]string(nil), currency.AllCrypto...)
+	resp.AvailableFiatCurrencies = append([]string(nil), currency.AllFiat...)
 	resp.AvailableCryptoChains = availableChains
 	resp.AvailableDefaultChains = availableDefaults
 	resp.CatalogChains = s.currencyConfigSvc.GetCatalogChains()

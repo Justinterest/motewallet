@@ -54,7 +54,7 @@ export default function SettingsPage() {
       toast({ title: "请至少选择一种数字货币和一种法币", variant: "destructive" });
       return;
     }
-    for (const currency of selectedCrypto) {
+    for (const currency of data?.all_crypto ?? []) {
       if ((selectedChains[currency] ?? []).length === 0) {
         toast({ title: `${currency} 至少需要选择一条支持链`, variant: "destructive" });
         return;
@@ -88,7 +88,9 @@ export default function SettingsPage() {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">系统设置</h1>
-        <p className="mt-1 text-sm text-slate-500">配置平台默认支持的币种与链类型，商户未单独配置时继承此处默认值。</p>
+        <p className="mt-1 text-sm text-slate-500">
+          币种开关决定商户默认启用项；支持链独立配置，并适用于所有数字货币。
+        </p>
       </div>
 
       <Card>
@@ -98,6 +100,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-6">
           <div>
             <p className="mb-3 text-sm font-medium text-slate-700">数字货币</p>
+            <p className="mb-3 text-xs text-slate-500">开关仅控制商户默认是否启用该币种。</p>
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
               {(data?.all_crypto ?? []).map((currency) => (
                 <div key={currency} className="flex items-center justify-between rounded-lg border px-3 py-2">
@@ -132,7 +135,7 @@ export default function SettingsPage() {
 
           <div className="space-y-4">
             <p className="text-sm font-medium text-slate-700">数字货币支持链与默认链</p>
-            {selectedCrypto.map((currency) => {
+            {(data?.all_crypto ?? []).map((currency) => {
               const catalog = data?.catalog_chains?.[currency] ?? [];
               const enabled = selectedChains[currency] ?? [];
               return (
