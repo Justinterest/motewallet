@@ -81,6 +81,9 @@ export default function FeeTemplateDetailPage({
         defaultExchangeItems={template.exchange_items}
         defaultCryptoItems={template.crypto_withdrawal_items}
         defaultFiatItems={template.fiat_withdrawal_items}
+        defaultExchangeFeeDeductionMethod={template.exchange_fee_deduction_method}
+        defaultCryptoFeeDeductionMethod={template.crypto_withdrawal_fee_deduction_method}
+        defaultFiatFeeDeductionMethod={template.fiat_withdrawal_fee_deduction_method}
         onSubmit={handleSubmit}
         isPending={updateMutation.isPending}
         submitLabel="保存修改"

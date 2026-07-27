@@ -41,13 +41,16 @@ type FeeTemplateListResp struct {
 }
 
 type FeeTemplateDetailResp struct {
-	ID                    uint64                     `json:"id"`
-	Name                  string                     `json:"name"`
-	Description           *string                    `json:"description,omitempty"`
-	IsDefault             bool                       `json:"is_default"`
-	ExchangeItems         []ExchangeItemResp         `json:"exchange_items"`
-	CryptoWithdrawalItems []CryptoWithdrawalItemResp `json:"crypto_withdrawal_items"`
-	FiatWithdrawalItems   []FiatWithdrawalItemResp   `json:"fiat_withdrawal_items"`
-	CreatedAt             time.Time                  `json:"created_at"`
-	UpdatedAt             time.Time                  `json:"updated_at"`
+	ID                                 uint64                     `json:"id"`
+	Name                               string                     `json:"name"`
+	Description                        *string                    `json:"description,omitempty"`
+	IsDefault                          bool                       `json:"is_default"`
+	ExchangeFeeDeductionMethod         string                     `json:"exchange_fee_deduction_method"`
+	CryptoWithdrawalFeeDeductionMethod string                     `json:"crypto_withdrawal_fee_deduction_method"`
+	FiatWithdrawalFeeDeductionMethod   string                     `json:"fiat_withdrawal_fee_deduction_method"`
+	ExchangeItems                      []ExchangeItemResp         `json:"exchange_items"`
+	CryptoWithdrawalItems              []CryptoWithdrawalItemResp `json:"crypto_withdrawal_items"`
+	FiatWithdrawalItems                []FiatWithdrawalItemResp   `json:"fiat_withdrawal_items"`
+	CreatedAt                          time.Time                  `json:"created_at"`
+	UpdatedAt                          time.Time                  `json:"updated_at"`
 }

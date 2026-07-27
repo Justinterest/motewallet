@@ -73,6 +73,16 @@ func (s *ExchangeService) PreviewExchange(ctx context.Context, merchantID uint64
 
 	fromAmount, _ := decimal.NewFromString(req.FromAmount)
 	platformFee := s.calculateExchangeFee(ctx, merchant.FeeTemplateID, req.FromCurrency, req.ToCurrency, fromAmount)
+	exchangeFeeMethod, _, _ := feeDeductionMethods(ctx, s.db, merchant.FeeTemplateID)
+	netToAmount := receivedAmount(fromAmount, platformFee, exchangeFeeMethod)
+	if netToAmount.LessThanOrEqual(decimal.Zero) {
+		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+	}
+	totalDeduction := walletDeductionAmount(fromAmount, platformFee, exchangeFeeMethod)
+	feeCurrency := req.FromCurrency
+	if exchangeFeeMethod == FeeDeductionReceivedAmount {
+		feeCurrency = req.ToCurrency
+	}
 
 	// 暂时使用 1:1 兑换，询价接口保留待恢复
 	// quote, err := s.requestKUNQuote(ctx, *merchant.KunSubCustomerNo, req.FromCurrency, req.ToCurrency, req.FromAmount)
@@ -106,15 +116,16 @@ func (s *ExchangeService) PreviewExchange(ctx context.Context, merchantID uint64
 	// }, nil
 
 	return &dtoresp.ExchangePreviewResp{
-		FromCurrency:   req.FromCurrency,
-		ToCurrency:     req.ToCurrency,
-		FromAmount:     fromAmount.String(),
-		ToAmount:       fromAmount.String(),
-		ExchangeRate:   "1",
-		PlatformFee:    platformFee.String(),
-		FeeCurrency:    req.FromCurrency,
-		NetToAmount:    fromAmount.String(),
-		TotalDeduction: fromAmount.Add(platformFee).String(),
+		FromCurrency:       req.FromCurrency,
+		ToCurrency:         req.ToCurrency,
+		FromAmount:         fromAmount.String(),
+		ToAmount:           fromAmount.String(),
+		ExchangeRate:       "1",
+		PlatformFee:        platformFee.String(),
+		FeeCurrency:        feeCurrency,
+		FeeDeductionMethod: exchangeFeeMethod,
+		NetToAmount:        netToAmount.String(),
+		TotalDeduction:     totalDeduction.String(),
 	}, nil
 }
 
@@ -137,7 +148,15 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 
 	fromAmount, _ := decimal.NewFromString(req.FromAmount)
 	platformFee := s.calculateExchangeFee(ctx, merchant.FeeTemplateID, req.FromCurrency, req.ToCurrency, fromAmount)
-	totalFreeze := fromAmount.Add(platformFee)
+	exchangeFeeMethod, _, _ := feeDeductionMethods(ctx, s.db, merchant.FeeTemplateID)
+	if receivedAmount(fromAmount, platformFee, exchangeFeeMethod).LessThanOrEqual(decimal.Zero) {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+	}
+	totalFreeze := walletDeductionAmount(fromAmount, platformFee, exchangeFeeMethod)
+	feeCurrency := req.FromCurrency
+	if exchangeFeeMethod == FeeDeductionReceivedAmount {
+		feeCurrency = req.ToCurrency
+	}
 
 	requestNo := kun.GenerateRequestNo()
 	// NO: 兑换结果留在交易账户（KUN_PL），不自动划回资金账户
@@ -150,14 +169,16 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		platformOrderID := utils.GeneratePlatformOrderID("EX")
 		txRecord := &model.TransactionRecord{
-			PlatformOrderID: platformOrderID,
-			MerchantID:      merchantID,
-			Type:            "EXCHANGE",
-			SubType:         &subType,
-			Amount:          fromAmount,
-			Currency:        req.FromCurrency,
-			PlatformFee:     platformFee,
-			Status:          "PROCESSING",
+			PlatformOrderID:     platformOrderID,
+			MerchantID:          merchantID,
+			Type:                "EXCHANGE",
+			SubType:             &subType,
+			Amount:              fromAmount,
+			Currency:            req.FromCurrency,
+			PlatformFee:         platformFee,
+			PlatformFeeCurrency: &feeCurrency,
+			FeeDeductionMethod:  exchangeFeeMethod,
+			Status:              "PROCESSING",
 		}
 		if err := tx.WithContext(ctx).Create(txRecord).Error; err != nil {
 			return err
@@ -410,7 +431,11 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 			exchangeRate = decimal.NewFromInt(1)
 		}
 		kunFee, _ := decimal.NewFromString(tradeFeeStr)
-		totalFrozen := order.FromAmount.Add(txRecord.PlatformFee)
+		totalFrozen := walletDeductionAmount(order.FromAmount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
+		netToAmount := receivedAmount(toAmount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
+		if netToAmount.LessThanOrEqual(decimal.Zero) {
+			return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+		}
 		now := time.Now()
 
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "EXCHANGE"}
@@ -419,12 +444,12 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", order.FromCurrency, totalFrozen, ref); err != nil {
 				return err
 			}
-			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "TRADING", order.ToCurrency, toAmount, ref); err != nil {
+			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "TRADING", order.ToCurrency, netToAmount, ref); err != nil {
 				return err
 			}
 			if err := tx.WithContext(ctx).Model(&model.TransactionRecord{}).
 				Where("id = ?", txRecord.ID).
-				Update("status", "COMPLETED").Error; err != nil {
+				Updates(map[string]interface{}{"status": "COMPLETED", "actual_amount": netToAmount}).Error; err != nil {
 				return err
 			}
 			return tx.WithContext(ctx).Model(&model.ExchangeOrder{}).Where("id = ?", order.ID).Updates(map[string]interface{}{
@@ -435,7 +460,7 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 			}).Error
 		})
 	case "FAIL":
-		totalFrozen := order.FromAmount.Add(txRecord.PlatformFee)
+		totalFrozen := walletDeductionAmount(order.FromAmount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
 		reason := strings.TrimSpace(failReason)
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "EXCHANGE"}
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -497,6 +522,12 @@ func (s *ExchangeService) ListExchangeOrders(ctx context.Context, merchantID uin
 		}
 		if txRecord != nil {
 			item.PlatformFee = txRecord.PlatformFee.String()
+			item.FeeDeductionMethod = normalizeFeeDeductionMethod(txRecord.FeeDeductionMethod)
+			if txRecord.ActualAmount != nil {
+				item.NetToAmount = txRecord.ActualAmount.String()
+			} else if o.ToAmount != nil {
+				item.NetToAmount = receivedAmount(*o.ToAmount, txRecord.PlatformFee, txRecord.FeeDeductionMethod).String()
+			}
 			item.Status = txRecord.Status
 		}
 		if o.FailReason != nil {

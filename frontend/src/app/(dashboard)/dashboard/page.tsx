@@ -179,8 +179,9 @@ function RecentTransactions() {
     }
 
     for (const order of exchangeData?.orders || []) {
-      const toAmount = order.to_amount
-        ? formatAmount(order.to_amount, order.to_currency)
+      const creditedAmount = order.net_to_amount || order.to_amount;
+      const toAmount = creditedAmount
+        ? formatAmount(creditedAmount, order.to_currency)
         : "—";
       items.push({
         id: `exchange-${order.id}`,

@@ -15,6 +15,7 @@ export function ExchangeOrderItem({ order }: ExchangeOrderItemProps) {
   const hint = formatExchangeOrderHint(order);
   const meta = formatExchangeOrderMeta(order, formatAmount);
   const isCompleted = order.status === "COMPLETED" && order.to_amount;
+  const creditedAmount = order.net_to_amount || order.to_amount;
 
   return (
     <div className="rounded-lg border p-3">
@@ -26,7 +27,7 @@ export function ExchangeOrderItem({ order }: ExchangeOrderItemProps) {
           <p className="text-sm text-slate-700">
             {isCompleted ? "到账" : "买入"}{" "}
             {isCompleted
-              ? `${formatAmount(order.to_amount, order.to_currency)} ${order.to_currency}`
+              ? `${formatAmount(creditedAmount, order.to_currency)} ${order.to_currency}`
               : order.to_currency}
           </p>
           {hint && <p className="text-xs text-slate-500">{hint}</p>}

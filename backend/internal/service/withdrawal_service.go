@@ -104,7 +104,12 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 	}
 
 	platformFee := s.calculateCryptoFee(ctx, merchant.FeeTemplateID, cryptoAddress.Currency, cryptoAddress.Chain, amount)
-	totalDeduction := amount.Add(platformFee)
+	_, feeDeductionMethod, _ := feeDeductionMethods(ctx, s.db, merchant.FeeTemplateID)
+	netAmount := receivedAmount(amount, platformFee, feeDeductionMethod)
+	if netAmount.LessThanOrEqual(decimal.Zero) {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+	}
+	totalDeduction := walletDeductionAmount(amount, platformFee, feeDeductionMethod)
 
 	subType := "CRYPTO"
 	var orderID uint64
@@ -112,14 +117,17 @@ func (s *WithdrawalService) SubmitCryptoWithdrawal(ctx context.Context, merchant
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		platformOrderID := utils.GeneratePlatformOrderID("WD")
 		txRecord := &model.TransactionRecord{
-			PlatformOrderID: platformOrderID,
-			MerchantID:      merchantID,
-			Type:            "WITHDRAWAL",
-			SubType:         &subType,
-			Amount:          amount,
-			Currency:        req.Currency,
-			PlatformFee:     platformFee,
-			Status:          "PENDING",
+			PlatformOrderID:     platformOrderID,
+			MerchantID:          merchantID,
+			Type:                "WITHDRAWAL",
+			SubType:             &subType,
+			Amount:              amount,
+			Currency:            req.Currency,
+			PlatformFee:         platformFee,
+			PlatformFeeCurrency: &req.Currency,
+			FeeDeductionMethod:  feeDeductionMethod,
+			ActualAmount:        &netAmount,
+			Status:              "PENDING",
 		}
 		if err := tx.WithContext(ctx).Create(txRecord).Error; err != nil {
 			return err
@@ -177,6 +185,8 @@ func (s *WithdrawalService) PreviewWithdrawalFee(ctx context.Context, merchantID
 	}
 
 	var platformFee decimal.Decimal
+	feeDeductionMethod := FeeDeductionWallet
+	_, cryptoMethod, fiatMethod := feeDeductionMethods(ctx, s.db, merchant.FeeTemplateID)
 
 	switch strings.ToUpper(req.Type) {
 	case "CRYPTO":
@@ -200,6 +210,7 @@ func (s *WithdrawalService) PreviewWithdrawalFee(ctx context.Context, merchantID
 			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "crypto address currency does not match withdrawal currency")
 		}
 		platformFee = s.calculateCryptoFee(ctx, merchant.FeeTemplateID, cryptoAddress.Currency, cryptoAddress.Chain, amount)
+		feeDeductionMethod = cryptoMethod
 	case "FIAT":
 		if req.BankAccountID == 0 {
 			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank_account_id is required")
@@ -221,18 +232,24 @@ func (s *WithdrawalService) PreviewWithdrawalFee(ctx context.Context, merchantID
 			return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "bank account currency does not match withdrawal currency")
 		}
 		platformFee = s.calculateFiatFee(ctx, merchant.FeeTemplateID, req.Currency, bankAccount.TransferType, amount)
+		feeDeductionMethod = fiatMethod
 	default:
 		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "invalid withdrawal type")
 	}
 
-	totalDeduction := amount.Add(platformFee)
+	netAmount := receivedAmount(amount, platformFee, feeDeductionMethod)
+	if netAmount.LessThanOrEqual(decimal.Zero) {
+		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+	}
+	totalDeduction := walletDeductionAmount(amount, platformFee, feeDeductionMethod)
 
 	return &dtoresp.WithdrawalFeePreviewResp{
-		Currency:       req.Currency,
-		Amount:         amount.String(),
-		PlatformFee:    platformFee.String(),
-		TotalDeduction: totalDeduction.String(),
-		NetAmount:      amount.String(),
+		Currency:           req.Currency,
+		Amount:             amount.String(),
+		PlatformFee:        platformFee.String(),
+		FeeDeductionMethod: feeDeductionMethod,
+		TotalDeduction:     totalDeduction.String(),
+		NetAmount:          netAmount.String(),
 	}, nil
 }
 
@@ -284,7 +301,12 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 	}
 
 	platformFee := s.calculateFiatFee(ctx, merchant.FeeTemplateID, req.Currency, bankAccount.TransferType, amount)
-	totalDeduction := amount.Add(platformFee)
+	_, _, feeDeductionMethod := feeDeductionMethods(ctx, s.db, merchant.FeeTemplateID)
+	netAmount := receivedAmount(amount, platformFee, feeDeductionMethod)
+	if netAmount.LessThanOrEqual(decimal.Zero) {
+		return 0, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+	}
+	totalDeduction := walletDeductionAmount(amount, platformFee, feeDeductionMethod)
 	purpose := strings.ToUpper(strings.TrimSpace(req.Purpose))
 
 	subType := "FIAT"
@@ -293,15 +315,18 @@ func (s *WithdrawalService) SubmitFiatWithdrawal(ctx context.Context, merchantID
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		platformOrderID := utils.GeneratePlatformOrderID("WD")
 		txRecord := &model.TransactionRecord{
-			PlatformOrderID: platformOrderID,
-			MerchantID:      merchantID,
-			Type:            "WITHDRAWAL",
-			SubType:         &subType,
-			Amount:          amount,
-			Currency:        req.Currency,
-			PlatformFee:     platformFee,
-			Remark:          &postscript,
-			Status:          "PENDING",
+			PlatformOrderID:     platformOrderID,
+			MerchantID:          merchantID,
+			Type:                "WITHDRAWAL",
+			SubType:             &subType,
+			Amount:              amount,
+			Currency:            req.Currency,
+			PlatformFee:         platformFee,
+			PlatformFeeCurrency: &req.Currency,
+			FeeDeductionMethod:  feeDeductionMethod,
+			ActualAmount:        &netAmount,
+			Remark:              &postscript,
+			Status:              "PENDING",
 		}
 		if err := tx.WithContext(ctx).Create(txRecord).Error; err != nil {
 			return err
@@ -369,6 +394,10 @@ func (s *WithdrawalService) ApproveWithdrawal(ctx context.Context, adminID uint6
 
 	requestNo := kun.GenerateRequestNo()
 	var kunOrderID string
+	payoutAmount := receivedAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
+	if payoutAmount.LessThanOrEqual(decimal.Zero) {
+		return bizerrors.NewBusinessError(400, bizerrors.ErrValidation, "platform fee must be less than received amount")
+	}
 
 	switch order.WithdrawalType {
 	case "CRYPTO":
@@ -378,7 +407,7 @@ func (s *WithdrawalService) ApproveWithdrawal(ctx context.Context, adminID uint6
 		var kunOrderResp kundto.CryptoWithdrawalResp
 		err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.CryptoWithdrawalPath, &kundto.CryptoWithdrawalReq{
 			RequestNo:  requestNo,
-			Amount:     txRecord.Amount.String(),
+			Amount:     payoutAmount.String(),
 			Chain:      *order.Chain,
 			Currency:   txRecord.Currency,
 			Address:    *order.ToAddress,
@@ -412,7 +441,7 @@ func (s *WithdrawalService) ApproveWithdrawal(ctx context.Context, adminID uint6
 		err = s.kunClient.PostAsCustomer(ctx, *merchant.KunSubCustomerNo, kun.FiatWithdrawalPath, &kundto.FiatWithdrawalReq{
 			RequestNo:  requestNo,
 			AccountId:  *bankAccount.KunAccountID,
-			Amount:     txRecord.Amount.String(),
+			Amount:     payoutAmount.String(),
 			Currency:   txRecord.Currency,
 			FeeMethod:  "SHA",
 			PoboType:   "NO",
@@ -457,7 +486,7 @@ func (s *WithdrawalService) RejectWithdrawal(ctx context.Context, adminID uint64
 		return bizerrors.ErrInternalError
 	}
 
-	totalFrozen := txRecord.Amount.Add(txRecord.PlatformFee)
+	totalFrozen := walletDeductionAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL", Remark: "withdrawal rejected"}
@@ -515,6 +544,8 @@ func (s *WithdrawalService) ListWithdrawals(ctx context.Context, merchantID uint
 			item.Currency = txRecord.Currency
 			item.Amount = txRecord.Amount.String()
 			item.PlatformFee = txRecord.PlatformFee.String()
+			item.FeeDeductionMethod = normalizeFeeDeductionMethod(txRecord.FeeDeductionMethod)
+			item.NetAmount = receivedAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod).String()
 			item.Status = txRecord.Status
 		}
 		resp = append(resp, item)
@@ -545,17 +576,19 @@ func (s *WithdrawalService) GetWithdrawalDetail(ctx context.Context, merchantID 
 	}
 
 	return &dtoresp.WithdrawalOrderResp{
-		ID:           order.ID,
-		Type:         order.WithdrawalType,
-		Currency:     txRecord.Currency,
-		Chain:        order.Chain,
-		Amount:       txRecord.Amount.String(),
-		PlatformFee:  txRecord.PlatformFee.String(),
-		Status:       txRecord.Status,
-		ReviewStatus: order.ReviewStatus,
-		ToAddress:    order.ToAddress,
-		TxID:         order.TxID,
-		CreatedAt:    order.CreatedAt,
+		ID:                 order.ID,
+		Type:               order.WithdrawalType,
+		Currency:           txRecord.Currency,
+		Chain:              order.Chain,
+		Amount:             txRecord.Amount.String(),
+		PlatformFee:        txRecord.PlatformFee.String(),
+		FeeDeductionMethod: normalizeFeeDeductionMethod(txRecord.FeeDeductionMethod),
+		NetAmount:          receivedAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod).String(),
+		Status:             txRecord.Status,
+		ReviewStatus:       order.ReviewStatus,
+		ToAddress:          order.ToAddress,
+		TxID:               order.TxID,
+		CreatedAt:          order.CreatedAt,
 	}, nil
 }
 
@@ -587,6 +620,8 @@ func (s *WithdrawalService) ListPendingReviews(ctx context.Context, page, pageSi
 			item.Currency = txRecord.Currency
 			item.Amount = txRecord.Amount.String()
 			item.PlatformFee = txRecord.PlatformFee.String()
+			item.FeeDeductionMethod = normalizeFeeDeductionMethod(txRecord.FeeDeductionMethod)
+			item.NetAmount = receivedAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod).String()
 			item.Status = txRecord.Status
 		}
 		resp = append(resp, item)

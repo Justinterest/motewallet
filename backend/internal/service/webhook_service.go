@@ -247,7 +247,7 @@ func (s *WebhookService) handleCryptoWithdrawal(ctx context.Context, event *kund
 	}
 
 	kunFee, _ := decimal.NewFromString(data.FeeAmount)
-	totalFrozen := txRecord.Amount.Add(txRecord.PlatformFee)
+	totalFrozen := walletDeductionAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
 	ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL"}
 
 	switch data.OrderStatus {
@@ -300,7 +300,7 @@ func (s *WebhookService) handleFiatWithdrawal(ctx context.Context, event *kundto
 	}
 
 	kunFee, _ := decimal.NewFromString(data.FeeAmount)
-	totalFrozen := txRecord.Amount.Add(txRecord.PlatformFee)
+	totalFrozen := walletDeductionAmount(txRecord.Amount, txRecord.PlatformFee, txRecord.FeeDeductionMethod)
 	ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "WITHDRAWAL"}
 
 	switch data.OrderStatus {

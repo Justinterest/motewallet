@@ -16,12 +16,12 @@ import (
 )
 
 type FeeTemplateService struct {
-	db                     *gorm.DB
-	feeTemplateRepo        repository.FeeTemplateRepository
-	exchangeItemRepo       repository.FeeTemplateExchangeItemRepository
-	cryptoWithdrawalRepo   repository.FeeTemplateCryptoWithdrawalItemRepository
-	fiatWithdrawalRepo     repository.FeeTemplateFiatWithdrawalItemRepository
-	auditLogRepo           repository.AuditLogRepository
+	db                   *gorm.DB
+	feeTemplateRepo      repository.FeeTemplateRepository
+	exchangeItemRepo     repository.FeeTemplateExchangeItemRepository
+	cryptoWithdrawalRepo repository.FeeTemplateCryptoWithdrawalItemRepository
+	fiatWithdrawalRepo   repository.FeeTemplateFiatWithdrawalItemRepository
+	auditLogRepo         repository.AuditLogRepository
 }
 
 func NewFeeTemplateService(
@@ -43,10 +43,16 @@ func NewFeeTemplateService(
 }
 
 func (s *FeeTemplateService) Create(ctx context.Context, adminID uint64, req *dtoreq.CreateFeeTemplateReq) (*dtoresp.FeeTemplateDetailResp, error) {
+	if err := validateFeeTemplateDeductionMethods(req.ExchangeFeeDeductionMethod, req.CryptoWithdrawalFeeDeductionMethod, req.FiatWithdrawalFeeDeductionMethod); err != nil {
+		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, err.Error())
+	}
 	template := &model.FeeTemplate{
-		Name:        req.Name,
-		Description: req.Description,
-		IsDefault:   req.IsDefault,
+		Name:                               req.Name,
+		Description:                        req.Description,
+		IsDefault:                          req.IsDefault,
+		ExchangeFeeDeductionMethod:         normalizeFeeDeductionMethod(req.ExchangeFeeDeductionMethod),
+		CryptoWithdrawalFeeDeductionMethod: normalizeFeeDeductionMethod(req.CryptoWithdrawalFeeDeductionMethod),
+		FiatWithdrawalFeeDeductionMethod:   normalizeFeeDeductionMethod(req.FiatWithdrawalFeeDeductionMethod),
 	}
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -176,19 +182,25 @@ func (s *FeeTemplateService) GetByID(ctx context.Context, id uint64) (*dtoresp.F
 	}
 
 	return &dtoresp.FeeTemplateDetailResp{
-		ID:                    template.ID,
-		Name:                  template.Name,
-		Description:           template.Description,
-		IsDefault:             template.IsDefault,
-		ExchangeItems:         exchangeResps,
-		CryptoWithdrawalItems: cryptoResps,
-		FiatWithdrawalItems:   fiatResps,
-		CreatedAt:             template.CreatedAt,
-		UpdatedAt:             template.UpdatedAt,
+		ID:                                 template.ID,
+		Name:                               template.Name,
+		Description:                        template.Description,
+		IsDefault:                          template.IsDefault,
+		ExchangeFeeDeductionMethod:         normalizeFeeDeductionMethod(template.ExchangeFeeDeductionMethod),
+		CryptoWithdrawalFeeDeductionMethod: normalizeFeeDeductionMethod(template.CryptoWithdrawalFeeDeductionMethod),
+		FiatWithdrawalFeeDeductionMethod:   normalizeFeeDeductionMethod(template.FiatWithdrawalFeeDeductionMethod),
+		ExchangeItems:                      exchangeResps,
+		CryptoWithdrawalItems:              cryptoResps,
+		FiatWithdrawalItems:                fiatResps,
+		CreatedAt:                          template.CreatedAt,
+		UpdatedAt:                          template.UpdatedAt,
 	}, nil
 }
 
 func (s *FeeTemplateService) Update(ctx context.Context, adminID, id uint64, req *dtoreq.UpdateFeeTemplateReq) (*dtoresp.FeeTemplateDetailResp, error) {
+	if err := validateFeeTemplateDeductionMethods(req.ExchangeFeeDeductionMethod, req.CryptoWithdrawalFeeDeductionMethod, req.FiatWithdrawalFeeDeductionMethod); err != nil {
+		return nil, bizerrors.NewBusinessError(400, bizerrors.ErrValidation, err.Error())
+	}
 	template, err := s.feeTemplateRepo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -200,6 +212,9 @@ func (s *FeeTemplateService) Update(ctx context.Context, adminID, id uint64, req
 	template.Name = req.Name
 	template.Description = req.Description
 	template.IsDefault = req.IsDefault
+	template.ExchangeFeeDeductionMethod = normalizeFeeDeductionMethod(req.ExchangeFeeDeductionMethod)
+	template.CryptoWithdrawalFeeDeductionMethod = normalizeFeeDeductionMethod(req.CryptoWithdrawalFeeDeductionMethod)
+	template.FiatWithdrawalFeeDeductionMethod = normalizeFeeDeductionMethod(req.FiatWithdrawalFeeDeductionMethod)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if req.IsDefault {
@@ -246,6 +261,15 @@ func (s *FeeTemplateService) Update(ctx context.Context, adminID, id uint64, req
 	s.logAudit(ctx, adminID, "UPDATE_FEE_TEMPLATE", "FeeTemplate", fmt.Sprintf("%d", id), nil)
 
 	return s.GetByID(ctx, id)
+}
+
+func validateFeeTemplateDeductionMethods(methods ...string) error {
+	for _, method := range methods {
+		if err := validateFeeDeductionMethod(method); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *FeeTemplateService) Delete(ctx context.Context, adminID, id uint64) error {

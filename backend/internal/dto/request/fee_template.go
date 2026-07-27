@@ -23,19 +23,25 @@ type FiatWithdrawalItemReq struct {
 }
 
 type CreateFeeTemplateReq struct {
-	Name                  string                    `json:"name" binding:"required"`
-	Description           *string                   `json:"description"`
-	IsDefault             bool                      `json:"is_default"`
-	ExchangeItems         []ExchangeItemReq         `json:"exchange_items"`
-	CryptoWithdrawalItems []CryptoWithdrawalItemReq `json:"crypto_withdrawal_items"`
-	FiatWithdrawalItems   []FiatWithdrawalItemReq   `json:"fiat_withdrawal_items"`
+	Name                               string                    `json:"name" binding:"required"`
+	Description                        *string                   `json:"description"`
+	IsDefault                          bool                      `json:"is_default"`
+	ExchangeFeeDeductionMethod         string                    `json:"exchange_fee_deduction_method"`
+	CryptoWithdrawalFeeDeductionMethod string                    `json:"crypto_withdrawal_fee_deduction_method"`
+	FiatWithdrawalFeeDeductionMethod   string                    `json:"fiat_withdrawal_fee_deduction_method"`
+	ExchangeItems                      []ExchangeItemReq         `json:"exchange_items"`
+	CryptoWithdrawalItems              []CryptoWithdrawalItemReq `json:"crypto_withdrawal_items"`
+	FiatWithdrawalItems                []FiatWithdrawalItemReq   `json:"fiat_withdrawal_items"`
 }
 
 type UpdateFeeTemplateReq struct {
-	Name                  string                    `json:"name" binding:"required"`
-	Description           *string                   `json:"description"`
-	IsDefault             bool                      `json:"is_default"`
-	ExchangeItems         []ExchangeItemReq         `json:"exchange_items"`
-	CryptoWithdrawalItems []CryptoWithdrawalItemReq `json:"crypto_withdrawal_items"`
-	FiatWithdrawalItems   []FiatWithdrawalItemReq   `json:"fiat_withdrawal_items"`
+	Name                               string                    `json:"name" binding:"required"`
+	Description                        *string                   `json:"description"`
+	IsDefault                          bool                      `json:"is_default"`
+	ExchangeFeeDeductionMethod         string                    `json:"exchange_fee_deduction_method"`
+	CryptoWithdrawalFeeDeductionMethod string                    `json:"crypto_withdrawal_fee_deduction_method"`
+	FiatWithdrawalFeeDeductionMethod   string                    `json:"fiat_withdrawal_fee_deduction_method"`
+	ExchangeItems                      []ExchangeItemReq         `json:"exchange_items"`
+	CryptoWithdrawalItems              []CryptoWithdrawalItemReq `json:"crypto_withdrawal_items"`
+	FiatWithdrawalItems                []FiatWithdrawalItemReq   `json:"fiat_withdrawal_items"`
 }

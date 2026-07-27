@@ -59,6 +59,7 @@ export function formatExchangeOrderMeta(
     to_currency: string;
     exchange_rate?: string;
     platform_fee?: string;
+    fee_deduction_method?: "WALLET" | "RECEIVED_AMOUNT";
     created_at: string;
     status: string;
   },
@@ -73,8 +74,12 @@ export function formatExchangeOrderMeta(
   }
 
   if (order.platform_fee && hasPositiveAmount(order.platform_fee)) {
+    const feeCurrency =
+      order.fee_deduction_method === "RECEIVED_AMOUNT"
+        ? order.to_currency
+        : order.from_currency;
     parts.push(
-      `手续费 ${formatAmount(order.platform_fee, order.from_currency)} ${order.from_currency}`,
+      `手续费 ${formatAmount(order.platform_fee, feeCurrency)} ${feeCurrency}`,
     );
   }
 

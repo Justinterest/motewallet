@@ -26,6 +26,8 @@ export interface WithdrawalOrder {
   chain?: string;
   amount: string;
   platform_fee: string;
+  fee_deduction_method: "WALLET" | "RECEIVED_AMOUNT";
+  net_amount: string;
   status: string;
   review_status: string;
   to_address?: string;
@@ -42,6 +44,7 @@ export interface WithdrawalFeePreview {
   currency: string;
   amount: string;
   platform_fee: string;
+  fee_deduction_method: "WALLET" | "RECEIVED_AMOUNT";
   total_deduction: string;
   net_amount: string;
 }
@@ -56,6 +59,7 @@ export interface ExchangePreview {
   expire_time: number;
   platform_fee: string;
   fee_currency: string;
+  fee_deduction_method: "WALLET" | "RECEIVED_AMOUNT";
   net_to_amount: string;
   total_deduction: string;
 }
@@ -69,6 +73,8 @@ export interface ExchangeOrder {
   to_amount: string;
   exchange_rate: string;
   platform_fee: string;
+  fee_deduction_method: "WALLET" | "RECEIVED_AMOUNT";
+  net_to_amount: string;
   status: string;
   fail_reason?: string;
   created_at: string;

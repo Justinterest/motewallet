@@ -615,6 +615,9 @@ export default function WithdrawPage() {
                     {order.platform_fee && order.platform_fee !== "0" && (
                       <p className="mt-1 text-xs text-slate-400">
                         手续费：{order.platform_fee} {order.currency}
+                        {order.fee_deduction_method === "RECEIVED_AMOUNT"
+                          ? ` · 实际到账：${order.net_amount} ${order.currency}`
+                          : ""}
                       </p>
                     )}
                   </div>

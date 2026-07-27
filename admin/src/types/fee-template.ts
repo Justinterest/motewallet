@@ -28,6 +28,9 @@ export interface FeeTemplate {
   name: string;
   description?: string;
   is_default: boolean;
+  exchange_fee_deduction_method: FeeDeductionMethod;
+  crypto_withdrawal_fee_deduction_method: FeeDeductionMethod;
+  fiat_withdrawal_fee_deduction_method: FeeDeductionMethod;
   exchange_items?: FeeTemplateExchangeItem[];
   crypto_withdrawal_items?: FeeTemplateCryptoWithdrawalItem[];
   fiat_withdrawal_items?: FeeTemplateFiatWithdrawalItem[];
@@ -39,9 +42,14 @@ export interface CreateFeeTemplateRequest {
   name: string;
   description?: string;
   is_default?: boolean;
+  exchange_fee_deduction_method?: FeeDeductionMethod;
+  crypto_withdrawal_fee_deduction_method?: FeeDeductionMethod;
+  fiat_withdrawal_fee_deduction_method?: FeeDeductionMethod;
   exchange_items?: Omit<FeeTemplateExchangeItem, "id">[];
   crypto_withdrawal_items?: Omit<FeeTemplateCryptoWithdrawalItem, "id">[];
   fiat_withdrawal_items?: Omit<FeeTemplateFiatWithdrawalItem, "id">[];
 }
 
 export type UpdateFeeTemplateRequest = CreateFeeTemplateRequest;
+
+export type FeeDeductionMethod = "WALLET" | "RECEIVED_AMOUNT";

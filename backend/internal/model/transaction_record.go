@@ -16,6 +16,7 @@ type TransactionRecord struct {
 	Currency            string           `gorm:"column:currency;type:varchar(10);not null" json:"currency"`
 	PlatformFee         decimal.Decimal  `gorm:"column:platform_fee;type:decimal(28,8);not null;default:0" json:"platform_fee"`
 	PlatformFeeCurrency *string          `gorm:"column:platform_fee_currency;type:varchar(10)" json:"platform_fee_currency,omitempty"`
+	FeeDeductionMethod  string           `gorm:"column:fee_deduction_method;type:varchar(20);not null;default:WALLET" json:"fee_deduction_method"`
 	ActualAmount        *decimal.Decimal `gorm:"column:actual_amount;type:decimal(28,8)" json:"actual_amount,omitempty"`
 	Remark              *string          `gorm:"column:remark;type:varchar(500)" json:"remark,omitempty"`
 	Status              string           `gorm:"column:status;type:varchar(20);not null;default:PENDING;index:idx_transaction_records_status;index:idx_transaction_records_merchant_status" json:"status"`

@@ -40,6 +40,7 @@ import type {
   FeeTemplateCryptoWithdrawalItem,
   FeeTemplateFiatWithdrawalItem,
   CreateFeeTemplateRequest,
+  FeeDeductionMethod,
 } from "@/types/fee-template";
 
 const CURRENCY_OPTIONS = ["USDT", "USDC", "BTC", "USD", "HKD", "EUR"];
@@ -51,6 +52,9 @@ interface FeeTemplateFormProps {
   defaultExchangeItems?: FeeTemplateExchangeItem[];
   defaultCryptoItems?: FeeTemplateCryptoWithdrawalItem[];
   defaultFiatItems?: FeeTemplateFiatWithdrawalItem[];
+  defaultExchangeFeeDeductionMethod?: FeeDeductionMethod;
+  defaultCryptoFeeDeductionMethod?: FeeDeductionMethod;
+  defaultFiatFeeDeductionMethod?: FeeDeductionMethod;
   onSubmit: (data: CreateFeeTemplateRequest) => void;
   isPending: boolean;
   submitLabel: string;
@@ -61,6 +65,9 @@ export function FeeTemplateForm({
   defaultExchangeItems,
   defaultCryptoItems,
   defaultFiatItems,
+  defaultExchangeFeeDeductionMethod = "WALLET",
+  defaultCryptoFeeDeductionMethod = "WALLET",
+  defaultFiatFeeDeductionMethod = "WALLET",
   onSubmit,
   isPending,
   submitLabel,
@@ -83,6 +90,9 @@ export function FeeTemplateForm({
   const [fiatItems, setFiatItems] = useState<FeeTemplateFiatWithdrawalItem[]>(
     defaultFiatItems || []
   );
+  const [exchangeFeeDeductionMethod, setExchangeFeeDeductionMethod] = useState<FeeDeductionMethod>(defaultExchangeFeeDeductionMethod);
+  const [cryptoFeeDeductionMethod, setCryptoFeeDeductionMethod] = useState<FeeDeductionMethod>(defaultCryptoFeeDeductionMethod);
+  const [fiatFeeDeductionMethod, setFiatFeeDeductionMethod] = useState<FeeDeductionMethod>(defaultFiatFeeDeductionMethod);
 
   const addExchangeItem = () => {
     setExchangeItems([
@@ -140,6 +150,9 @@ export function FeeTemplateForm({
       name: values.name,
       description: values.description,
       is_default: values.is_default,
+      exchange_fee_deduction_method: exchangeFeeDeductionMethod,
+      crypto_withdrawal_fee_deduction_method: cryptoFeeDeductionMethod,
+      fiat_withdrawal_fee_deduction_method: fiatFeeDeductionMethod,
       exchange_items: exchangeItems.map((item) => ({ from_currency: item.from_currency, to_currency: item.to_currency, fee_rate: item.fee_rate, min_fee: item.min_fee, min_fee_currency: item.min_fee_currency })),
       crypto_withdrawal_items: cryptoItems.map((item) => ({ currency: item.currency, chain: item.chain, fee_rate: item.fee_rate, fixed_fee: item.fixed_fee })),
       fiat_withdrawal_items: fiatItems.map((item) => ({ currency: item.currency, transfer_type: item.transfer_type, fee_rate: item.fee_rate, fixed_fee: item.fixed_fee })),
@@ -216,6 +229,7 @@ export function FeeTemplateForm({
 
               {/* Exchange fee items */}
               <TabsContent value="exchange" className="space-y-4">
+                <FeeDeductionMethodSelect value={exchangeFeeDeductionMethod} onChange={setExchangeFeeDeductionMethod} />
                 {exchangeItems.map((item, index) => (
                   <div
                     key={index}
@@ -303,6 +317,7 @@ export function FeeTemplateForm({
 
               {/* Crypto withdrawal fee items */}
               <TabsContent value="crypto" className="space-y-4">
+                <FeeDeductionMethodSelect value={cryptoFeeDeductionMethod} onChange={setCryptoFeeDeductionMethod} />
                 {cryptoItems.map((item, index) => (
                   <div
                     key={index}
@@ -374,6 +389,7 @@ export function FeeTemplateForm({
 
               {/* Fiat withdrawal fee items */}
               <TabsContent value="fiat" className="space-y-4">
+                <FeeDeductionMethodSelect value={fiatFeeDeductionMethod} onChange={setFiatFeeDeductionMethod} />
                 {fiatItems.map((item, index) => (
                   <div
                     key={index}
@@ -453,5 +469,28 @@ export function FeeTemplateForm({
         </div>
       </form>
     </Form>
+  );
+}
+
+function FeeDeductionMethodSelect({
+  value,
+  onChange,
+}: {
+  value: FeeDeductionMethod;
+  onChange: (value: FeeDeductionMethod) => void;
+}) {
+  return (
+    <div className="max-w-sm space-y-1 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <Label className="text-xs text-slate-500">手续费扣取方式</Label>
+      <Select value={value} onValueChange={(method) => onChange(method as FeeDeductionMethod)}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="WALLET">扣钱包余额</SelectItem>
+          <SelectItem value="RECEIVED_AMOUNT">扣到账金额</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
