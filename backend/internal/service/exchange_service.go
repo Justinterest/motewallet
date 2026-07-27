@@ -352,7 +352,8 @@ func (s *ExchangeService) SyncOrderStatus(ctx context.Context, orderID uint64) (
 	if order.FailReason != nil {
 		beforeFailReason = *order.FailReason
 	}
-	if err := s.applyKUNExchangeStatus(ctx, order, txRecord, kunResp.OrderStatus, toAmount, exchangeRate, kunResp.TradeFee, ""); err != nil {
+	failReason := resolveExchangeFailReason(kunResp.RejectReason, kunResp.FailReason)
+	if err := s.applyKUNExchangeStatus(ctx, order, txRecord, kunResp.OrderStatus, toAmount, exchangeRate, kunResp.TradeFee, failReason); err != nil {
 		return nil, err
 	}
 
@@ -638,6 +639,8 @@ func (s *ExchangeService) queryKUNExchangeOrderInto(
 			ExchangeRate: innerResp.ExchangeRate,
 			TradeFee:     innerResp.TradeFee,
 			FeeCurrency:  innerResp.TradeFeeCurrency,
+			RejectReason: innerResp.RejectReason,
+			FailReason:   innerResp.FailReason,
 		}
 		return nil
 	}

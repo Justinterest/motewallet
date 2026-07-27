@@ -116,10 +116,11 @@ func (c *Client) PostAsCustomer(ctx context.Context, customerNo, path string, re
 	defer func() {
 		var reqBody any
 		var respBody []byte
-		if !success {
-			reqBody = json.RawMessage(bodyBytes)
-			respBody = respBytes
-		}
+		fmt.Println("success", success)
+		// if !success {
+		reqBody = json.RawMessage(bodyBytes)
+		respBody = respBytes
+		// }
 		logKUNRequest(http.MethodPost, url, path, signString, req.Header, resp.Header, reqBody, resp.StatusCode, respBody)
 	}()
 

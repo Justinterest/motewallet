@@ -80,6 +80,8 @@ type ExchangeOrderQueryResp struct {
 	ExchangeRate string `json:"exchangeRate"`
 	TradeFee     string `json:"tradeFee"`
 	FeeCurrency  string `json:"feeCurrency"`
+	RejectReason string `json:"rejectReason"`
+	FailReason   string `json:"failReason"`
 }
 
 type InnerMatchCreateReq struct {
@@ -100,19 +102,20 @@ type InnerMatchQueryReq struct {
 }
 
 type InnerMatchQueryResp struct {
-	OrderId           string `json:"orderId"`
-	OrderStatus       string `json:"orderStatus"`
-	FromCurrency      string `json:"fromCurrency"`
-	ToCurrency        string `json:"toCurrency"`
-	OrderAmount       string `json:"orderAmount"`
-	OrderCurrency     string `json:"orderCurrency"`
-	ReceiveAmount     string `json:"receiveAmount"`
-	ReceiveCurrency   string `json:"receiveCurrency"`
-	TradeFee          string `json:"tradeFee"`
-	TradeFeeCurrency  string `json:"tradeFeeCurrency"`
-	ExchangeRate      string `json:"exchangeRate"`
-	RejectReason      string `json:"rejectReason"`
-	CompleteTime        string `json:"completeTime"`
+	OrderId          string `json:"orderId"`
+	OrderStatus      string `json:"orderStatus"`
+	FromCurrency     string `json:"fromCurrency"`
+	ToCurrency       string `json:"toCurrency"`
+	OrderAmount      string `json:"orderAmount"`
+	OrderCurrency    string `json:"orderCurrency"`
+	ReceiveAmount    string `json:"receiveAmount"`
+	ReceiveCurrency  string `json:"receiveCurrency"`
+	TradeFee         string `json:"tradeFee"`
+	TradeFeeCurrency string `json:"tradeFeeCurrency"`
+	ExchangeRate     string `json:"exchangeRate"`
+	RejectReason     string `json:"rejectReason"`
+	FailReason       string `json:"failReason"`
+	CompleteTime     string `json:"completeTime"`
 }
 
 // FundTransferReq is the body for POST /rest/v2.0/user/fund/transfer.
