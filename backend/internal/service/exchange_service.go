@@ -32,6 +32,8 @@ type ExchangeService struct {
 	currencyConfigSvc     *CurrencyConfigService
 }
 
+const exchangeAccountType = "TRADING"
+
 func NewExchangeService(
 	db *gorm.DB,
 	merchantRepo repository.MerchantRepository,
@@ -201,7 +203,7 @@ func (s *ExchangeService) CreateExchangeOrder(ctx context.Context, merchantID ui
 		}
 
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "EXCHANGE"}
-		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, "FUNDING", req.FromCurrency, totalFreeze, ref); err != nil {
+		if err := s.walletSvc.FreezeBalance(ctx, tx, merchantID, exchangeAccountType, req.FromCurrency, totalFreeze, ref); err != nil {
 			return err
 		}
 
@@ -440,11 +442,11 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "EXCHANGE"}
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			// 资金账户扣出卖出币种，交易账户入账买入币种
-			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, "FUNDING", order.FromCurrency, totalFrozen, ref); err != nil {
+			// 兑换的卖出和买入币种均在交易账户中结算。
+			if err := s.walletSvc.DeductFrozen(ctx, tx, order.MerchantID, exchangeAccountType, order.FromCurrency, totalFrozen, ref); err != nil {
 				return err
 			}
-			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, "TRADING", order.ToCurrency, netToAmount, ref); err != nil {
+			if err := s.walletSvc.CreditBalance(ctx, tx, order.MerchantID, exchangeAccountType, order.ToCurrency, netToAmount, ref); err != nil {
 				return err
 			}
 			if err := tx.WithContext(ctx).Model(&model.TransactionRecord{}).
@@ -464,7 +466,7 @@ func (s *ExchangeService) applyKUNExchangeStatus(
 		reason := strings.TrimSpace(failReason)
 		ref := WalletChangeRef{TransactionRecordID: txRecord.ID, BizType: "EXCHANGE"}
 		return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, "FUNDING", order.FromCurrency, totalFrozen, ref); err != nil {
+			if err := s.walletSvc.UnfreezeBalance(ctx, tx, order.MerchantID, exchangeAccountType, order.FromCurrency, totalFrozen, ref); err != nil {
 				return err
 			}
 			if err := tx.WithContext(ctx).Model(&model.TransactionRecord{}).
@@ -564,7 +566,7 @@ func (s *ExchangeService) validateExchangeRequest(ctx context.Context, merchant 
 func (s *ExchangeService) rollbackExchangeOrder(ctx context.Context, txRecordID, merchantID uint64, currency string, totalFreeze decimal.Decimal) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		ref := WalletChangeRef{TransactionRecordID: txRecordID, BizType: "EXCHANGE", Remark: "rollback after KUN failure"}
-		if err := s.walletSvc.UnfreezeBalance(ctx, tx, merchantID, "FUNDING", currency, totalFreeze, ref); err != nil {
+		if err := s.walletSvc.UnfreezeBalance(ctx, tx, merchantID, exchangeAccountType, currency, totalFreeze, ref); err != nil {
 			return err
 		}
 		return tx.WithContext(ctx).Model(&model.TransactionRecord{}).

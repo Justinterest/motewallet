@@ -2,6 +2,12 @@ package service
 
 import "testing"
 
+func TestExchangeUsesTradingAccount(t *testing.T) {
+	if exchangeAccountType != "TRADING" {
+		t.Fatalf("exchangeAccountType = %q, want TRADING", exchangeAccountType)
+	}
+}
+
 func TestResolveExchangeFailReason(t *testing.T) {
 	tests := []struct {
 		name    string

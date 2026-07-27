@@ -58,19 +58,23 @@ export default function TransferPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    const nextCurrency = currencies[0];
+    const currencyParam = searchParams.get("currency")?.toUpperCase();
+    const nextCurrency =
+      currencyParam && currencies.includes(currencyParam)
+        ? currencyParam
+        : currencies[0];
     if (!nextCurrency) return;
     if (!currency || !currencies.includes(currency)) {
       setCurrency(nextCurrency);
     }
-  }, [currencies, currency]);
+  }, [currencies, currency, searchParams]);
 
   const { data: walletData } = useWalletBalances();
   const transferMutation = useTransfer();
   const { data: ordersData, isLoading: ordersLoading } = useTransferOrders();
   const orders = ordersData?.orders || [];
 
-  const wallets = walletData?.wallets ?? [];
+  const wallets = useMemo(() => walletData?.wallets ?? [], [walletData?.wallets]);
 
   const sourceAvailable = useMemo(() => {
     const wallet = wallets.find(

@@ -137,14 +137,19 @@ export default function ExchangePage() {
   const { data: walletData } = useWalletBalances();
   const orders = ordersData?.orders || [];
 
-  const wallets = walletData?.wallets ?? [];
+  const wallets = useMemo(() => walletData?.wallets ?? [], [walletData?.wallets]);
 
-  const fundingAvailable = useMemo(() => {
+  const tradingAvailable = useMemo(() => {
     const wallet = wallets.find(
-      (item) => item.account_type === "FUNDING" && item.currency === fromCurrency,
+      (item) => item.account_type === "TRADING" && item.currency === fromCurrency,
     );
     return wallet?.available_balance ?? "0";
   }, [wallets, fromCurrency]);
+  const transferHref = `/transfer?from=FUNDING&to=TRADING&currency=${encodeURIComponent(fromCurrency)}`;
+  const tradingBalanceInsufficient =
+    previewReady &&
+    preview != null &&
+    parseFloat(tradingAvailable) < parseFloat(preview.total_deduction);
 
   function handleConfirmOrder() {
     if (!previewReady) return;
@@ -172,7 +177,13 @@ export default function ExchangePage() {
       <div className="shrink-0">
         <h1 className="text-2xl font-bold text-slate-900">兑换</h1>
         <p className="mt-1 text-sm text-slate-600">
-          从资金账户卖出，买入币种入账到交易账户。
+          兑换在交易账户完成；余额不足时，请先从资金账户划入。
+          <Link
+            href={transferHref}
+            className="ml-1 font-medium text-primary hover:underline"
+          >
+            去划转
+          </Link>
         </p>
       </div>
 
@@ -216,7 +227,7 @@ export default function ExchangePage() {
               <div className="mb-1.5 flex items-center justify-between">
                 <label className="text-sm font-medium text-slate-700">卖出金额</label>
                 <span className="text-xs text-slate-500">
-                  资金账户可用 {formatAmount(fundingAvailable, fromCurrency)} {fromCurrency}
+                  交易账户可用 {formatAmount(tradingAvailable, fromCurrency)} {fromCurrency}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -230,13 +241,22 @@ export default function ExchangePage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setFromAmount(fundingAvailable)}
-                  disabled={parseFloat(fundingAvailable) <= 0}
+                  onClick={() => setFromAmount(tradingAvailable)}
+                  disabled={parseFloat(tradingAvailable) <= 0}
                 >
                   全部
                 </Button>
               </div>
             </div>
+
+            {tradingBalanceInsufficient && (
+              <p className="text-sm text-amber-700">
+                交易账户余额不足。
+                <Link href={transferHref} className="ml-1 font-medium underline">
+                  从资金账户划入 {fromCurrency}
+                </Link>
+              </p>
+            )}
 
             {previewRequired && (
               <ExchangePreviewSummary
@@ -252,7 +272,11 @@ export default function ExchangePage() {
             <Button
               className="w-full bg-blue-700 hover:bg-blue-800 text-white"
               onClick={handleConfirmOrder}
-              disabled={orderMutation.isPending || !previewReady}
+              disabled={
+                orderMutation.isPending ||
+                !previewReady ||
+                tradingBalanceInsufficient
+              }
             >
               {orderMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               确认兑换
